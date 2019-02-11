@@ -16,7 +16,7 @@ func (s *State) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		Humidity     float64 `yaml:"humidity"`
 		Wind         float64 `yaml:"wind"`
 		VisibleLight float64 `yaml:"visible-light"`
-		UVLight      float64 `yaml:"UV-light"`
+		UVLight      float64 `yaml:"uv-light"`
 	}
 
 	res := StateYAML{}

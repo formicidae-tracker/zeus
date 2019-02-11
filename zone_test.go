@@ -1,8 +1,11 @@
 package main
 
 import (
+	"math"
+	"time"
+
 	. "gopkg.in/check.v1"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 type ZoneSuite struct{}
@@ -69,7 +72,41 @@ transitions:
 						CANInterface: "slcan0",
 					},
 				},
-				ClimateReportFile: "/data/someuser/my-experiment.txt",
+				MinimalTemperature: 24,
+				MaximalTemperature: 31,
+				MinimalHumidity:    40,
+				MaximalHumidity:    80,
+				ClimateReportFile:  "/data/someuser/my-experiment.txt",
+				States: map[string]State{
+					"day": State{
+						Temperature:  29.0,
+						Humidity:     70.0,
+						Wind:         100.0,
+						VisibleLight: 100.0,
+						UVLight:      100.0,
+					},
+					"night": State{
+						Temperature:  26.0,
+						Humidity:     Humidity(math.Inf(-1)),
+						Wind:         Wind(math.Inf(-1)),
+						VisibleLight: 0.0,
+						UVLight:      0.0,
+					},
+				},
+				Transitions: []Transition{
+					Transition{
+						From:     "night",
+						To:       "day",
+						Start:    time.Date(0, 1, 1, 6, 00, 0, 0, time.UTC),
+						Duration: 45*time.Minute + 38*time.Second,
+					},
+					Transition{
+						From:     "day",
+						To:       "night",
+						Start:    time.Date(0, 1, 1, 18, 00, 0, 0, time.UTC),
+						Duration: 1*time.Hour + 3*time.Minute + 1*time.Second,
+					},
+				},
 			},
 		},
 	}

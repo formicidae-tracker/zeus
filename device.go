@@ -28,14 +28,15 @@ func (d *Device) SendResetRequest() error {
 	return arke.SendResetRequest(d.intf, d.Class)
 }
 
+var nameToNodeClass = map[string]arke.NodeClass{
+	"Zeus":    arke.ZeusClass,
+	"Celaeno": arke.CelaenoClass,
+	"Helios":  arke.HeliosClass,
+}
+
 func NameToArkeNodeClass(s string) (arke.NodeClass, error) {
-	switch s {
-	case "Zeus":
-		return arke.ZeusClass, nil
-	case "Celaeno":
-		return arke.CelaenoClass, nil
-	case "Helios":
-		return arke.HeliosClass, nil
+	if c, ok := nameToNodeClass[s]; ok == true {
+		return c, nil
 	}
 	return arke.NodeClass(0), fmt.Errorf("Unknown node class '%s'", s)
 }
