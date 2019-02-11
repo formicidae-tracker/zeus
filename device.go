@@ -39,16 +39,3 @@ func NameToArkeNodeClass(s string) (arke.NodeClass, error) {
 	}
 	return arke.NodeClass(0), fmt.Errorf("Unknown node class '%s'", s)
 }
-
-func (d *DeviceDefinition) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	if err := unmarshal(d); err != nil {
-		return err
-	}
-	if d.ID >= 8 {
-		return fmt.Errorf("Arke maximal ID is 7, got %d", d.ID)
-	}
-	if _, err := NameToArkeNodeClass(d.Class); err != nil {
-		return err
-	}
-	return nil
-}
