@@ -18,16 +18,9 @@ func (s *ZoneSuite) TestParsing(c *C) {
 		Zone Zone
 	}{
 		{
-			Text: `devices:
-  - class: "Zeus"
-    can-interface: "slcan0"
-    id: 1
-  - class: "Celaeno"
-    can-interface: "slcan0"
-    id: 1
-  - class: "Helios"
-    can-interface: "slcan0"
-    id: 1
+			Text: `
+can-interface: "slcan0"
+devices-id: 1
 climate-report-file: /data/someuser/my-experiment.txt
 minimal-temperature: 24.0
 maximal-temperature: 31.0
@@ -55,23 +48,8 @@ transitions:
     duration: 1h03m1s
 `,
 			Zone: Zone{
-				Devices: []DeviceDefinition{
-					DeviceDefinition{
-						Class:        "Zeus",
-						ID:           1,
-						CANInterface: "slcan0",
-					},
-					DeviceDefinition{
-						Class:        "Celaeno",
-						ID:           1,
-						CANInterface: "slcan0",
-					},
-					DeviceDefinition{
-						Class:        "Helios",
-						ID:           1,
-						CANInterface: "slcan0",
-					},
-				},
+				CANInterface:       "slcan0",
+				DevicesID:          1,
 				MinimalTemperature: 24,
 				MaximalTemperature: 31,
 				MinimalHumidity:    40,

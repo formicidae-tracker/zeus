@@ -14,12 +14,6 @@ type Device struct {
 	ID    arke.NodeID
 }
 
-type DeviceDefinition struct {
-	Class        string
-	CANInterface string `yaml:"can-interface"`
-	ID           uint
-}
-
 func (d *Device) SendMessage(m arke.SendableMessage) error {
 	return arke.SendMessage(d.intf, m, false, d.ID)
 }
@@ -29,10 +23,20 @@ func (d *Device) SendResetRequest() error {
 	return arke.SendResetRequest(d.intf, d.Class, d.ID)
 }
 
+func (d *Device) SendHeartbeatRequest() error {
+	return arke.SendHeartBeatRequest(d.intf, d.Class, HeartBeatPeriod)
+}
+
 var nameToNodeClass = map[string]arke.NodeClass{
 	"zeus":    arke.ZeusClass,
 	"celaeno": arke.CelaenoClass,
 	"helios":  arke.HeliosClass,
+}
+
+var nodeClassToNode = map[arke.NodeClass]string{
+	arke.ZeusClass:    "Zeus",
+	arke.CelaenoClass: "Celaeno",
+	arke.HeliosClass:  "Helios",
 }
 
 func NameToArkeNodeClass(s string) (arke.NodeClass, error) {
@@ -40,4 +44,11 @@ func NameToArkeNodeClass(s string) (arke.NodeClass, error) {
 		return c, nil
 	}
 	return arke.NodeClass(0), fmt.Errorf("Unknown node class '%s'", s)
+}
+
+func Name(c arke.NodeClass) string {
+	if n, ok := nodeClassToNode[c]; ok == true {
+		return n
+	}
+	return "<unknown>"
 }

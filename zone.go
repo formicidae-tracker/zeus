@@ -1,7 +1,8 @@
 package main
 
 type Zone struct {
-	Devices            []DeviceDefinition
+	CANInterface       string      `yaml:"can-interface"`
+	DevicesID          uint        `yaml:"devices-id"`
 	ClimateReportFile  string      `yaml:"climate-report-file"`
 	MinimalTemperature Temperature `yaml:"minimal-temperature"`
 	MaximalTemperature Temperature `yaml:"maximal-temperature"`
@@ -42,6 +43,12 @@ func (z *Zone) ComputeRequirements() []capability {
 	if controlLight == true {
 		res = append(res, NewLightControllable())
 	}
+
+	return res
+}
+
+func (z *Zone) Compile() []error {
+	res := []error{}
 
 	return res
 }
