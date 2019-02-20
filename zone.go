@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 type Zone struct {
 	CANInterface       string      `yaml:"can-interface"`
 	DevicesID          uint        `yaml:"devices-id"`
@@ -12,10 +14,18 @@ type Zone struct {
 	Transitions        []Transition
 }
 
-func (z *Zone) ComputeRequirements() []capability {
+func (z *Zone) ComputeRequirements() ([]capability, error) {
 	res := []capability{}
 	if IsUndefined(z.MinimalTemperature) == false || IsUndefined(z.MaximalTemperature) == false || IsUndefined(z.MinimalHumidity) == false || IsUndefined(z.MaximalHumidity) == false || len(z.ClimateReportFile) != 0 {
-		res = append(res, &ClimateRecordable{})
+		if toAdd, err := NewClimateRecordableCapability(z.MinimalTemperature,
+			z.MaximalTemperature,
+			z.MinimalHumidity,
+			z.MaximalHumidity,
+			z.ClimateReportFile); err != nil {
+			return res, err
+		} else {
+			res = append(res, toAdd)
+		}
 	}
 	controlLight := false
 	controlTemperature := false
@@ -44,11 +54,22 @@ func (z *Zone) ComputeRequirements() []capability {
 		res = append(res, NewLightControllable())
 	}
 
-	return res
+	return res, nil
 }
 
 func (z *Zone) Compile() []error {
 	res := []error{}
+
+	for _, t := range z.Transitions {
+		if _, ok := z.States[t.From]; ok == false {
+			res = append(res, fmt.Errorf("Undefined '%s' state in %#v", t.From, t))
+		}
+
+		if _, ok := z.States[t.To]; ok == false {
+			res = append(res, fmt.Errorf("Undefined '%s' state in %#v", t.To, t))
+		}
+
+	}
 
 	return res
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -206,7 +207,7 @@ type ClimateRecordable struct {
 	Start          time.Time
 }
 
-func NewClimateRecordableCapability(minT, maxT Temperature, minH, maxH Humidity, file string) capability {
+func NewClimateRecordableCapability(minT, maxT Temperature, minH, maxH Humidity, file string) (capability, error) {
 	res := &ClimateRecordable{
 		MinTemperature: minT,
 		MaxTemperature: maxT,
@@ -217,13 +218,15 @@ func NewClimateRecordableCapability(minT, maxT Temperature, minH, maxH Humidity,
 
 	if len(file) > 0 {
 		var err error
-		res.File, err = os.Create(file)
+		var fname string
+		res.File, fname, err = CreateFileWithoutOverwrite(file)
 		if err != nil {
-			panic(err.Error())
+			return nil, err
 		}
+		log.Printf("Will save climate data in '%s'", fname)
 		fmt.Fprintf(res.File, "#Starting date %s\n#Time(ms) Relative Humidity (%%) Temperature (°C) Temperature (°C) Temperature (°C) Temperature (°C)\n", res.Start)
 	}
-	return res
+	return res, nil
 }
 
 func (r *ClimateRecordable) Requirements() []arke.NodeClass {
