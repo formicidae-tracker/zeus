@@ -25,14 +25,13 @@ func (s *TransitionSuite) TestParsing(c *C) {
 			Text: `from: day
 to: night
 duration: 10m
-after: 12h
+start: 12:00
 `,
 			Transition: Transition{
 				From:     "day",
 				To:       "night",
 				Duration: 10 * time.Minute,
-				After:    12 * time.Hour,
-				Start:    time.Unix(0, 0),
+				Start:    time.Date(0, 1, 1, 12, 00, 0, 0, time.UTC),
 			},
 		},
 		{
@@ -45,7 +44,6 @@ start: 18:02
 				From:     "night",
 				To:       "day",
 				Duration: 30 * time.Minute,
-				After:    0,
 				Start:    time.Date(0, 1, 1, 18, 02, 0, 0, time.UTC),
 			},
 		},
@@ -65,14 +63,6 @@ start: 18:02
 		ErrorMatches string
 	}{
 		{
-			Text: `start: 18:03
-after: 12h
-from: a
-to: b
-`,
-			ErrorMatches: "'start' and 'after' field are exclusive",
-		},
-		{
 			Text: `start: 18:03:10
 from: a
 to: b
@@ -82,11 +72,6 @@ to: b
 		{
 			Text:         `from: a`,
 			ErrorMatches: "'from' and 'to' fields are required",
-		},
-		{
-			Text: `from: a
-to: b`,
-			ErrorMatches: "either 'after' or 'start' fields are required",
 		},
 		{
 			Text:         `duration: aey`,

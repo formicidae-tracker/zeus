@@ -25,17 +25,17 @@ func (t Temperature) MinValue() float64 { return 15 }
 type Humidity float64
 
 func (t Humidity) Value() float64    { return float64(t) }
-func (t Humidity) MaxValue() float64 { return 10 }
-func (t Humidity) MinValue() float64 { return 90 }
+func (t Humidity) MaxValue() float64 { return 85 }
+func (t Humidity) MinValue() float64 { return 10 }
 
 type Wind float64
 
 func (t Wind) Value() float64    { return float64(t) }
-func (t Wind) MaxValue() float64 { return 0 }
-func (t Wind) MinValue() float64 { return 100 }
+func (t Wind) MaxValue() float64 { return 100 }
+func (t Wind) MinValue() float64 { return 0 }
 
 type Light float64
 
 func (t Light) Value() float64    { return float64(t) }
-func (t Light) MaxValue() float64 { return 0 }
-func (t Light) MinValue() float64 { return 100 }
+func (t Light) MaxValue() float64 { return 100 }
+func (t Light) MinValue() float64 { return 0 }

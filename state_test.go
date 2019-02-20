@@ -2,6 +2,7 @@ package main
 
 import (
 	"math"
+	"regexp"
 	"testing"
 
 	yaml "gopkg.in/yaml.v2"
@@ -51,5 +52,10 @@ func (s *StateSuite) TestParsing(c *C) {
 		}
 		c.Check(res, DeepEquals, d.State)
 	}
+
+	res := State{}
+	err := yaml.Unmarshal([]byte(`temperature: "very hot"`), &res)
+	rx := regexp.MustCompile(`yaml:.*`)
+	c.Check(rx.MatchString(err.Error()), Equals, true)
 
 }
