@@ -68,7 +68,6 @@ func (z *Zone) Compile() []error {
 		if _, ok := z.States[t.To]; ok == false {
 			res = append(res, fmt.Errorf("Undefined '%s' state in %#v", t.To, t))
 		}
-
 	}
 
 	return res
