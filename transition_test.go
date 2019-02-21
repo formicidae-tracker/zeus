@@ -32,6 +32,7 @@ start: 12:00
 				To:       "night",
 				Duration: 10 * time.Minute,
 				Start:    time.Date(0, 1, 1, 12, 00, 0, 0, time.UTC),
+				Day:      0,
 			},
 		},
 		{
@@ -39,12 +40,14 @@ start: 12:00
 to: day
 duration: 30m
 start: 18:02
+day: 3
 `,
 			Transition: Transition{
 				From:     "night",
 				To:       "day",
 				Duration: 30 * time.Minute,
 				Start:    time.Date(0, 1, 1, 18, 02, 0, 0, time.UTC),
+				Day:      3,
 			},
 		},
 	}
@@ -70,19 +73,33 @@ to: b
 			ErrorMatches: "parsing time \".*\": extra text: .*",
 		},
 		{
-			Text:         `from: a`,
-			ErrorMatches: "'from' and 'to' fields are required",
+			Text: `from: a
+start: 14:00`,
+			ErrorMatches: "'From' and 'To' fields are required",
 		},
 		{
 			Text:         `duration: aey`,
 			ErrorMatches: "yaml: unmarshal errors:",
+		},
+		{
+			Text: `start: 12:00
+day: foo`,
+			ErrorMatches: "strconv.Atoi: .*",
+		},
+		{
+			Text: `from: a
+to: b
+start: 08:00
+day: 3
+start-time-delta: 3m`,
+			ErrorMatches: "StartTimeDelta is only available for recurring transitions",
 		},
 	}
 
 	for _, d := range errordata {
 		res := Transition{}
 		err := yaml.Unmarshal([]byte(d.Text), &res)
-		if c.Check(err, Not(IsNil)) == true {
+		if c.Check(err, Not(IsNil), Commentf("parsing '%s'", d.Text)) == true {
 			rexp := regexp.MustCompile(d.ErrorMatches)
 			c.Check(rexp.MatchString(err.Error()), Equals, true, Commentf("got error: `%s`\nregexp: `%s`", err, d.ErrorMatches))
 		}

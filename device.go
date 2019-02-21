@@ -19,7 +19,6 @@ func (d *Device) SendMessage(m arke.SendableMessage) error {
 }
 
 func (d *Device) SendResetRequest() error {
-	//TODO replace with a manager
 	return arke.SendResetRequest(d.intf, d.Class, d.ID)
 }
 

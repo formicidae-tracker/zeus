@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 
 	flags "github.com/jessevdk/go-flags"
+	yaml "gopkg.in/yaml.v2"
 )
 
 type Options struct {
@@ -14,30 +16,36 @@ type Options struct {
 
 var opts = Options{}
 
-func (o *Options) Execute(args []string) error {
-	return fmt.Errorf("Main not yet implemented")
+func (o Options) LoadConfig() (*Config, error) {
+	c := &Config{}
+	f, err := os.Open(opts.Config)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	buf, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+	err = yaml.Unmarshal(buf, c)
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
 }
 
 var parser = flags.NewParser(&opts, flags.HelpFlag|flags.PassDoubleDash)
 
-func Execute() error {
+func main() {
 	if _, err := parser.Parse(); err != nil {
 		if ferr, ok := err.(*flags.Error); ok == true && ferr.Type == flags.ErrHelp {
-			fmt.Printf("%s", ferr.Message)
-			return nil
+			fmt.Printf("%s\n", ferr.Message)
+			os.Exit(0)
 		}
 
-		return err
-	}
-
-	return nil
-}
-
-func main() {
-
-	if err := Execute(); err != nil {
 		log.Printf("Unhandled error: %s", err)
 		os.Exit(1)
 	}
-
 }

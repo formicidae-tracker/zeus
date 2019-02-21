@@ -2,33 +2,23 @@ package main
 
 import "fmt"
 
-type Simulate struct {
+type SimulateCommand struct {
 }
 
-var simOpts = Simulate{}
+var simulateCommand = SimulateCommand{}
 
-func (s *Simulate) Execute(args []string) error {
-
-	// c := Config{}
-	// f, err := os.Open(opts.Config)
-	// if err != nil {
-	// 	return err
-	// }
-	// defer f.Close()
-
-	// buf, err := ioutil.ReadAll(f)
-	// if err != nil {
-	// 	return err
-	// }
-	// err = yaml.Unmarshal(buf, &c)
-	// if err != nil {
-	// 	return err
-	// }
+func (s *SimulateCommand) Execute(args []string) error {
+	_, err := opts.LoadConfig()
+	if err != nil {
+		return err
+	}
 
 	return fmt.Errorf("Simulate not implemented")
 }
 
 func init() {
-	parser.AddCommand("simulate", "simulate the climate change", "Simulate", &simOpts)
-
+	parser.AddCommand("simulate",
+		"computes and display the climate states",
+		"simulate the climate states and transitions and display it on stdout by default",
+		&simulateCommand)
 }
