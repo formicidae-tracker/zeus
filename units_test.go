@@ -1,8 +1,6 @@
 package main
 
 import (
-	"math"
-
 	. "gopkg.in/check.v1"
 )
 
@@ -11,7 +9,7 @@ type UnitsSuite struct{}
 var _ = Suite(&UnitsSuite{})
 
 func (s *UnitsSuite) TestBoundaries(c *C) {
-	var t Temperature = Temperature(math.Inf(-1))
+	var t Temperature = UndefinedTemperature
 	var h Humidity
 	var w Wind
 	var l Light

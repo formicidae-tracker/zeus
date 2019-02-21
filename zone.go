@@ -14,6 +14,20 @@ type Zone struct {
 	Transitions        []Transition
 }
 
+func (z *Zone) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type ZoneShadow Zone
+	shadow := ZoneShadow{}
+	if err := unmarshal(&shadow); err != nil {
+		return err
+	}
+	*z = Zone(shadow)
+	for n, s := range z.States {
+		s.Name = n
+		z.States[n] = s
+	}
+	return nil
+}
+
 func (z *Zone) ComputeRequirements() ([]capability, error) {
 	res := []capability{}
 	if IsUndefined(z.MinimalTemperature) == false || IsUndefined(z.MaximalTemperature) == false || IsUndefined(z.MinimalHumidity) == false || IsUndefined(z.MaximalHumidity) == false || len(z.ClimateReportFile) != 0 {

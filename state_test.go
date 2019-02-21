@@ -1,7 +1,6 @@
 package main
 
 import (
-	"math"
 	"regexp"
 	"testing"
 
@@ -17,6 +16,14 @@ type StateSuite struct{}
 
 var _ = Suite(&StateSuite{})
 
+func checkEqualunit(actual, expected BoundedUnit, c *C) {
+	if IsUndefined(expected) {
+		c.Check(IsUndefined(actual), Equals, true)
+	} else {
+		c.Check(actual.Value(), Equals, expected.Value())
+	}
+}
+
 func (s *StateSuite) TestParsing(c *C) {
 	testdata := []struct {
 		Text  string
@@ -26,20 +33,20 @@ func (s *StateSuite) TestParsing(c *C) {
 			Text: `temperature: 23.0`,
 			State: State{
 				Temperature:  23.0,
-				Humidity:     Humidity(math.Inf(-1)),
-				Wind:         Wind(math.Inf(-1)),
-				VisibleLight: Light(math.Inf(-1)),
-				UVLight:      Light(math.Inf(-1)),
+				Humidity:     UndefinedHumidity,
+				Wind:         UndefinedWind,
+				VisibleLight: UndefinedLight,
+				UVLight:      UndefinedLight,
 			},
 		},
 		{
 			Text: `humidity: 45.0`,
 			State: State{
-				Temperature:  Temperature(math.Inf(-1)),
+				Temperature:  UndefinedTemperature,
 				Humidity:     45.0,
-				Wind:         Wind(math.Inf(-1)),
-				VisibleLight: Light(math.Inf(-1)),
-				UVLight:      Light(math.Inf(-1)),
+				Wind:         UndefinedWind,
+				VisibleLight: UndefinedLight,
+				UVLight:      UndefinedLight,
 			},
 		},
 	}
@@ -50,7 +57,12 @@ func (s *StateSuite) TestParsing(c *C) {
 		if c.Check(err, IsNil) == false {
 			continue
 		}
-		c.Check(res, DeepEquals, d.State)
+		checkEqualunit(res.Temperature, d.State.Temperature, c)
+		checkEqualunit(res.Humidity, d.State.Humidity, c)
+		checkEqualunit(res.Wind, d.State.Wind, c)
+		checkEqualunit(res.VisibleLight, d.State.VisibleLight, c)
+		checkEqualunit(res.UVLight, d.State.UVLight, c)
+
 	}
 
 	res := State{}

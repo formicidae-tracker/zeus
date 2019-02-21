@@ -1,8 +1,7 @@
 package main
 
-import "math"
-
 type State struct {
+	Name         string
 	Temperature  Temperature
 	Humidity     Humidity
 	Wind         Wind
@@ -20,11 +19,11 @@ func (s *State) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	res := StateYAML{}
-	res.Temperature = math.Inf(-1)
-	res.Humidity = math.Inf(-1)
-	res.Wind = math.Inf(-1)
-	res.VisibleLight = math.Inf(-1)
-	res.UVLight = math.Inf(-1)
+	res.Temperature = UndefinedTemperature.Value()
+	res.Humidity = UndefinedHumidity.Value()
+	res.Wind = UndefinedWind.Value()
+	res.VisibleLight = UndefinedLight.Value()
+	res.UVLight = UndefinedLight.Value()
 
 	if err := unmarshal(&res); err != nil {
 		return err

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"math"
 	"time"
 
 	. "gopkg.in/check.v1"
@@ -57,6 +56,7 @@ transitions:
 				ClimateReportFile:  "/data/someuser/my-experiment.txt",
 				States: map[string]State{
 					"day": State{
+						Name:         "day",
 						Temperature:  29.0,
 						Humidity:     70.0,
 						Wind:         100.0,
@@ -64,9 +64,10 @@ transitions:
 						UVLight:      100.0,
 					},
 					"night": State{
+						Name:         "night",
 						Temperature:  26.0,
-						Humidity:     Humidity(math.Inf(-1)),
-						Wind:         Wind(math.Inf(-1)),
+						Humidity:     UndefinedHumidity,
+						Wind:         UndefinedWind,
 						VisibleLight: 0.0,
 						UVLight:      0.0,
 					},
