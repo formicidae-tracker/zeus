@@ -11,6 +11,7 @@ type State struct {
 
 func (s *State) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type StateYAML struct {
+		Name         string
 		Temperature  float64 `yaml:"temperature,omitempty"`
 		Humidity     float64 `yaml:"humidity"`
 		Wind         float64 `yaml:"wind"`
@@ -28,6 +29,7 @@ func (s *State) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err := unmarshal(&res); err != nil {
 		return err
 	}
+	s.Name = res.Name
 	s.Temperature = Temperature(res.Temperature)
 	s.Humidity = Humidity(res.Humidity)
 	s.Wind = Wind(res.Wind)

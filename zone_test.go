@@ -26,13 +26,13 @@ maximal-temperature: 31.0
 minimal-humidity: 40.0
 maximal-humidity: 80.0
 states:
-  day:
+  - name: day
     temperature: 29.0
     humidity: 70.0
     wind: 100.0
     visible-light: 100.0
     uv-light: 100.0
-  night:
+  - name: night
     temperature: 26.0
     visible-light: 0.0
     uv-light: 0.0
@@ -54,8 +54,8 @@ transitions:
 				MinimalHumidity:    40,
 				MaximalHumidity:    80,
 				ClimateReportFile:  "/data/someuser/my-experiment.txt",
-				States: map[string]State{
-					"day": State{
+				States: []State{
+					State{
 						Name:         "day",
 						Temperature:  29.0,
 						Humidity:     70.0,
@@ -63,7 +63,7 @@ transitions:
 						VisibleLight: 100.0,
 						UVLight:      100.0,
 					},
-					"night": State{
+					State{
 						Name:         "night",
 						Temperature:  26.0,
 						Humidity:     UndefinedHumidity,

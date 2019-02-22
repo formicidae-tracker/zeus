@@ -1,0 +1,68 @@
+# -*- mode: yaml -*-
+# emails are used to send alert
+emails:
+  - no-reply@unil.ch
+    no-reply@tuleu.science
+# We define here the zone we can control. dieu should be able to
+# control different zone if you plug enough hardware
+zones:
+  # The name of the zone
+  box1:
+    # each zone is tied to one CAN bus interface. Zone can share
+    # interface
+    can-interface: slcan0
+    # if you have two zone with the same CAN bus, you must use devices
+    # with different ID (1 to 7)
+    devices-id: 1
+    # if you want to log all climate data to a file
+    climate-report-file: /data/someuser/experiments.txt
+    # defines minima and maxima that will trigger alarms
+    minimal-temperature: 24.0
+    maximal-temperature: 31.0
+    minimal-humidity: 40.0
+    maximal-humidity: 80.0
+    # Climate definition for a zone is a defined as a state machine
+    # triggered by clock hours. You define a set of state and a set of
+    # transition between two states triggered at a given time.
+    states:
+      #states should have a name
+      - name: day
+        temperature: 26.0 # °C
+        humidity: 60.0 # % R.H.
+        wind: 100 # % of the maximal value
+        visible-light: 40 # % of maximal throughput
+        uv-light: 100 # % of maximal throughput states are defined
+        # like delta. Since 'day' defines the wind and humidity
+        # values, they can be omitted them if the night state should
+        # share the same values
+      - name: night
+        temperature: 22.0 # °C
+        visible-light: 0 # % of maximal throughput
+        uv-light: 0 # % of maximal throughput
+        # now we defines the list of transitions
+    transitions:
+      # it takes the name of the orginal and the target state
+      - from: night
+        to: day
+        # start is the starting time of the transition, in UTC. This
+        # is mandatory since we could have issue with daylight hour
+        # change otherwise. So keep in mind to add/remove the time
+        # offset from your time zone
+        start: 07:30
+        # transition are not necersarky instantaneous. You can define
+        # a duration. dieu will linearly interpolate the target
+        # climate values over that duration. acceptable suffixes are
+        # 'h', 'm', 's', 'us' and 'ns'
+        duration: 30m
+      - from: day
+        to: night
+        start: 18:30
+        duration: 50m
+  # another zone
+  tunnel:
+    states:
+      - name: "always the same"
+        wind: 100
+        visible-light: 100
+        uv-light: 100
+    # no transition

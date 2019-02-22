@@ -1,7 +1,5 @@
 package main
 
-import "fmt"
-
 type Zone struct {
 	CANInterface       string      `yaml:"can-interface"`
 	DevicesID          uint        `yaml:"devices-id"`
@@ -10,22 +8,8 @@ type Zone struct {
 	MaximalTemperature Temperature `yaml:"maximal-temperature"`
 	MinimalHumidity    Humidity    `yaml:"minimal-humidity"`
 	MaximalHumidity    Humidity    `yaml:"maximal-humidity"`
-	States             map[string]State
+	States             []State
 	Transitions        []Transition
-}
-
-func (z *Zone) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	type ZoneShadow Zone
-	shadow := ZoneShadow{}
-	if err := unmarshal(&shadow); err != nil {
-		return err
-	}
-	*z = Zone(shadow)
-	for n, s := range z.States {
-		s.Name = n
-		z.States[n] = s
-	}
-	return nil
 }
 
 func (z *Zone) ComputeRequirements() ([]capability, error) {
@@ -69,20 +53,4 @@ func (z *Zone) ComputeRequirements() ([]capability, error) {
 	}
 
 	return res, nil
-}
-
-func (z *Zone) Compile() []error {
-	res := []error{}
-
-	for _, t := range z.Transitions {
-		if _, ok := z.States[t.From]; ok == false {
-			res = append(res, fmt.Errorf("Undefined '%s' state in %#v", t.From, t))
-		}
-
-		if _, ok := z.States[t.To]; ok == false {
-			res = append(res, fmt.Errorf("Undefined '%s' state in %#v", t.To, t))
-		}
-	}
-
-	return res
 }
