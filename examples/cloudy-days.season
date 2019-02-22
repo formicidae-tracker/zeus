@@ -1,0 +1,57 @@
+# -*- mode: yaml -*-
+emails:
+  - no-reply@unil.ch
+    no-reply@tuleu.science
+zones:
+  box:
+    can-interface: slcan0
+    devices-id: 1
+    climate-report-file: /data/someuser/experiments.txt
+    minimal-temperature: 20.0
+    maximal-temperature: 31.0
+    minimal-humidity: 40.0
+    maximal-humidity: 85.0
+    states:
+      - name: day
+        temperature: 26.0
+        humidity: 60.0
+        wind: 100
+        visible-light: 40
+        uv-light: 100
+      - name: night
+        temperature: 22.0
+        visible-light: 0
+        humidity: 60.0 # we have to define humidity for night because cloudy-day will change it
+        uv-light: 0
+        # we add a 'cloudy-day' with more humidity and less less light
+      - name: cloudy-day
+        temperature: 21.0
+        humidity: 80
+        visible-light: 2
+        uv-light: 2
+    transitions:
+      - from: night
+        to: day
+        start: 06:00
+        duration: 30m
+      - from: day
+        to: night
+        start: 17:00
+        duration: 30m
+      # all cloudy days goes back to a normal night
+      - from: cloudy-day
+        to: night
+        start: 17:00
+        duration: 30m
+      # only day 2 and 5 are cloudy day, we create uniquely occurung
+      # transitions for those
+      - from: night
+        to: cloudy-day
+        start: 06:00
+        day: 2
+        duration: 30m
+      - from: night
+        to: cloudy-day
+        start: 06:00
+        day: 5
+        duration: 30m

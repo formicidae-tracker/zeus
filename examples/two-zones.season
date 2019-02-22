@@ -1,0 +1,45 @@
+# -*- mode: yaml -*-
+emails:
+  - no-reply@unil.ch
+    no-reply@tuleu.science
+zones:
+  box:
+    can-interface: slcan0
+    devices-id: 1
+    climate-report-file: /data/someuser/experiments.txt
+    minimal-temperature: 20.0
+    maximal-temperature: 31.0
+    minimal-humidity: 40.0
+    maximal-humidity: 80.0
+    states:
+      - name: day
+        temperature: 26.0 # °C
+        humidity: 60.0 # % R.H.
+        wind: 100 # % of the maximal value
+        visible-light: 40 # % of maximal throughput
+        uv-light: 100 # % of maximal throughput states are defined
+      - name: night
+        temperature: 22.0 # °C
+        visible-light: 0 # % of maximal throughput
+        uv-light: 0 # % of maximal throughput
+    transitions:
+      - from: night
+        to: day
+        start: 06:00
+        duration: 30m
+      - from: day
+        to: night
+        start: 17:00
+        duration: 30m
+  # we add another zone
+  tunnel:
+    # we share the same interface
+    can-interface: slcan0
+    # therefore we should use a different ID than the default 1
+    devices-id: 2
+    # we do not have a zeus board for this zone, so we can't report
+    # and monitor the temperature/humidity. But we still need a state
+    states:
+      - name: "always-on"
+        visible-light: 100
+        uv-light: 0

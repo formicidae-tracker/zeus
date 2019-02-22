@@ -7,7 +7,7 @@ emails:
 # control different zone if you plug enough hardware
 zones:
   # The name of the zone
-  box1:
+  box:
     # each zone is tied to one CAN bus interface. Zone can share
     # interface
     can-interface: slcan0
@@ -17,7 +17,7 @@ zones:
     # if you want to log all climate data to a file
     climate-report-file: /data/someuser/experiments.txt
     # defines minima and maxima that will trigger alarms
-    minimal-temperature: 24.0
+    minimal-temperature: 20.0
     maximal-temperature: 31.0
     minimal-humidity: 40.0
     maximal-humidity: 80.0
@@ -48,21 +48,13 @@ zones:
         # is mandatory since we could have issue with daylight hour
         # change otherwise. So keep in mind to add/remove the time
         # offset from your time zone
-        start: 07:30
-        # transition are not necersarky instantaneous. You can define
+        start: 06:00
+        # transition are not necersarly instantaneous. You can define
         # a duration. dieu will linearly interpolate the target
         # climate values over that duration. acceptable suffixes are
         # 'h', 'm', 's', 'us' and 'ns'
         duration: 30m
       - from: day
         to: night
-        start: 18:30
-        duration: 50m
-  # another zone
-  tunnel:
-    states:
-      - name: "always the same"
-        wind: 100
-        visible-light: 100
-        uv-light: 100
-    # no transition
+        start: 17:00
+        duration: 30m
