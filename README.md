@@ -53,7 +53,8 @@ using the `-d` flags and defines the starting time of the simulation
 with the `-s` flags.
 
 
-You can find more information in [examples/list.md].
+You can find more information in 
+[examples](https://git.tuleu.science/fort/dieu/examples/list.md).
 
 
 ## Authors
