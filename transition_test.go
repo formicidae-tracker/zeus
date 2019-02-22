@@ -86,14 +86,14 @@ start: 14:00`,
 day: foo`,
 			ErrorMatches: "strconv.Atoi: .*",
 		},
-		// 		{
-		// 			Text: `from: a
-		// to: b
-		// start: 08:00
-		// day: 3
-		// start-time-delta: 3m`,
-		// 			ErrorMatches: "StartTimeDelta is only available for recurring transitions",
-		// 		},
+		{
+			Text: `from: a
+to: b
+start: 08:00
+day: 3
+start-time-delta: 3m`,
+			ErrorMatches: "StartTimeDelta is only available for recurring transitions",
+		},
 	}
 
 	for _, d := range errordata {

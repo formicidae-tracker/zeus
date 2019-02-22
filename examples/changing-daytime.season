@@ -1,2 +1,35 @@
 # -*- mode: yaml -*-
-# sorry, its not yet implemented  in dieu
+emails:
+  - no-reply@unil.ch
+    no-reply@tuleu.science
+zones:
+  box:
+    can-interface: slcan0
+    devices-id: 1
+    climate-report-file: /data/someuser/experiments.txt
+    minimal-temperature: 20.0
+    maximal-temperature: 31.0
+    minimal-humidity: 40.0
+    maximal-humidity: 80.0
+    states:
+      - name: day
+        temperature: 26.0 # °C
+        humidity: 60.0 # % R.H.
+        wind: 100 # % of the maximal value
+        visible-light: 40 # % of maximal throughput
+        uv-light: 100 # % of maximal throughput states are defined
+      - name: night
+        temperature: 22.0 # °C
+        visible-light: 0 # % of maximal throughput
+        uv-light: 0 # % of maximal throughput
+    transitions:
+      - from: night
+        to: day
+        start: 06:00
+        start-time-delta: 2m # 2minute later every day
+        duration: 30m
+      - from: day
+        to: night
+        start: 17:00
+        duration: 30m
+        start-time-delta: -2m # 2 minute earlier every day

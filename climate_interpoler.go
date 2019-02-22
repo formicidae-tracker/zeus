@@ -127,7 +127,9 @@ func (i *climateInterpolation) computeTransitions(t time.Time, forward bool) []c
 			}
 			res[trigger] = append(res[trigger], computedTransition{trigger, tr})
 		} else {
-			trigger := tr.Start.AddDate(y, int(m)-1, d-1)
+			tUTC := t.UTC()
+			dayEllapsed := int(tUTC.Sub(time.Date(i.year, time.Month(i.month), i.day, tUTC.Hour(), tUTC.Minute(), tUTC.Second(), tUTC.Nanosecond(), time.UTC)) / (24 * time.Hour))
+			trigger := tr.Start.AddDate(y, int(m)-1, d-1).Add(tr.StartTimeDelta * time.Duration(dayEllapsed))
 			if forward == true && trigger.Before(t) {
 				trigger = trigger.AddDate(0, 0, 1)
 			}
