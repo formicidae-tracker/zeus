@@ -80,6 +80,7 @@ type computedState struct {
 
 type climateInterpolation struct {
 	current          *computedState
+	previous         *computedState
 	states           map[string]*computedState
 	currentTime      time.Time
 	year, month, day int
@@ -116,8 +117,11 @@ func (i *climateInterpolation) computeTransitions(t time.Time, forward bool) []c
 		transitions = i.current.transitionBackward
 	}
 	for _, tr := range transitions {
+		if forward == false && i.previous != nil && tr.From != i.previous.Name {
+			continue
+		}
 		if tr.Day != 0 {
-			trigger := tr.Start.AddDate(i.year, i.month-1, i.day-1+tr.Day)
+			trigger := tr.Start.AddDate(i.year, i.month-1, i.day-1+tr.Day-1)
 			if (forward == true && trigger.Before(t)) || (forward == false && trigger.After(t)) {
 				continue
 			}
@@ -176,6 +180,7 @@ func (i *climateInterpolation) walkTo(t time.Time) (prev, next computedTransitio
 		//		log.Printf("prev: %s to %s at %s %v %s", prev.transition.From, prev.transition.To, prev.time, prevOK, t)
 		if prevOK == true && t.Before(prev.time) {
 			//			log.Printf("moving to %s", prev.transition.From)
+			i.previous = i.current
 			i.current = i.states[prev.transition.From]
 			i.currentTime = prev.time
 			continue
@@ -185,6 +190,7 @@ func (i *climateInterpolation) walkTo(t time.Time) (prev, next computedTransitio
 		//		log.Printf("next: %s to %s at %s %v %s", next.transition.From, next.transition.To, next.time, prevOK, t)
 		if nextOK == true && t.After(next.time) {
 			//			log.Printf("moving to %s", next.transition.To)
+			i.previous = i.current
 			i.current = i.states[next.transition.To]
 			i.currentTime = next.time
 			continue
