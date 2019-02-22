@@ -54,7 +54,7 @@ with the `-s` flags.
 
 
 You can find more information in 
-[examples](https://git.tuleu.science/fort/dieu/examples/list.md).
+[examples](/fort/dieu/src/master/examples/list.md).
 
 
 ## Authors
