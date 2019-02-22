@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"sort"
 	"time"
 )
 
@@ -39,6 +40,18 @@ func interpolate(from, to, completion float64) float64 {
 	return from + (to-from)*completion
 }
 
+func interpolateState(from, to State, completion float64) State {
+	return State{
+		Name:         fmt.Sprintf("%s to %s", from.Name, to.Name),
+		Temperature:  Temperature(interpolate(from.Temperature.Value(), to.Temperature.Value(), completion)),
+		Humidity:     Humidity(interpolate(from.Humidity.Value(), to.Humidity.Value(), completion)),
+		Wind:         Wind(interpolate(from.Wind.Value(), to.Wind.Value(), completion)),
+		VisibleLight: Light(interpolate(from.VisibleLight.Value(), to.VisibleLight.Value(), completion)),
+		UVLight:      Light(interpolate(from.UVLight.Value(), to.UVLight.Value(), completion)),
+	}
+
+}
+
 func (i *interpolation) State(t time.Time) State {
 	ellapsed := t.Sub(i.start)
 	if ellapsed < 0 {
@@ -47,15 +60,7 @@ func (i *interpolation) State(t time.Time) State {
 		ellapsed = i.duration
 	}
 	completion := float64(ellapsed.Seconds()) / float64(i.duration.Seconds())
-
-	return State{
-		Name:         fmt.Sprintf("%s to %s", i.from.Name, i.to.Name),
-		Temperature:  Temperature(interpolate(i.from.Temperature.Value(), i.to.Temperature.Value(), completion)),
-		Humidity:     Humidity(interpolate(i.from.Humidity.Value(), i.to.Humidity.Value(), completion)),
-		Wind:         Wind(interpolate(i.from.Wind.Value(), i.to.Wind.Value(), completion)),
-		VisibleLight: Light(interpolate(i.from.VisibleLight.Value(), i.to.VisibleLight.Value(), completion)),
-		UVLight:      Light(interpolate(i.from.UVLight.Value(), i.to.UVLight.Value(), completion)),
-	}
+	return interpolateState(i.from, i.to, completion)
 }
 
 func (i *interpolation) String() string {
@@ -63,5 +68,228 @@ func (i *interpolation) String() string {
 }
 
 type ClimateInterpoler interface {
-	StateAfter(t time.Time) (time.Time, Interpolation)
+	CurrentInterpolation(t time.Time) Interpolation
+	NextInterpolationTime(t time.Time) (time.Time, bool)
+}
+
+type computedState struct {
+	State
+	transitionForward  []Transition
+	transitionBackward []Transition
+}
+
+type climateInterpolation struct {
+	current          *computedState
+	states           map[string]*computedState
+	currentTime      time.Time
+	year, month, day int
+}
+
+type computedTransition struct {
+	time       time.Time
+	transition Transition
+}
+
+type computedTransitionList []computedTransition
+
+func (l computedTransitionList) Len() int {
+	return len(l)
+}
+
+func (l computedTransitionList) Less(i, j int) bool {
+	return l[i].time.Before(l[j].time)
+}
+
+func (l computedTransitionList) Swap(i, j int) {
+	l[j], l[i] = l[i], l[j]
+}
+
+func (i *climateInterpolation) computeTransitions(t time.Time, forward bool) []computedTransition {
+	//gets t date
+	y, m, d := t.Date()
+
+	res := map[time.Time][]computedTransition{}
+	var transitions []Transition
+	if forward == true {
+		transitions = i.current.transitionForward
+	} else {
+		transitions = i.current.transitionBackward
+	}
+	for _, tr := range transitions {
+		if tr.Day != 0 {
+			trigger := tr.Start.AddDate(i.year, i.month-1, i.day-1+tr.Day)
+			if (forward == true && trigger.Before(t)) || (forward == false && trigger.After(t)) {
+				continue
+			}
+			res[trigger] = append(res[trigger], computedTransition{trigger, tr})
+		} else {
+			trigger := tr.Start.AddDate(y, int(m)-1, d-1)
+			if forward == true && trigger.Before(t) {
+				trigger = trigger.AddDate(0, 0, 1)
+			}
+			if forward == false && trigger.After(t) {
+				trigger = trigger.AddDate(0, 0, -1)
+			}
+			res[trigger] = append(res[trigger], computedTransition{trigger, tr})
+		}
+	}
+
+	//non - recuring tranistion have priority on reccurent one
+	resList := make([]computedTransition, 0, len(res))
+	for _, t := range res {
+		if len(t) == 0 {
+			continue
+		}
+		if len(t) == 1 || t[0].transition.Day != 0 {
+			resList = append(resList, t[0])
+			continue
+		}
+		resList = append(resList, t[1])
+		//we simply ignore multiple recurring transition
+	}
+
+	return resList
+}
+
+func (i *climateInterpolation) nextForwardTransition(t time.Time) (computedTransition, bool) {
+	orderedTransitions := i.computeTransitions(t, true)
+	if len(orderedTransitions) == 0 {
+		return computedTransition{}, false
+	}
+	sort.Sort(computedTransitionList(orderedTransitions))
+	return orderedTransitions[0], true
+}
+
+func (i *climateInterpolation) previousBackwardTransition(t time.Time) (computedTransition, bool) {
+	orderedTransitions := i.computeTransitions(t, false)
+	if len(orderedTransitions) == 0 {
+		return computedTransition{}, false
+	}
+	sort.Sort(sort.Reverse(computedTransitionList(orderedTransitions)))
+	return orderedTransitions[0], true
+}
+
+func (i *climateInterpolation) walkTo(t time.Time) (prev, next computedTransition, prevOK, nextOK bool) {
+	for {
+		//		log.Printf("current state is %+v", i.current.State)
+		prev, prevOK = i.previousBackwardTransition(i.currentTime)
+		//		log.Printf("prev: %s to %s at %s %v %s", prev.transition.From, prev.transition.To, prev.time, prevOK, t)
+		if prevOK == true && t.Before(prev.time) {
+			//			log.Printf("moving to %s", prev.transition.From)
+			i.current = i.states[prev.transition.From]
+			i.currentTime = prev.time
+			continue
+		}
+
+		next, nextOK = i.nextForwardTransition(i.currentTime)
+		//		log.Printf("next: %s to %s at %s %v %s", next.transition.From, next.transition.To, next.time, prevOK, t)
+		if nextOK == true && t.After(next.time) {
+			//			log.Printf("moving to %s", next.transition.To)
+			i.current = i.states[next.transition.To]
+			i.currentTime = next.time
+			continue
+		}
+		//		log.Printf("Its current state")
+		i.currentTime = t
+		return prev, next, prevOK, nextOK
+	}
+}
+
+func (i *climateInterpolation) CurrentInterpolation(t time.Time) Interpolation {
+	prev, _, prevOK, _ := i.walkTo(t)
+	if prevOK == false || t.After(prev.time.Add(prev.transition.Duration)) {
+		return (*staticState)(&(i.current.State))
+	}
+	return &interpolation{
+		start:    prev.time,
+		from:     i.states[prev.transition.From].State,
+		to:       i.current.State,
+		duration: prev.transition.Duration,
+	}
+}
+
+func (i *climateInterpolation) NextInterpolationTime(t time.Time) (time.Time, bool) {
+	prev, next, prevOK, nextOK := i.walkTo(t)
+	if prevOK == true {
+		endTransition := prev.time.Add(prev.transition.Duration)
+		if t.Before(endTransition) {
+			return endTransition, true
+		}
+	}
+	if nextOK == false {
+		return time.Time{}, false
+	}
+	return next.time, true
+}
+
+func NewClimateInterpoler(states []State, transitions []Transition, reference time.Time) (ClimateInterpoler, error) {
+	y, m, d := reference.Date()
+	res := &climateInterpolation{
+		states:      make(map[string]*computedState),
+		year:        y,
+		month:       int(m),
+		day:         d,
+		currentTime: reference.AddDate(0, 0, -2),
+	}
+	for _, s := range states {
+		if _, ok := res.states[s.Name]; ok == true {
+			return nil, fmt.Errorf("Cannot redefine state '%s'", s.Name)
+		}
+		res.states[s.Name] = &computedState{
+			State:              s,
+			transitionBackward: make([]Transition, 0, len(transitions)),
+			transitionForward:  make([]Transition, 0, len(transitions)),
+		}
+
+		if res.current == nil {
+			res.current = res.states[s.Name]
+		}
+	}
+
+	for _, t := range transitions {
+		to, ok := res.states[t.To]
+		if ok == false {
+			return nil, fmt.Errorf("Undefined state '%s' in %s", t.To, t)
+		}
+		from, ok := res.states[t.From]
+		if ok == false {
+			return nil, fmt.Errorf("Undefined state '%s' in %s", t.From, t)
+		}
+		to.transitionBackward = append(to.transitionBackward, t)
+		from.transitionForward = append(from.transitionForward, t)
+	}
+
+	// computes the states
+	for _, s := range states {
+		cs := res.states[s.Name]
+		if len(cs.transitionForward) != 0 {
+			cs.State = interpolateState(cs.State, res.states[cs.transitionForward[0].To].State, 0)
+			cs.State.Name = s.Name
+		}
+		if len(cs.transitionBackward) != 0 {
+			cs.State = interpolateState(res.states[cs.transitionBackward[0].From].State, cs.State, 1)
+			cs.State.Name = s.Name
+		}
+		for i, trA := range cs.transitionForward {
+			for _, trB := range cs.transitionForward[i:] {
+				if trA.Day == 0 {
+					if trA.Start.Before(trB.Start) {
+						return nil, fmt.Errorf("%s is shadowed by %s", trB, trA)
+					} else if trB.Day == 0 && trB.Start.Before(trA.Start) {
+						return nil, fmt.Errorf("%s is shadowed by %s", trA, trB)
+					}
+				} else if trB.Day == trA.Day {
+					if trA.Start.Before(trB.Start) {
+						return nil, fmt.Errorf("%s is shadowed by %s", trB, trA)
+					} else if trB.Start.Before(trA.Start) {
+						return nil, fmt.Errorf("%s is shadowed by %s", trA, trB)
+					}
+				}
+			}
+
+		}
+
+	}
+
+	return res, nil
 }

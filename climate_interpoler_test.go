@@ -96,3 +96,211 @@ func (s *ClimateInterpolerSuite) TestInterpolation(c *C) {
 	}
 
 }
+
+func (s *ClimateInterpolerSuite) TestClimateInterpoler(c *C) {
+
+	definedDay := State{
+		Name:         "day",
+		Temperature:  26,
+		Humidity:     UndefinedHumidity,
+		Wind:         100,
+		VisibleLight: 30,
+		UVLight:      100,
+	}
+	definedNight := State{
+		Name:         "night",
+		Temperature:  22,
+		Humidity:     60,
+		Wind:         UndefinedWind,
+		VisibleLight: 0,
+		UVLight:      0,
+	}
+	definedDay2 := definedDay
+	definedDay2.Name = "day2"
+	definedDay2.Humidity = 70
+	definedNight2 := definedNight
+	definedNight2.Name = "night2"
+	definedNight2.Humidity = UndefinedHumidity
+
+	computedDay := definedDay
+	computedDay.Humidity = definedNight.Humidity
+	computedDay2 := computedDay
+	computedDay2.Humidity = 70
+	computedDay2.Name = "day2"
+	computedNight := definedNight
+	computedNight.Wind = definedDay.Wind
+	computedNight2 := computedNight
+	computedNight2.Name = "night2"
+	computedNight2.Humidity = computedDay2.Humidity
+
+	states := []State{definedDay, definedNight, definedDay2, definedNight2}
+
+	transitions := []Transition{
+		Transition{
+			From:     "night",
+			To:       "day",
+			Start:    time.Date(0, 1, 1, 07, 30, 0, 0, time.UTC),
+			Duration: 30 * time.Minute,
+		},
+		Transition{
+			From:     "day",
+			To:       "night",
+			Start:    time.Date(0, 1, 1, 18, 30, 0, 0, time.UTC),
+			Duration: 30 * time.Minute,
+		},
+		Transition{
+			From:     "night2",
+			To:       "day2",
+			Start:    time.Date(0, 1, 1, 07, 40, 0, 0, time.UTC),
+			Duration: 30 * time.Minute,
+		},
+		Transition{
+			From:     "day2",
+			To:       "night2",
+			Start:    time.Date(0, 1, 1, 18, 20, 0, 0, time.UTC),
+			Duration: 30 * time.Minute,
+		},
+		Transition{
+			From:     "day",
+			To:       "night2",
+			Start:    time.Date(0, 1, 1, 18, 30, 0, 0, time.UTC),
+			Duration: 20 * time.Minute,
+			Day:      4,
+		},
+	}
+
+	basedate := time.Date(2019, 1, 2, 0, 0, 0, 0, time.UTC)
+
+	testdata := []struct {
+		time                   time.Time
+		nextInterpolationStart time.Time
+		interpolation          Interpolation
+		state                  State
+	}{
+		{
+			basedate.Add(11 * time.Hour),
+			basedate.Add(18*time.Hour + 30*time.Minute),
+			(*staticState)(&computedDay),
+			computedDay,
+		},
+		{
+			basedate.Add(18*time.Hour + 45*time.Minute),
+			basedate.Add(19 * time.Hour),
+			&interpolation{
+				from:     computedDay,
+				to:       computedNight,
+				start:    basedate.Add(18*time.Hour + 30*time.Minute),
+				duration: 30 * time.Minute,
+			},
+			interpolateState(computedDay, computedNight, 0.5),
+		},
+		{
+			basedate.Add(20 * time.Hour),
+			basedate.AddDate(0, 0, 1).Add(7*time.Hour + 30*time.Minute),
+			(*staticState)(&computedNight),
+			computedNight,
+		},
+		{
+			basedate.AddDate(0, 0, 1).Add(7*time.Hour + 40*time.Minute),
+			basedate.AddDate(0, 0, 1).Add(8 * time.Hour),
+			&interpolation{
+				from:     computedNight,
+				to:       computedDay,
+				start:    basedate.AddDate(0, 0, 1).Add(7*time.Hour + 30*time.Minute),
+				duration: 30 * time.Minute,
+			},
+			interpolateState(computedNight, computedDay, 1.0/3.0),
+		},
+		{
+			basedate.AddDate(0, 0, 4).Add(18*time.Hour + 35*time.Minute),
+			basedate.AddDate(0, 0, 4).Add(18*time.Hour + 50*time.Minute),
+			&interpolation{
+				from:     computedDay,
+				to:       computedNight2,
+				start:    basedate.AddDate(0, 0, 4).Add(18*time.Hour + 30*time.Minute),
+				duration: 20 * time.Minute,
+			},
+			interpolateState(computedDay, computedNight2, 1.0/4.0),
+		},
+		{
+			basedate.AddDate(0, 0, 5).Add(7*time.Hour + 50*time.Minute),
+			basedate.AddDate(0, 0, 5).Add(8*time.Hour + 10*time.Minute),
+			&interpolation{
+				from:     computedNight2,
+				to:       computedDay2,
+				start:    basedate.AddDate(0, 0, 5).Add(7*time.Hour + 40*time.Minute),
+				duration: 30 * time.Minute,
+			},
+			interpolateState(computedNight2, computedDay2, 1.0/3.0),
+		},
+		{
+			basedate.AddDate(0, 0, 5).Add(18*time.Hour + 40*time.Minute),
+			basedate.AddDate(0, 0, 5).Add(18*time.Hour + 50*time.Minute),
+			&interpolation{
+				from:     computedDay2,
+				to:       computedNight2,
+				start:    basedate.AddDate(0, 0, 5).Add(18*time.Hour + 20*time.Minute),
+				duration: 30 * time.Minute,
+			},
+			interpolateState(computedDay2, computedNight2, 2.0/3.0),
+		},
+	}
+
+	i, err := NewClimateInterpoler(states, transitions, basedate.Add(10*time.Hour))
+	c.Assert(err, IsNil)
+
+	for _, d := range testdata {
+		next, ok := i.NextInterpolationTime(d.time)
+		if c.Check(ok, Equals, true, Commentf("Testing at %s", d.time)) == true {
+			c.Check(next, Equals, d.nextInterpolationStart, Commentf("Testing at %s", d.time))
+		}
+		interpolation := i.CurrentInterpolation(d.time)
+		c.Check(interpolation, DeepEquals, d.interpolation, Commentf("Testing %s", d.time))
+		c.Check(interpolation.State(d.time), DeepEquals, d.state, Commentf("Testing at %s", d.time))
+	}
+
+	i, err = NewClimateInterpoler(states, transitions, basedate.Add(-2*time.Hour))
+	c.Assert(err, IsNil)
+	next, ok := i.NextInterpolationTime(basedate.Add(-1 * time.Hour))
+	interpolation := i.CurrentInterpolation(basedate.Add(-1 * time.Hour))
+	c.Check(interpolation, DeepEquals, (*staticState)(&computedNight))
+	if c.Check(ok, Equals, true) == true {
+		c.Check(next, Equals, basedate.Add(7*time.Hour+30*time.Minute))
+	}
+
+	transitions[4].Start = time.Date(0, 1, 1, 18, 40, 0, 0, time.UTC)
+	_, err = NewClimateInterpoler(states, transitions, basedate)
+	c.Check(err, ErrorMatches, ".*Transition.* is shadowed by .*Transition.*")
+	transitions[4].Start = time.Date(0, 1, 1, 18, 20, 0, 0, time.UTC)
+	transitions = append(transitions, Transition{
+		From:  "day",
+		To:    "night",
+		Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.UTC),
+	})
+	_, err = NewClimateInterpoler(states, transitions, basedate)
+	c.Check(err, ErrorMatches, ".*Transition.* is shadowed by .*Transition.*")
+	transitions[5].Day = 4
+	_, err = NewClimateInterpoler(states, transitions, basedate)
+	c.Check(err, ErrorMatches, ".*Transition.* is shadowed by .*Transition.*")
+
+	transitions[5].Start = time.Date(0, 1, 1, 18, 21, 0, 0, time.UTC)
+	_, err = NewClimateInterpoler(states, transitions, basedate)
+	c.Check(err, ErrorMatches, ".*Transition.* is shadowed by .*Transition.*")
+
+	transitions = transitions[0:5]
+
+	transitions[4].To = "night3"
+	_, err = NewClimateInterpoler(states, transitions, basedate)
+	c.Check(err, ErrorMatches, "Undefined state 'night3' in .*Transition.*")
+
+	transitions[4].From = "day3"
+	transitions[4].To = "night2"
+	_, err = NewClimateInterpoler(states, transitions, basedate)
+	c.Check(err, ErrorMatches, "Undefined state 'day3' in .*Transition.*")
+
+	transitions[4].From = "day"
+	states[3].Name = "day"
+	_, err = NewClimateInterpoler(states, transitions, basedate)
+	c.Check(err, ErrorMatches, "Cannot redefine state 'day'")
+
+}
