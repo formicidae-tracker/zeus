@@ -21,6 +21,7 @@ type Options struct {
 	ReferenceSensor uint8         `long:"reference-sensor" short:"r" description:"Select a sensor as reference, if 0 mean of tmp1075 is used" default:"0"`
 	DryRun          bool          `long:"dry-run" short:"y" description:"dry run do no set the value at the end"`
 	Window          int           `long:"window" short:"w" description:"Size of the averaging window" default:"100"`
+	ResetDelta      bool          `long:"reset-delta"  description:"Resets the delta before doing anything"`
 }
 
 type TemperatureWindowAverager struct {
@@ -148,7 +149,15 @@ func Execute() error {
 	}
 	tick.Stop()
 
-	var actualDelta *arke.ZeusDeltaTemperature
+	actualDelta := &arke.ZeusDeltaTemperature{
+		Delta: [4]float32{0, 0, 0, 0},
+	}
+	if opts.ResetDelta {
+		if err := arke.SendMessage(intf, actualDelta, false, arke.NodeID(opts.ID)); err != nil {
+			return err
+		}
+	}
+
 	if err := arke.RequestMessage(intf, actualDelta, arke.NodeID(opts.ID)); err != nil {
 		return err
 	}
