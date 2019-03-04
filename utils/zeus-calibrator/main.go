@@ -70,15 +70,44 @@ func Execute() error {
 		return err
 	}
 
-	frames := make(chan arke.ReceivableMessage)
+	heartbeats := make(chan *arke.HeartBeatData)
+	delta := make(chan *arke.ZeusDeltaTemperature)
+	averagers := []*TemperatureWindowAverager{
+		NewTemperatureWindowAverager(100),
+		NewTemperatureWindowAverager(100),
+		NewTemperatureWindowAverager(100),
+		NewTemperatureWindowAverager(100),
+	}
+
 	go func() {
 		defer func() {
-			close(frames)
+			close(heartbeats)
+			close(delta)
 		}()
-
-		messageWhiteList := map[arke.MessageClass]struct{}{
-			arke.ZeusReportMessage: struct{}{},
-			arke.HeartBeatMessage:  struct{}{},
+		i := 0
+		once := false
+		messageWhiteList := map[arke.MessageClass]func(m arke.ReceivableMessage){
+			arke.ZeusDeltaTemperatureMessage: func(m arke.ReceivableMessage) {
+				delta <- m.(*arke.ZeusDeltaTemperature)
+			},
+			arke.HeartBeatRequest: func(m arke.ReceivableMessage) {
+				heartbeats <- m.(*arke.HeartBeatData)
+			},
+			arke.ZeusReportMessage: func(m arke.ReceivableMessage) {
+				c := m.(*arke.ZeusReport)
+				for idx, a := range averagers {
+					a.Push(c.Temperature[idx])
+				}
+				if i%5 == 0 {
+					if once == true {
+						fmt.Fprintf(os.Stderr, "\033[F")
+					} else {
+						once = true
+					}
+					fmt.Fprintf(os.Stdout, "%s : %+v\n", time.Now().Format("Mon Jan 2 15:04:05"), c)
+				}
+				i++
+			},
 		}
 
 		for {
@@ -93,50 +122,9 @@ func Execute() error {
 			if id != arke.NodeID(opts.ID) {
 				continue
 			}
-			if _, ok := messageWhiteList[m.MessageClassID()]; ok == false {
-				continue
+			if treat, ok := messageWhiteList[m.MessageClassID()]; ok == true {
+				treat(m)
 			}
-
-			frames <- m
-		}
-
-	}()
-	heartbeats := make(chan *arke.HeartBeatData)
-	averagers := []*TemperatureWindowAverager{
-		NewTemperatureWindowAverager(100),
-		NewTemperatureWindowAverager(100),
-		NewTemperatureWindowAverager(100),
-		NewTemperatureWindowAverager(100),
-	}
-
-	go func() {
-		fmt.Fprintf(os.Stdout, "No data yet \n")
-		i := 0
-		for {
-			tick := time.NewTicker(5 * time.Second)
-			select {
-			case f, ok := <-frames:
-				if ok == false {
-					return
-				}
-				switch f.MessageClassID() {
-				case arke.HeartBeatMessage:
-					heartbeats <- f.(*arke.HeartBeatData)
-				case arke.ZeusReportMessage:
-					c := f.(*arke.ZeusReport)
-					for idx, a := range averagers {
-						a.Push(c.Temperature[idx])
-					}
-					if i%5 == 0 {
-						fmt.Fprintf(os.Stderr, "\033[F")
-						fmt.Fprintf(os.Stdout, "%s : %+v\n", time.Now().Format("Mon Jan 2 15:04:05"), c)
-					}
-					i++
-				}
-			case <-tick.C:
-				panic(fmt.Sprintf("Connection to Zeus %d timeouted", opts.ID))
-			}
-			tick.Stop()
 		}
 	}()
 
@@ -144,9 +132,29 @@ func Execute() error {
 		return err
 	}
 
-	<-heartbeats
+	tick := time.NewTicker(10 * time.Second)
+	select {
+	case <-heartbeats:
+		log.Printf("Found Zeus Node %d", opts.ID)
+	case <-tick.C:
+		tick.Stop()
+		return fmt.Errorf("Ping of Zeus %d timouted", opts.ID)
+	}
+	tick.Stop()
 
-	log.Printf("Found Zeus Node %d", opts.ID)
+	if err := arke.RequestMessage(intf, &arke.ZeusDeltaTemperature{}, arke.NodeID(opts.ID)); err != nil {
+		return err
+	}
+	tick = time.NewTicker(10 * time.Second)
+	var actualDelta *arke.ZeusDeltaTemperature
+	select {
+	case actualDelta = <-delta:
+		log.Printf("Current delta are: %+v", actualDelta)
+	case <-tick.C:
+		tick.Stop()
+		return fmt.Errorf("Fetching of zeus delta timouted")
+	}
+	tick.Stop()
 
 	sp := arke.ZeusSetPoint{
 		Temperature: float32(opts.Temperature),
@@ -163,8 +171,22 @@ func Execute() error {
 
 	time.Sleep(opts.Duration)
 
+	deltas := []float32{
+		0.0, 0.0, 0.0, 0.0,
+	}
+
+	ref := float32(0.0)
+	if opts.ReferenceSensor > 0 && opts.ReferenceSensor < 5 {
+		ref = averagers[opts.ReferenceSensor-1].Average()
+	} else {
+		for i := 1; i < 4; i++ {
+			ref += averagers[i].Average() / 3.0
+		}
+	}
+
 	for i, a := range averagers {
-		log.Printf("%d: %.3f", i, a.Average())
+		deltas[i] = a.Average() - ref - actualDelta.Delta[i]
+		log.Printf("Sensor %d: Mean %.3f actual delta: %.3f new delta: %.3f ", i, a.Average(), actualDelta.Delta[i], deltas[i])
 	}
 
 	return nil
