@@ -99,7 +99,7 @@ func Execute() error {
 				}
 				if i%5 == 0 {
 					if once == true {
-						fmt.Fprintf(os.Stderr, "\033[F")
+						fmt.Fprintf(os.Stderr, "\033[F\033[K")
 					} else {
 						once = true
 					}
@@ -184,11 +184,17 @@ func Execute() error {
 	}
 
 	for i, a := range averagers {
-		deltas[i] = a.Average() - ref - actualDelta.Delta[i]
+		deltas[i] = ref - a.Average() + actualDelta.Delta[i]
 		log.Printf("Sensor %d: Mean %.3f actual delta: %.3f new delta: %.3f ", i, a.Average(), actualDelta.Delta[i], deltas[i])
+		actualDelta.Delta[i] = deltas[i]
 	}
 
-	return nil
+	if opts.DryRun == true {
+		log.Printf("Not sending any data")
+		return nil
+	}
+
+	return arke.SendMessage(intf, actualDelta, false, arke.NodeID(opts.ID))
 }
 
 func main() {
