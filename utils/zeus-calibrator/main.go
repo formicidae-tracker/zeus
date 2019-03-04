@@ -17,6 +17,8 @@ type Options struct {
 	Interface       string        `long:"interface" short:"i" description:"Interface to use" default:"slcan0"`
 	ID              uint8         `long:"id" description:"ID to calibrate" default:"1"`
 	Temperature     float64       `long:"temperature" short:"t" description:"calibration temperature" default:"26.0"`
+	Humidity        float64       `long:"humidity" short:"u" description:"calibration humidity" default:"50.0"`
+	Wind            float64       `long:"wind" short:"n" description:"calibration wind" default:"100.0"`
 	Duration        time.Duration `long:"duration" short:"d" description:"time to wait to reach desired temperature" default:"2h"`
 	ReferenceSensor uint8         `long:"reference-sensor" short:"r" description:"Select a sensor as reference, if 0 mean of tmp1075 is used" default:"0"`
 	DryRun          bool          `long:"dry-run" short:"y" description:"dry run do no set the value at the end"`
@@ -174,7 +176,8 @@ func Execute() error {
 
 	sp := arke.ZeusSetPoint{
 		Temperature: float32(opts.Temperature),
-		Humidity:    float32(5.0),
+		Humidity:    float32(opts.Humidity),
+		Wind:        uint8(math.Min(math.Max(opts.Wind/100.0, 0), 1.0) * 255),
 	}
 
 	if err := arke.SendMessage(intf, &sp, false, arke.NodeID(opts.ID)); err != nil {
