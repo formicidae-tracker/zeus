@@ -78,7 +78,6 @@ func Execute() error {
 		NewTemperatureWindowAverager(100),
 		NewTemperatureWindowAverager(100),
 	}
-
 	go func() {
 		defer func() {
 			close(heartbeats)
@@ -90,7 +89,7 @@ func Execute() error {
 			arke.ZeusDeltaTemperatureMessage: func(m arke.ReceivableMessage) {
 				delta <- m.(*arke.ZeusDeltaTemperature)
 			},
-			arke.HeartBeatRequest: func(m arke.ReceivableMessage) {
+			arke.HeartBeatMessage: func(m arke.ReceivableMessage) {
 				heartbeats <- m.(*arke.HeartBeatData)
 			},
 			arke.ZeusReportMessage: func(m arke.ReceivableMessage) {
@@ -109,12 +108,12 @@ func Execute() error {
 				i++
 			},
 		}
-
 		for {
 			f, err := intf.Receive()
 			if err != nil {
 				log.Printf("CAN Receive error: %s", err)
 			}
+
 			m, id, err := arke.ParseMessage(&f)
 			if err != nil {
 				log.Printf("Arke Parsing error: %s", err)
@@ -127,26 +126,26 @@ func Execute() error {
 			}
 		}
 	}()
-
 	if err := arke.Ping(intf, arke.ZeusClass); err != nil {
 		return err
 	}
 
 	tick := time.NewTicker(10 * time.Second)
 	select {
-	case <-heartbeats:
-		log.Printf("Found Zeus Node %d", opts.ID)
+	case h := <-heartbeats:
+		log.Printf("Found Zeus Node %d version %d.%d", opts.ID, h.MajorVersion, h.MinorVersion)
 	case <-tick.C:
 		tick.Stop()
 		return fmt.Errorf("Ping of Zeus %d timouted", opts.ID)
 	}
 	tick.Stop()
 
-	if err := arke.RequestMessage(intf, &arke.ZeusDeltaTemperature{}, arke.NodeID(opts.ID)); err != nil {
+	var actualDelta *arke.ZeusDeltaTemperature
+	if err := arke.RequestMessage(intf, actualDelta, arke.NodeID(opts.ID)); err != nil {
 		return err
 	}
 	tick = time.NewTicker(10 * time.Second)
-	var actualDelta *arke.ZeusDeltaTemperature
+
 	select {
 	case actualDelta = <-delta:
 		log.Printf("Current delta are: %+v", actualDelta)
