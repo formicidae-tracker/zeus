@@ -186,6 +186,7 @@ func Execute() error {
 	log.Printf("Sent %+v", sp)
 	defer func() {
 		arke.SendResetRequest(intf, arke.ZeusClass, arke.NodeID(opts.ID))
+		arke.SendResetRequest(intf, arke.CelaenoClass, arke.NodeID(opts.ID))
 	}()
 
 	time.Sleep(opts.Duration)
