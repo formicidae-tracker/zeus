@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"sync"
 	"time"
@@ -38,12 +39,18 @@ func NewTemperatureWindowAverager(size int) *TemperatureWindowAverager {
 }
 
 func (a *TemperatureWindowAverager) Push(value float32) {
+	if math.IsNaN(float64(value)) {
+		return
+	}
+
 	a.mx.Lock()
 	defer a.mx.Unlock()
+
 	if len(a.points) < a.size {
 		a.points = append(a.points, value)
 		return
 	}
+
 	a.points[a.idx] = value
 	a.idx = (a.idx + 1) % a.size
 }
