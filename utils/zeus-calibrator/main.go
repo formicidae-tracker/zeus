@@ -20,6 +20,7 @@ type Options struct {
 	Duration        time.Duration `long:"duration" short:"d" description:"time to wait to reach desired temperature" default:"2h"`
 	ReferenceSensor uint8         `long:"reference-sensor" short:"r" description:"Select a sensor as reference, if 0 mean of tmp1075 is used" default:"0"`
 	DryRun          bool          `long:"dry-run" short:"y" description:"dry run do no set the value at the end"`
+	Window          int           `long:"window" short:"w" description:"Size of the averaging window" default:"100"`
 }
 
 type TemperatureWindowAverager struct {
@@ -80,10 +81,10 @@ func Execute() error {
 	heartbeats := make(chan *arke.HeartBeatData)
 	delta := make(chan *arke.ZeusDeltaTemperature)
 	averagers := []*TemperatureWindowAverager{
-		NewTemperatureWindowAverager(100),
-		NewTemperatureWindowAverager(100),
-		NewTemperatureWindowAverager(100),
-		NewTemperatureWindowAverager(100),
+		NewTemperatureWindowAverager(opts.Window),
+		NewTemperatureWindowAverager(opts.Window),
+		NewTemperatureWindowAverager(opts.Window),
+		NewTemperatureWindowAverager(opts.Window),
 	}
 	go func() {
 		defer func() {
