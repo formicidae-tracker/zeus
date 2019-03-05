@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"git.tuleu.science/fort/libarke/src-go/arke"
 
@@ -39,6 +40,39 @@ func Execute() error {
 	intf, err := socketcan.NewRawInterface(opts.Interface)
 	if err != nil {
 		return err
+	}
+
+	rx := make(chan bool)
+	go func() {
+		for {
+			f, err := intf.Receive()
+			if err != nil {
+				log.Printf("Could not receive CAN Frame: %s", err)
+				continue
+			}
+
+			m, ID, err := arke.ParseMessage(&f)
+			if err != nil {
+				log.Printf("Could not receive Parse CAN frame: %s", err)
+				continue
+			}
+
+			if m.MessageClassID() == arke.HeartBeatMessage && ID == arke.NodeID(opts.Original) && m.(*arke.HeartBeatData).Class == c {
+				rx <- true
+			}
+		}
+	}()
+
+	if err := arke.Ping(intf, c); err != nil {
+		return err
+	}
+
+	timeout := time.NewTicker(2 * time.Second)
+	defer timeout.Stop()
+	select {
+	case <-timeout.C:
+		return fmt.Errorf("Device '%s':'%d' seems unresponsive", c, opts.Original)
+	case <-rx:
 	}
 
 	return arke.SendIDChangeRequest(intf, c, arke.NodeID(opts.Original), arke.NodeID(opts.Target))
