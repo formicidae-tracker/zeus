@@ -12,6 +12,8 @@ git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190220101727-bcbe49699753 h1
 git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190220101727-bcbe49699753/go.mod h1:nhT15D/Fu/TT58v3X0r+xWeK7B9H5O6oPdKVtuUmjo0=
 git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190304155643-03228fa85606 h1:aJD1VidpC2muyhcwne4MK978GUb68E5L1UO2yv2nTUE=
 git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190304155643-03228fa85606/go.mod h1:nhT15D/Fu/TT58v3X0r+xWeK7B9H5O6oPdKVtuUmjo0=
+git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190305172951-b694579bfdad h1:vZpUBE0PKpAKEtDTVKzTJrvkwe8uItTNXJnZGaEKuZw=
+git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190305172951-b694579bfdad/go.mod h1:nhT15D/Fu/TT58v3X0r+xWeK7B9H5O6oPdKVtuUmjo0=
 github.com/atuleu/golang-socketcan v0.1.0 h1:LHQAmYuAQNCY07Rsw2ca5o8DGbcDE1M2w+7j/9TBYm8=
 github.com/atuleu/golang-socketcan v0.1.0/go.mod h1:K0cVB6d80dD70kgvSKVtS3Ue887mEkiUI5KPwkh8RKw=
 github.com/atuleu/golang-socketcan v0.1.1 h1:iu/HnUjEyiaUvXnNFXAXF4cZV9idzSrPizlMedCgiQc=
@@ -37,6 +39,8 @@ golang.org/x/sys v0.0.0-20190219203350-90b0e4468f99 h1:mlL4HvR5ojTCLdWRydhoj7jto
 golang.org/x/sys v0.0.0-20190219203350-90b0e4468f99/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20190304154630-e844e0132e93 h1:LPi0ldc05TTVS4N83TB9bMr9rGVMD1sgUjyRf9GlYl4=
 golang.org/x/sys v0.0.0-20190304154630-e844e0132e93/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
+golang.org/x/sys v0.0.0-20190305064518-30e92a19ae4a h1:wsSB0WNK6x5F2PxWYOQpGTzp/IH7X8V603VJwSXZUWc=
+golang.org/x/sys v0.0.0-20190305064518-30e92a19ae4a/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 h1:qIbj1fsPNlZgppZ+VLlY7N33q108Sa+fhmuc+sWQYwY=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
