@@ -81,7 +81,12 @@ func (s *AlarmNotifierSuite) TestAlarmNotifierHanging(c *C) {
 			_, ok := <-ca
 			c.Check(ok, Equals, true)
 		}
-		_, ok = <-ca
+		for i := 0; i < 2; i++ {
+			_, ok = <-ca
+			if ok == false {
+				break
+			}
+		}
 		c.Check(ok, Equals, false)
 		subscribers.Done()
 	}()
