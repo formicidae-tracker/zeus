@@ -1,8 +1,8 @@
 module git.tuleu.science/fort/dieu
 
 require (
-	git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190305172951-b694579bfdad
-	github.com/atuleu/golang-socketcan v0.1.2
+	git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190305223710-22b25abb3edf
+	github.com/atuleu/golang-socketcan v0.1.3
 	github.com/golang/mock v1.2.0
 	github.com/jessevdk/go-flags v1.4.0
 	github.com/kr/pty v1.1.3 // indirect
