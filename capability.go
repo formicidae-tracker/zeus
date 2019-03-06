@@ -9,7 +9,13 @@ import (
 	"git.tuleu.science/fort/libarke/src-go/arke"
 )
 
-type callback func(c chan<- Alarm, m arke.ReceivableMessage) error
+type StampedMessage struct {
+	M  arke.ReceivableMessage
+	D  time.Duration
+	ID arke.NodeID
+}
+
+type callback func(c chan<- Alarm, m *StampedMessage) error
 
 type capability interface {
 	Requirements() []arke.NodeClass
@@ -78,10 +84,10 @@ func (c ClimateControllable) Action(s State) error {
 func (c *ClimateControllable) Callbacks() map[arke.MessageClass]callback {
 	res := map[arke.MessageClass]callback{}
 	if c.withCelaeno == true {
-		res[arke.CelaenoStatusMessage] = func(alarms chan<- Alarm, mm arke.ReceivableMessage) error {
-			m, ok := mm.(*arke.CelaenoStatus)
+		res[arke.CelaenoStatusMessage] = func(alarms chan<- Alarm, mm *StampedMessage) error {
+			m, ok := mm.M.(*arke.CelaenoStatus)
 			if ok == false {
-				return fmt.Errorf("Invalid message type %v", mm.MessageClassID())
+				return fmt.Errorf("Invalid message type %v", mm.M.MessageClassID())
 			}
 			if m.WaterLevel != arke.CelaenoWaterNominal {
 				if m.WaterLevel&arke.CelaenoWaterReadError != 0 {
@@ -109,10 +115,10 @@ func (c *ClimateControllable) Callbacks() map[arke.MessageClass]callback {
 		}
 
 	}
-	res[arke.ZeusStatusMessage] = func(alarms chan<- Alarm, mm arke.ReceivableMessage) error {
-		m, ok := mm.(*arke.ZeusStatus)
+	res[arke.ZeusStatusMessage] = func(alarms chan<- Alarm, mm *StampedMessage) error {
+		m, ok := mm.M.(*arke.ZeusStatus)
 		if ok == false {
-			return fmt.Errorf("Invalid message type %v", mm.MessageClassID())
+			return fmt.Errorf("Invalid message type %v", mm.M.MessageClassID())
 		}
 
 		if m.Status&arke.ZeusClimateNotControlledWatchDog != 0 {
@@ -204,7 +210,6 @@ type ClimateRecordable struct {
 	MinHumidity    Humidity
 	MaxHumidity    Humidity
 	File           *os.File
-	Start          time.Time
 }
 
 func NewClimateRecordableCapability(minT, maxT Temperature, minH, maxH Humidity, file string) (capability, error) {
@@ -213,7 +218,6 @@ func NewClimateRecordableCapability(minT, maxT Temperature, minH, maxH Humidity,
 		MaxTemperature: maxT,
 		MinHumidity:    minH,
 		MaxHumidity:    maxH,
-		Start:          time.Now(),
 	}
 
 	if len(file) > 0 {
@@ -224,7 +228,7 @@ func NewClimateRecordableCapability(minT, maxT Temperature, minH, maxH Humidity,
 			return nil, err
 		}
 		log.Printf("Will save climate data in '%s'", fname)
-		fmt.Fprintf(res.File, "#Starting date %s\n#Time(ms) Relative Humidity (%%) Temperature (°C) Temperature (°C) Temperature (°C) Temperature (°C)\n", res.Start)
+		fmt.Fprintf(res.File, "#Starting date %s\n#Time(ms) Relative Humidity (%%) Temperature (°C) Temperature (°C) Temperature (°C) Temperature (°C)\n", time.Now())
 	}
 	return res, nil
 }
@@ -251,16 +255,16 @@ func checkBound(v, min, max BoundedUnit) bool {
 
 func (r *ClimateRecordable) Callbacks() map[arke.MessageClass]callback {
 	return map[arke.MessageClass]callback{
-		arke.ZeusReportMessage: func(alarms chan<- Alarm, mm arke.ReceivableMessage) error {
-			report, ok := mm.(*arke.ZeusReport)
+		arke.ZeusReportMessage: func(alarms chan<- Alarm, mm *StampedMessage) error {
+			report, ok := mm.M.(*arke.ZeusReport)
 			if ok == false {
-				return fmt.Errorf("Invalid Message Type %v", mm.MessageClassID())
+				return fmt.Errorf("Invalid Message Type %v", mm.M.MessageClassID())
 			}
 
 			if r.File != nil {
 				fmt.Fprintf(r.File,
 					"%d %.2f %.2f %.2f %.2f %.2f\n",
-					time.Now().Sub(r.Start).Nanoseconds()/1e6,
+					mm.D.Nanoseconds()/1e6,
 					report.Humidity,
 					report.Temperature[0],
 					report.Temperature[1],

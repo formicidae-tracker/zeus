@@ -35,6 +35,33 @@ type busManager struct {
 	alarms       chan<- Alarm
 }
 
+func (b *busManager) receiveAndStampMessage(frames chan<- *StampedMessage) {
+	start := time.Now()
+	for {
+		f, err := b.intf.Receive()
+		if err != nil {
+			if errno, ok := err.(syscall.Errno); ok == true {
+				if errno == syscall.EBADF || errno == syscall.ENETDOWN || errno == syscall.ENODEV {
+					close(frames)
+					log.Printf("Closed CAN Interface '%s': %s", b.name, err)
+					return
+				}
+			}
+			log.Printf("Could not receive CAN frame on '%s': %s", b.name, err)
+		}
+		d := time.Now().Sub(start)
+		m, ID, err := arke.ParseMessage(&f)
+		if err != nil {
+			log.Printf("Could not parse CAN Frame on '%s': %s", b.name, err)
+		}
+		frames <- &StampedMessage{
+			M:  m,
+			ID: ID,
+			D:  d,
+		}
+	}
+}
+
 func (b *busManager) Listen() {
 	allClasses := map[arke.NodeClass]bool{}
 	receivedHeartbeat := map[deviceDefinition]bool{}
@@ -48,36 +75,9 @@ func (b *busManager) Listen() {
 		arke.SendHeartBeatRequest(b.intf, c, HeartBeatPeriod)
 	}
 
-	type messageWithID struct {
-		ID      arke.NodeID
-		Message arke.ReceivableMessage
-	}
+	frames := make(chan *StampedMessage, 10)
 
-	frames := make(chan messageWithID, 10)
-
-	go func(frames chan<- messageWithID, intf socketcan.RawInterface) {
-		for {
-			f, err := intf.Receive()
-			if err != nil {
-				if errno, ok := err.(syscall.Errno); ok == true {
-					if errno == syscall.EBADF || errno == syscall.ENETDOWN || errno == syscall.ENODEV {
-						close(frames)
-						log.Printf("Closed CAN Interface '%s': %s", b.name, err)
-						return
-					}
-				}
-				log.Printf("Could not receive CAN frame on '%s': %s", b.name, err)
-			}
-			m, ID, err := arke.ParseMessage(&f)
-			if err != nil {
-				log.Printf("Could not parse CAN Frame on '%s': %s", b.name, err)
-			}
-			frames <- messageWithID{
-				ID:      ID,
-				Message: m,
-			}
-		}
-	}(frames, b.intf)
+	go b.receiveAndStampMessage(frames)
 
 	heartbeatTimeout := time.NewTicker(3 * HeartBeatPeriod)
 	defer heartbeatTimeout.Stop()
@@ -89,19 +89,19 @@ func (b *busManager) Listen() {
 				wg.Wait()
 				return
 			}
-			if m.Message.MessageClassID() == arke.HeartBeatMessage {
-				def := deviceDefinition{ID: m.ID, Class: m.Message.(*arke.HeartBeatData).Class}
+			if m.M.MessageClassID() == arke.HeartBeatMessage {
+				def := deviceDefinition{ID: m.ID, Class: m.M.(*arke.HeartBeatData).Class}
 				receivedHeartbeat[def] = true
 			} else {
-				mDef := messageDefinition{MessageID: m.Message.MessageClassID(), ID: m.ID}
+				mDef := messageDefinition{MessageID: m.M.MessageClassID(), ID: m.ID}
 				if callbacks, ok := b.callbacks[mDef]; ok == true {
 					wg.Add(1)
-					go func(m arke.ReceivableMessage, alarms chan<- Alarm) {
+					go func(m *StampedMessage, alarms chan<- Alarm) {
 						for _, callback := range callbacks {
 							callback(alarms, m)
 						}
 						wg.Done()
-					}(m.Message, b.alarms)
+					}(m, b.alarms)
 				}
 			}
 		case <-heartbeatTimeout.C:
