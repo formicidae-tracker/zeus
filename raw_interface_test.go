@@ -34,6 +34,20 @@ func (m *MockRawInterface) EXPECT() *MockRawInterfaceMockRecorder {
 	return m.recorder
 }
 
+// Close mocks base method
+func (m *MockRawInterface) Close() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close
+func (mr *MockRawInterfaceMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockRawInterface)(nil).Close))
+}
+
 // Receive mocks base method
 func (m *MockRawInterface) Receive() (golang_socketcan.CanFrame, error) {
 	m.ctrl.T.Helper()

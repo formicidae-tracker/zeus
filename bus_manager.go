@@ -1,18 +1,19 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"sync"
 	"syscall"
 	"time"
 
 	"git.tuleu.science/fort/libarke/src-go/arke"
-	"github.com/atuleu/golang-socketcan"
+	socketcan "github.com/atuleu/golang-socketcan"
 )
 
 type BusManager interface {
 	Listen()
-	AssignCapability(capability, arke.NodeID)
+	AssignCapabilitiesForID(arke.NodeID, []capability, chan<- Alarm) error
 	Close() error
 }
 
@@ -30,9 +31,9 @@ type busManager struct {
 	name         string
 	intf         socketcan.RawInterface
 	capabilities []capability
+	alarms       map[arke.NodeID]chan<- Alarm
 	devices      map[deviceDefinition]*Device
 	callbacks    map[messageDefinition][]callback
-	alarms       chan<- Alarm
 }
 
 func (b *busManager) receiveAndStampMessage(frames chan<- *StampedMessage) {
@@ -101,13 +102,13 @@ func (b *busManager) Listen() {
 							callback(alarms, m)
 						}
 						wg.Done()
-					}(m, b.alarms)
+					}(m, b.alarms[m.ID])
 				}
 			}
 		case <-heartbeatTimeout.C:
 			for d, ok := range receivedHeartbeat {
 				if ok == false {
-					b.alarms <- NewMissingDeviceAlarm(b.name, d.Class, d.ID)
+					b.alarms[d.ID] <- NewMissingDeviceAlarm(b.name, d.Class, d.ID)
 				}
 				receivedHeartbeat[d] = false
 			}
@@ -115,7 +116,7 @@ func (b *busManager) Listen() {
 	}
 }
 
-func (b *busManager) AssignCapability(c capability, ID arke.NodeID) {
+func (b *busManager) assignCapabilityUnsafe(c capability, ID arke.NodeID) {
 	b.capabilities = append(b.capabilities, c)
 	for _, class := range c.Requirements() {
 		def := deviceDefinition{
@@ -141,6 +142,18 @@ func (b *busManager) AssignCapability(c capability, ID arke.NodeID) {
 
 }
 
+func (b *busManager) AssignCapabilitiesForID(ID arke.NodeID, capabilities []capability, alarms chan<- Alarm) error {
+	if _, ok := b.alarms[ID]; ok == true {
+		return fmt.Errorf("ID %d is already assigned", ID)
+	}
+	b.alarms[ID] = alarms
+	for _, c := range capabilities {
+		b.assignCapabilityUnsafe(c, ID)
+	}
+
+	return nil
+}
+
 func (b *busManager) Close() error {
 	return b.intf.Close()
 }
@@ -155,6 +168,6 @@ func NewBusManager(interfaceName string, alarms chan<- Alarm) (BusManager, error
 		intf:      intf,
 		callbacks: make(map[messageDefinition][]callback),
 		devices:   make(map[deviceDefinition]*Device),
-		alarms:    alarms,
+		alarms:    make(map[arke.NodeID]chan<- Alarm),
 	}, nil
 }
