@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"git.tuleu.science/fort/dieu"
 	"git.tuleu.science/fort/libarke/src-go/arke"
 )
 
@@ -15,12 +16,12 @@ type StampedMessage struct {
 	ID arke.NodeID
 }
 
-type callback func(c chan<- Alarm, m *StampedMessage) error
+type callback func(c chan<- dieu.Alarm, m *StampedMessage) error
 
 type capability interface {
 	Requirements() []arke.NodeClass
 	SetDevices(devices map[arke.NodeClass]*Device)
-	Action(s State) error
+	Action(s dieu.State) error
 	Callbacks() map[arke.MessageClass]callback
 }
 
@@ -64,18 +65,18 @@ func (c *ClimateControllable) SetDevices(devices map[arke.NodeClass]*Device) {
 
 var zeusFanNames = []string{"Zeus Extraction Right", "Zeus Wind", "Zeus Extraction Left"}
 
-func (c ClimateControllable) Action(s State) error {
+func (c ClimateControllable) Action(s dieu.State) error {
 	if c.withCelaeno == true {
 		c.lastSetPoint = &arke.ZeusSetPoint{
-			Temperature: float32(Clamp(s.Temperature)),
-			Humidity:    float32(Clamp(s.Humidity)),
-			Wind:        uint8(Clamp(s.Wind) / 100.0 * 255),
+			Temperature: float32(dieu.Clamp(s.Temperature)),
+			Humidity:    float32(dieu.Clamp(s.Humidity)),
+			Wind:        uint8(dieu.Clamp(s.Wind) / 100.0 * 255),
 		}
 	} else {
 		c.lastSetPoint = &arke.ZeusSetPoint{
-			Temperature: float32(Clamp(s.Temperature)),
+			Temperature: float32(dieu.Clamp(s.Temperature)),
 			Humidity:    float32(s.Humidity.MinValue()),
-			Wind:        uint8(Clamp(s.Wind) / 100.0 * 255),
+			Wind:        uint8(dieu.Clamp(s.Wind) / 100.0 * 255),
 		}
 	}
 	return c.zeus.SendMessage(c.lastSetPoint)
@@ -84,18 +85,18 @@ func (c ClimateControllable) Action(s State) error {
 func (c *ClimateControllable) Callbacks() map[arke.MessageClass]callback {
 	res := map[arke.MessageClass]callback{}
 	if c.withCelaeno == true {
-		res[arke.CelaenoStatusMessage] = func(alarms chan<- Alarm, mm *StampedMessage) error {
+		res[arke.CelaenoStatusMessage] = func(alarms chan<- dieu.Alarm, mm *StampedMessage) error {
 			m, ok := mm.M.(*arke.CelaenoStatus)
 			if ok == false {
 				return fmt.Errorf("Invalid message type %v", mm.M.MessageClassID())
 			}
 			if m.WaterLevel != arke.CelaenoWaterNominal {
 				if m.WaterLevel&arke.CelaenoWaterReadError != 0 {
-					alarms <- WaterLevelUnreadable
+					alarms <- dieu.WaterLevelUnreadable
 				} else if m.WaterLevel&arke.CelaenoWaterCritical != 0 {
-					alarms <- WaterLevelCritical
+					alarms <- dieu.WaterLevelCritical
 				} else {
-					alarms <- WaterLevelWarning
+					alarms <- dieu.WaterLevelWarning
 				}
 			}
 			if m.Fan.Status() != arke.FanOK {
@@ -108,21 +109,22 @@ func (c *ClimateControllable) Callbacks() map[arke.MessageClass]callback {
 
 					return c.celaeno.SendHeartbeatRequest()
 				} else {
-					alarms <- NewFanAlarm("Celaeno Fan", m.Fan.Status())
+					alarms <- dieu.NewFanAlarm("Celaeno Fan", m.Fan.Status())
 				}
 			}
 			return nil
 		}
-
 	}
-	res[arke.ZeusStatusMessage] = func(alarms chan<- Alarm, mm *StampedMessage) error {
+	res[arke.ZeusStatusMessage] = func(alarms chan<- dieu.Alarm, mm *StampedMessage) error {
 		m, ok := mm.M.(*arke.ZeusStatus)
 		if ok == false {
 			return fmt.Errorf("Invalid message type %v", mm.M.MessageClassID())
 		}
 
 		if m.Status&arke.ZeusClimateNotControlledWatchDog != 0 {
-			if c.lastSetPoint != nil {
+			if m.Status&arke.ZeusActive != 0 {
+				alarms <- dieu.SensorReadoutIssue
+			} else if c.lastSetPoint != nil {
 				if err := c.zeus.SendMessage(c.lastSetPoint); err != nil {
 					return err
 				}
@@ -139,7 +141,7 @@ func (c *ClimateControllable) Callbacks() map[arke.MessageClass]callback {
 
 				return c.celaeno.SendHeartbeatRequest()
 			} else {
-				alarms <- HumidityUnreachable
+				alarms <- dieu.HumidityUnreachable
 			}
 		}
 
@@ -157,17 +159,16 @@ func (c *ClimateControllable) Callbacks() map[arke.MessageClass]callback {
 					}
 
 					if c.lastSetPoint != nil {
-
 						return c.zeus.SendMessage(c.lastSetPoint)
 					}
 				} else {
-					alarms <- NewFanAlarm(zeusFanNames[i], f.Status())
+					alarms <- dieu.NewFanAlarm(zeusFanNames[i], f.Status())
 				}
 			}
 		}
 
 		if m.Status&(arke.ZeusTemperatureUnreachable) != 0 {
-			alarms <- TemperatureUnreachable
+			alarms <- dieu.TemperatureUnreachable
 		}
 		return nil
 	}
@@ -193,10 +194,10 @@ func (c *LightControllable) SetDevices(devices map[arke.NodeClass]*Device) {
 	}
 }
 
-func (c *LightControllable) Action(s State) error {
+func (c *LightControllable) Action(s dieu.State) error {
 	return c.helios.SendMessage(&arke.HeliosSetPoint{
-		Visible: uint8(Clamp(s.VisibleLight) * 255 / 100),
-		UV:      uint8(Clamp(s.UVLight) * 255 / 100),
+		Visible: uint8(dieu.Clamp(s.VisibleLight) * 255 / 100),
+		UV:      uint8(dieu.Clamp(s.UVLight) * 255 / 100),
 	})
 }
 
@@ -205,14 +206,14 @@ func (c *LightControllable) Callbacks() map[arke.MessageClass]callback {
 }
 
 type ClimateRecordable struct {
-	MinTemperature Temperature
-	MaxTemperature Temperature
-	MinHumidity    Humidity
-	MaxHumidity    Humidity
+	MinTemperature dieu.Temperature
+	MaxTemperature dieu.Temperature
+	MinHumidity    dieu.Humidity
+	MaxHumidity    dieu.Humidity
 	File           *os.File
 }
 
-func NewClimateRecordableCapability(minT, maxT Temperature, minH, maxH Humidity, file string) (capability, error) {
+func NewClimateRecordableCapability(minT, maxT dieu.Temperature, minH, maxH dieu.Humidity, file string) (capability, error) {
 	res := &ClimateRecordable{
 		MinTemperature: minT,
 		MaxTemperature: maxT,
@@ -223,7 +224,7 @@ func NewClimateRecordableCapability(minT, maxT Temperature, minH, maxH Humidity,
 	if len(file) > 0 {
 		var err error
 		var fname string
-		res.File, fname, err = CreateFileWithoutOverwrite(file)
+		res.File, fname, err = dieu.CreateFileWithoutOverwrite(file)
 		if err != nil {
 			return nil, err
 		}
@@ -239,14 +240,14 @@ func (r *ClimateRecordable) Requirements() []arke.NodeClass {
 
 func (r *ClimateRecordable) SetDevices(map[arke.NodeClass]*Device) {}
 
-func (r *ClimateRecordable) Action(s State) error { return nil }
+func (r *ClimateRecordable) Action(s dieu.State) error { return nil }
 
-func checkBound(v, min, max BoundedUnit) bool {
-	if IsUndefined(min) == false && v.Value() < min.Value() {
+func checkBound(v, min, max dieu.BoundedUnit) bool {
+	if dieu.IsUndefined(min) == false && v.Value() < min.Value() {
 		return false
 	}
 
-	if IsUndefined(max) == false && v.Value() > max.Value() {
+	if dieu.IsUndefined(max) == false && v.Value() > max.Value() {
 		return false
 	}
 
@@ -255,7 +256,7 @@ func checkBound(v, min, max BoundedUnit) bool {
 
 func (r *ClimateRecordable) Callbacks() map[arke.MessageClass]callback {
 	return map[arke.MessageClass]callback{
-		arke.ZeusReportMessage: func(alarms chan<- Alarm, mm *StampedMessage) error {
+		arke.ZeusReportMessage: func(alarms chan<- dieu.Alarm, mm *StampedMessage) error {
 			report, ok := mm.M.(*arke.ZeusReport)
 			if ok == false {
 				return fmt.Errorf("Invalid Message Type %v", mm.M.MessageClassID())
@@ -272,12 +273,12 @@ func (r *ClimateRecordable) Callbacks() map[arke.MessageClass]callback {
 					report.Temperature[3])
 			}
 
-			if checkBound(Humidity(report.Humidity), r.MinHumidity, r.MaxHumidity) == false {
-				alarms <- HumidityOutOfBound
+			if checkBound(dieu.Humidity(report.Humidity), r.MinHumidity, r.MaxHumidity) == false {
+				alarms <- dieu.HumidityOutOfBound
 			}
 
-			if checkBound(Temperature(report.Temperature[0]), r.MinTemperature, r.MaxTemperature) == false {
-				alarms <- TemperatureOutOfBound
+			if checkBound(dieu.Temperature(report.Temperature[0]), r.MinTemperature, r.MaxTemperature) == false {
+				alarms <- dieu.TemperatureOutOfBound
 			}
 
 			return nil

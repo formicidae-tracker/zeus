@@ -1,4 +1,4 @@
-package main
+package dieu
 
 import (
 	"fmt"
@@ -44,6 +44,7 @@ var HumidityUnreachable = alarmString{Warning, "Cannot reach desired humidity"}
 var TemperatureUnreachable = alarmString{Warning, "Cannot reach desired humidity"}
 var HumidityOutOfBound = alarmString{Emergency, "Humidity is outside of boundaries"}
 var TemperatureOutOfBound = alarmString{Emergency, "Temperature is outside of boundaries"}
+var SensorReadoutIssue = alarmString{Emergency, "Sensors cannot be read"}
 
 type MissingDeviceAlarm interface {
 	Alarm
@@ -61,7 +62,7 @@ func (a missingDeviceAlarm) Priority() Priority {
 }
 
 func (a missingDeviceAlarm) Reason() string {
-	return fmt.Sprintf("Device '%s', with ID %d is missing on bus '%s'", Name(a.class), a.id, a.canInterface)
+	return fmt.Sprintf("Device '%s', with ID %d is missing on bus '%s'", arke.ClassName(a.class), a.id, a.canInterface)
 }
 
 func (a missingDeviceAlarm) RepeatPeriod() time.Duration {

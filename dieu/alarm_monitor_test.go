@@ -5,10 +5,15 @@ import (
 	"os"
 	"path"
 	"sync"
+	"testing"
 	"time"
 
+	"git.tuleu.science/fort/dieu"
 	. "gopkg.in/check.v1"
 )
+
+// Hook up gocheck into the "go test" runner.
+func Test(t *testing.T) { TestingT(t) }
 
 type AlarmMonitorSuite struct {
 	Hostname string
@@ -28,8 +33,8 @@ func (a testAlarm) Reason() string {
 	return string(a)
 }
 
-func (a testAlarm) Priority() Priority {
-	return Warning
+func (a testAlarm) Priority() dieu.Priority {
+	return dieu.Warning
 }
 
 func (a testAlarm) RepeatPeriod() time.Duration {

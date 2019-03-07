@@ -4,6 +4,8 @@ import (
 	"os"
 	"path"
 	"time"
+
+	"git.tuleu.science/fort/dieu"
 )
 
 type AlarmStatus int
@@ -15,7 +17,7 @@ const (
 
 type AlarmEvent struct {
 	Zone   string
-	Alarm  Alarm
+	Alarm  dieu.Alarm
 	Status AlarmStatus
 	Time   time.Time
 }
@@ -23,12 +25,12 @@ type AlarmEvent struct {
 type AlarmMonitor interface {
 	Name() string
 	Monitor()
-	Inbound() chan<- Alarm
+	Inbound() chan<- dieu.Alarm
 	Outbound() <-chan AlarmEvent
 }
 
 type alarmMonitor struct {
-	inbound  chan Alarm
+	inbound  chan dieu.Alarm
 	outbound chan AlarmEvent
 	name     string
 }
@@ -49,7 +51,7 @@ func wakeupAfter(wakeup chan<- string, quit <-chan struct{}, reason string, afte
 
 func (m *alarmMonitor) Monitor() {
 	trigged := make(map[string]int)
-	alarms := make(map[string]Alarm)
+	alarms := make(map[string]dieu.Alarm)
 	clearWakeup := make(chan string)
 
 	defer func() {
@@ -105,7 +107,7 @@ func (m *alarmMonitor) Monitor() {
 	}
 }
 
-func (m *alarmMonitor) Inbound() chan<- Alarm {
+func (m *alarmMonitor) Inbound() chan<- dieu.Alarm {
 	return m.inbound
 }
 
@@ -120,7 +122,7 @@ func NewAlarmMonitor(zoneName string) (AlarmMonitor, error) {
 	}
 
 	return &alarmMonitor{
-		inbound:  make(chan Alarm, 30),
+		inbound:  make(chan dieu.Alarm, 30),
 		outbound: make(chan AlarmEvent, 60),
 		name:     path.Join(hostname, "zones", zoneName),
 	}, nil

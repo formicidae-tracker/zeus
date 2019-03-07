@@ -30,8 +30,8 @@ installation](https://golang.org/doc/install#testing)
 ### Installing
 
 ``` bash
-go get -u git.tuleu.science/fort/dieu
-go install git.tuleu.science
+go get -u git.tuleu.science/fort/dieu/dieu
+go install git.tuleu.science/fort/dieu/dieu
 ```
 
 You should now be able to run the `dieu` command.
@@ -53,7 +53,7 @@ using the `-d` flags and defines the starting time of the simulation
 with the `-s` flags.
 
 
-You can find more information in 
+You can find more information in
 [examples](/fort/dieu/src/master/examples/list.md).
 
 

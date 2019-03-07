@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"git.tuleu.science/fort/dieu"
 	"git.tuleu.science/fort/libarke/src-go/arke"
 	socketcan "github.com/atuleu/golang-socketcan"
 )
@@ -23,7 +24,7 @@ func (d *Device) SendResetRequest() error {
 }
 
 func (d *Device) SendHeartbeatRequest() error {
-	return arke.SendHeartBeatRequest(d.intf, d.Class, HeartBeatPeriod)
+	return arke.SendHeartBeatRequest(d.intf, d.Class, dieu.HeartBeatPeriod)
 }
 
 var nameToNodeClass = map[string]arke.NodeClass{

@@ -5,26 +5,28 @@ import (
 	"math"
 	"sort"
 	"time"
+
+	"git.tuleu.science/fort/dieu"
 )
 
 type Interpolation interface {
-	State(t time.Time) State
+	State(t time.Time) dieu.State
 	String() string
 }
 
-type staticState State
+type staticState dieu.State
 
-func (s *staticState) State(time.Time) State {
-	return State(*s)
+func (s *staticState) State(time.Time) dieu.State {
+	return dieu.State(*s)
 }
 
 func (s *staticState) String() string {
-	return fmt.Sprintf("static state: %+v", State(*s))
+	return fmt.Sprintf("static state: %+v", dieu.State(*s))
 }
 
 type interpolation struct {
 	start    time.Time
-	from, to State
+	from, to dieu.State
 	duration time.Duration
 }
 
@@ -40,19 +42,19 @@ func interpolate(from, to, completion float64) float64 {
 	return from + (to-from)*completion
 }
 
-func interpolateState(from, to State, completion float64) State {
-	return State{
+func interpolateState(from, to dieu.State, completion float64) dieu.State {
+	return dieu.State{
 		Name:         fmt.Sprintf("%s to %s", from.Name, to.Name),
-		Temperature:  Temperature(interpolate(from.Temperature.Value(), to.Temperature.Value(), completion)),
-		Humidity:     Humidity(interpolate(from.Humidity.Value(), to.Humidity.Value(), completion)),
-		Wind:         Wind(interpolate(from.Wind.Value(), to.Wind.Value(), completion)),
-		VisibleLight: Light(interpolate(from.VisibleLight.Value(), to.VisibleLight.Value(), completion)),
-		UVLight:      Light(interpolate(from.UVLight.Value(), to.UVLight.Value(), completion)),
+		Temperature:  dieu.Temperature(interpolate(from.Temperature.Value(), to.Temperature.Value(), completion)),
+		Humidity:     dieu.Humidity(interpolate(from.Humidity.Value(), to.Humidity.Value(), completion)),
+		Wind:         dieu.Wind(interpolate(from.Wind.Value(), to.Wind.Value(), completion)),
+		VisibleLight: dieu.Light(interpolate(from.VisibleLight.Value(), to.VisibleLight.Value(), completion)),
+		UVLight:      dieu.Light(interpolate(from.UVLight.Value(), to.UVLight.Value(), completion)),
 	}
 
 }
 
-func (i *interpolation) State(t time.Time) State {
+func (i *interpolation) State(t time.Time) dieu.State {
 	ellapsed := t.Sub(i.start)
 	if ellapsed < 0 {
 		ellapsed = 0
@@ -73,9 +75,9 @@ type ClimateInterpoler interface {
 }
 
 type computedState struct {
-	State
-	transitionForward  []Transition
-	transitionBackward []Transition
+	dieu.State
+	transitionForward  []dieu.Transition
+	transitionBackward []dieu.Transition
 }
 
 type climateInterpolation struct {
@@ -88,7 +90,7 @@ type climateInterpolation struct {
 
 type computedTransition struct {
 	time       time.Time
-	transition Transition
+	transition dieu.Transition
 }
 
 type computedTransitionList []computedTransition
@@ -110,7 +112,7 @@ func (i *climateInterpolation) computeTransitions(t time.Time, forward bool) []c
 	y, m, d := t.Date()
 
 	res := map[time.Time][]computedTransition{}
-	var transitions []Transition
+	var transitions []dieu.Transition
 	if forward == true {
 		transitions = i.current.transitionForward
 	} else {
@@ -230,7 +232,7 @@ func (i *climateInterpolation) NextInterpolationTime(t time.Time) (time.Time, bo
 	return next.time, true
 }
 
-func NewClimateInterpoler(states []State, transitions []Transition, reference time.Time) (ClimateInterpoler, error) {
+func NewClimateInterpoler(states []dieu.State, transitions []dieu.Transition, reference time.Time) (ClimateInterpoler, error) {
 	y, m, d := reference.Date()
 	res := &climateInterpolation{
 		states:      make(map[string]*computedState),
@@ -245,8 +247,8 @@ func NewClimateInterpoler(states []State, transitions []Transition, reference ti
 		}
 		res.states[s.Name] = &computedState{
 			State:              s,
-			transitionBackward: make([]Transition, 0, len(transitions)),
-			transitionForward:  make([]Transition, 0, len(transitions)),
+			transitionBackward: make([]dieu.Transition, 0, len(transitions)),
+			transitionForward:  make([]dieu.Transition, 0, len(transitions)),
 		}
 
 		if res.current == nil {

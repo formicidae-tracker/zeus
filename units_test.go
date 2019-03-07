@@ -1,4 +1,4 @@
-package main
+package dieu
 
 import (
 	. "gopkg.in/check.v1"

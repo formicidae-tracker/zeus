@@ -7,13 +7,14 @@ import (
 	"syscall"
 	"time"
 
+	"git.tuleu.science/fort/dieu"
 	"git.tuleu.science/fort/libarke/src-go/arke"
 	socketcan "github.com/atuleu/golang-socketcan"
 )
 
 type BusManager interface {
 	Listen()
-	AssignCapabilitiesForID(arke.NodeID, []capability, chan<- Alarm) error
+	AssignCapabilitiesForID(arke.NodeID, []capability, chan<- dieu.Alarm) error
 	Close() error
 }
 
@@ -31,7 +32,7 @@ type busManager struct {
 	name         string
 	intf         socketcan.RawInterface
 	capabilities []capability
-	alarms       map[arke.NodeID]chan<- Alarm
+	alarms       map[arke.NodeID]chan<- dieu.Alarm
 	devices      map[deviceDefinition]*Device
 	callbacks    map[messageDefinition][]callback
 }
@@ -73,14 +74,14 @@ func (b *busManager) Listen() {
 	}
 
 	for c, _ := range allClasses {
-		arke.SendHeartBeatRequest(b.intf, c, HeartBeatPeriod)
+		arke.SendHeartBeatRequest(b.intf, c, dieu.HeartBeatPeriod)
 	}
 
 	frames := make(chan *StampedMessage, 10)
 
 	go b.receiveAndStampMessage(frames)
 
-	heartbeatTimeout := time.NewTicker(3 * HeartBeatPeriod)
+	heartbeatTimeout := time.NewTicker(3 * dieu.HeartBeatPeriod)
 	defer heartbeatTimeout.Stop()
 	wg := sync.WaitGroup{}
 	for {
@@ -97,7 +98,7 @@ func (b *busManager) Listen() {
 				mDef := messageDefinition{MessageID: m.M.MessageClassID(), ID: m.ID}
 				if callbacks, ok := b.callbacks[mDef]; ok == true {
 					wg.Add(1)
-					go func(m *StampedMessage, alarms chan<- Alarm) {
+					go func(m *StampedMessage, alarms chan<- dieu.Alarm) {
 						for _, callback := range callbacks {
 							callback(alarms, m)
 						}
@@ -108,7 +109,7 @@ func (b *busManager) Listen() {
 		case <-heartbeatTimeout.C:
 			for d, ok := range receivedHeartbeat {
 				if ok == false {
-					b.alarms[d.ID] <- NewMissingDeviceAlarm(b.name, d.Class, d.ID)
+					b.alarms[d.ID] <- dieu.NewMissingDeviceAlarm(b.name, d.Class, d.ID)
 				}
 				receivedHeartbeat[d] = false
 			}
@@ -142,7 +143,7 @@ func (b *busManager) assignCapabilityUnsafe(c capability, ID arke.NodeID) {
 
 }
 
-func (b *busManager) AssignCapabilitiesForID(ID arke.NodeID, capabilities []capability, alarms chan<- Alarm) error {
+func (b *busManager) AssignCapabilitiesForID(ID arke.NodeID, capabilities []capability, alarms chan<- dieu.Alarm) error {
 	if _, ok := b.alarms[ID]; ok == true {
 		return fmt.Errorf("ID %d is already assigned", ID)
 	}
@@ -158,7 +159,7 @@ func (b *busManager) Close() error {
 	return b.intf.Close()
 }
 
-func NewBusManager(interfaceName string, alarms chan<- Alarm) (BusManager, error) {
+func NewBusManager(interfaceName string, alarms chan<- dieu.Alarm) (BusManager, error) {
 	intf, err := socketcan.NewRawInterface(interfaceName)
 	if err != nil {
 		return nil, err
@@ -168,6 +169,6 @@ func NewBusManager(interfaceName string, alarms chan<- Alarm) (BusManager, error
 		intf:      intf,
 		callbacks: make(map[messageDefinition][]callback),
 		devices:   make(map[deviceDefinition]*Device),
-		alarms:    make(map[arke.NodeID]chan<- Alarm),
+		alarms:    make(map[arke.NodeID]chan<- dieu.Alarm),
 	}, nil
 }
