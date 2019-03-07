@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"os"
 	"time"
 
 	"git.tuleu.science/fort/dieu"
@@ -12,7 +10,7 @@ import (
 
 type StampedMessage struct {
 	M  arke.ReceivableMessage
-	D  time.Duration
+	T  time.Time
 	ID arke.NodeID
 }
 
@@ -210,28 +208,19 @@ type ClimateRecordable struct {
 	MaxTemperature dieu.Temperature
 	MinHumidity    dieu.Humidity
 	MaxHumidity    dieu.Humidity
-	File           *os.File
+	Notifiers      []chan<- dieu.ClimateReport
 }
 
-func NewClimateRecordableCapability(minT, maxT dieu.Temperature, minH, maxH dieu.Humidity, file string) (capability, error) {
+func NewClimateRecordableCapability(minT, maxT dieu.Temperature, minH, maxH dieu.Humidity, notifiers []chan<- dieu.ClimateReport) capability {
 	res := &ClimateRecordable{
 		MinTemperature: minT,
 		MaxTemperature: maxT,
 		MinHumidity:    minH,
 		MaxHumidity:    maxH,
+		Notifiers:      notifiers,
 	}
 
-	if len(file) > 0 {
-		var err error
-		var fname string
-		res.File, fname, err = dieu.CreateFileWithoutOverwrite(file)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("Will save climate data in '%s'", fname)
-		fmt.Fprintf(res.File, "#Starting date %s\n#Time(ms) Relative Humidity (%%) Temperature (°C) Temperature (°C) Temperature (°C) Temperature (°C)\n", time.Now())
-	}
-	return res, nil
+	return res
 }
 
 func (r *ClimateRecordable) Requirements() []arke.NodeClass {
@@ -262,23 +251,25 @@ func (r *ClimateRecordable) Callbacks() map[arke.MessageClass]callback {
 				return fmt.Errorf("Invalid Message Type %v", mm.M.MessageClassID())
 			}
 
-			if r.File != nil {
-				fmt.Fprintf(r.File,
-					"%d %.2f %.2f %.2f %.2f %.2f\n",
-					mm.D.Nanoseconds()/1e6,
-					report.Humidity,
-					report.Temperature[0],
-					report.Temperature[1],
-					report.Temperature[2],
-					report.Temperature[3])
-			}
-
 			if checkBound(dieu.Humidity(report.Humidity), r.MinHumidity, r.MaxHumidity) == false {
 				alarms <- dieu.HumidityOutOfBound
 			}
 
 			if checkBound(dieu.Temperature(report.Temperature[0]), r.MinTemperature, r.MaxTemperature) == false {
 				alarms <- dieu.TemperatureOutOfBound
+			}
+
+			for _, n := range r.Notifiers {
+				n <- dieu.ClimateReport{
+					Time:     mm.T,
+					Humidity: dieu.Humidity(report.Humidity),
+					Temperatures: [4]dieu.Temperature{
+						dieu.Temperature(report.Temperature[0]),
+						dieu.Temperature(report.Temperature[1]),
+						dieu.Temperature(report.Temperature[2]),
+						dieu.Temperature(report.Temperature[3]),
+					},
+				}
 			}
 
 			return nil

@@ -38,7 +38,6 @@ type busManager struct {
 }
 
 func (b *busManager) receiveAndStampMessage(frames chan<- *StampedMessage) {
-	start := time.Now()
 	for {
 		f, err := b.intf.Receive()
 		if err != nil {
@@ -51,7 +50,7 @@ func (b *busManager) receiveAndStampMessage(frames chan<- *StampedMessage) {
 			}
 			log.Printf("Could not receive CAN frame on '%s': %s", b.name, err)
 		}
-		d := time.Now().Sub(start)
+		t := time.Now()
 		m, ID, err := arke.ParseMessage(&f)
 		if err != nil {
 			log.Printf("Could not parse CAN Frame on '%s': %s", b.name, err)
@@ -59,7 +58,7 @@ func (b *busManager) receiveAndStampMessage(frames chan<- *StampedMessage) {
 		frames <- &StampedMessage{
 			M:  m,
 			ID: ID,
-			D:  d,
+			T:  t,
 		}
 	}
 }

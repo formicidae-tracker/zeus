@@ -4,16 +4,35 @@ import "git.tuleu.science/fort/dieu"
 
 func ComputeZoneRequirements(z *dieu.Zone) ([]capability, error) {
 	res := []capability{}
-	if dieu.IsUndefined(z.MinimalTemperature) == false || dieu.IsUndefined(z.MaximalTemperature) == false || dieu.IsUndefined(z.MinimalHumidity) == false || dieu.IsUndefined(z.MaximalHumidity) == false || len(z.ClimateReportFile) != 0 {
-		if toAdd, err := NewClimateRecordableCapability(z.MinimalTemperature,
+
+	notifiers := []ClimateReportNotifier{}
+	needClimateReport := false
+	if dieu.IsUndefined(z.MinimalTemperature) == false || dieu.IsUndefined(z.MaximalTemperature) == false {
+		needClimateReport = true
+	}
+	if dieu.IsUndefined(z.MinimalHumidity) == false || dieu.IsUndefined(z.MaximalHumidity) == false {
+		needClimateReport = true
+	}
+	if len(z.ClimateReportFile) != 0 {
+		fn, err := NewFileClimateReportNotifier(z.ClimateReportFile)
+		if err != nil {
+			return res, err
+		}
+		notifiers = append(notifiers, fn)
+	}
+
+	if needClimateReport == true || len(notifiers) != 0 {
+
+		chans := []chan<- dieu.ClimateReport{}
+		for _, n := range notifiers {
+			chans = append(chans, n.C())
+		}
+
+		res = append(res, NewClimateRecordableCapability(z.MinimalTemperature,
 			z.MaximalTemperature,
 			z.MinimalHumidity,
 			z.MaximalHumidity,
-			z.ClimateReportFile); err != nil {
-			return res, err
-		} else {
-			res = append(res, toAdd)
-		}
+			chans))
 	}
 	controlLight := false
 	controlTemperature := false
