@@ -1,7 +1,9 @@
 package main
 
+import "git.tuleu.science/fort/dieu"
+
 type AlarmNotifier interface {
-	Notify(e AlarmEvent) error
+	Notify(e dieu.AlarmEvent) error
 }
 
 type slackAlarmNotifier struct{}

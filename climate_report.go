@@ -7,3 +7,8 @@ type ClimateReport struct {
 	Humidity     Humidity
 	Time         time.Time
 }
+
+type NamedClimateReport struct {
+	ClimateReport
+	ZoneIdentifier string
+}

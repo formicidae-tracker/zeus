@@ -39,10 +39,8 @@ func (s *FileClimateReporterSuite) TestFileNameDoesNotOverwite(c *C) {
 }
 
 func (s *FileClimateReporterSuite) TestFileNameWriting(c *C) {
-	n, fname, err := NewFileClimateReporter(filepath.Join(s.TmpDir, "test.txt"))
+	fn, fname, err := NewFileClimateReporter(filepath.Join(s.TmpDir, "test.txt"))
 	c.Assert(err, IsNil)
-
-	fn := n.(*fileClimateReporter)
 
 	cr := dieu.ClimateReport{
 		Humidity:     50,
@@ -51,15 +49,15 @@ func (s *FileClimateReporterSuite) TestFileNameWriting(c *C) {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		n.Report()
+		fn.Report()
 		wg.Done()
 	}()
 
 	for i := 0; i < 4; i++ {
 		cr.Time = fn.Start.Add(time.Duration(i*333) * time.Millisecond)
-		n.C() <- cr
+		fn.ReportChannel() <- cr
 	}
-	close(n.C())
+	close(fn.ReportChannel())
 	wg.Wait()
 
 	data, err := ioutil.ReadFile(fname)

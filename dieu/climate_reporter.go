@@ -9,21 +9,20 @@ import (
 )
 
 type ClimateReporter interface {
-	C() chan<- dieu.ClimateReport
-	Report()
+	ReportChannel() chan<- dieu.ClimateReport
 }
 
-type fileClimateReporter struct {
+type FileClimateReporter struct {
 	File  *os.File
 	Start time.Time
 	Chan  chan dieu.ClimateReport
 }
 
-func (n *fileClimateReporter) C() chan<- dieu.ClimateReport {
+func (n *FileClimateReporter) ReportChannel() chan<- dieu.ClimateReport {
 	return n.Chan
 }
 
-func (n *fileClimateReporter) Report() {
+func (n *FileClimateReporter) Report() {
 	for cr := range n.Chan {
 		fmt.Fprintf(n.File,
 			"%d %.2f %.2f %.2f %.2f %.2f\n",
@@ -37,8 +36,8 @@ func (n *fileClimateReporter) Report() {
 	n.File.Close()
 }
 
-func NewFileClimateReporter(filename string) (ClimateReporter, string, error) {
-	res := &fileClimateReporter{
+func NewFileClimateReporter(filename string) (*FileClimateReporter, string, error) {
+	res := &FileClimateReporter{
 		Chan:  make(chan dieu.ClimateReport, 10),
 		Start: time.Now(),
 	}
@@ -52,8 +51,4 @@ func NewFileClimateReporter(filename string) (ClimateReporter, string, error) {
 	fmt.Fprintf(res.File, "# Starting date %s\n# Time(ms) Relative Humidity (%%) Temperature (°C) Temperature (°C) Temperature (°C) Temperature (°C)\n", res.Start)
 
 	return res, fname, nil
-}
-
-func NewTCPClimateReporterNotifier(address string) (ClimateReporter, error) {
-	return nil, nil
 }

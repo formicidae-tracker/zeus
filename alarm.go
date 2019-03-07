@@ -119,3 +119,17 @@ func (a fanAlarm) Status() arke.FanStatus {
 func NewFanAlarm(fan string, s arke.FanStatus) FanAlarm {
 	return fanAlarm{fan, s}
 }
+
+type AlarmStatus int
+
+const (
+	AlarmOn AlarmStatus = iota
+	AlarmOff
+)
+
+type AlarmEvent struct {
+	Zone   string
+	Alarm  Alarm
+	Status AlarmStatus
+	Time   time.Time
+}

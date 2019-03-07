@@ -25,7 +25,7 @@ func ComputeZoneRequirements(z *dieu.Zone) ([]capability, error) {
 
 		chans := []chan<- dieu.ClimateReport{}
 		for _, n := range notifiers {
-			chans = append(chans, n.C())
+			chans = append(chans, n.ReportChannel())
 		}
 
 		res = append(res, NewClimateRecordableCapability(z.MinimalTemperature,

@@ -8,30 +8,16 @@ import (
 	"git.tuleu.science/fort/dieu"
 )
 
-type AlarmStatus int
-
-const (
-	AlarmOn AlarmStatus = iota
-	AlarmOff
-)
-
-type AlarmEvent struct {
-	Zone   string
-	Alarm  dieu.Alarm
-	Status AlarmStatus
-	Time   time.Time
-}
-
 type AlarmMonitor interface {
 	Name() string
 	Monitor()
 	Inbound() chan<- dieu.Alarm
-	Outbound() <-chan AlarmEvent
+	Outbound() <-chan dieu.AlarmEvent
 }
 
 type alarmMonitor struct {
 	inbound  chan dieu.Alarm
-	outbound chan AlarmEvent
+	outbound chan dieu.AlarmEvent
 	name     string
 }
 
@@ -70,9 +56,9 @@ func (m *alarmMonitor) Monitor() {
 			}
 			if t, ok := trigged[a.Reason()]; ok == false || t <= 0 {
 				go func() {
-					m.outbound <- AlarmEvent{
+					m.outbound <- dieu.AlarmEvent{
 						Alarm:  a,
-						Status: AlarmOn,
+						Status: dieu.AlarmOn,
 						Time:   time.Now(),
 						Zone:   m.name,
 					}
@@ -92,9 +78,9 @@ func (m *alarmMonitor) Monitor() {
 
 			if t == 1 {
 				go func() {
-					m.outbound <- AlarmEvent{
+					m.outbound <- dieu.AlarmEvent{
 						Alarm:  alarms[r],
-						Status: AlarmOff,
+						Status: dieu.AlarmOff,
 						Time:   time.Now(),
 						Zone:   m.name,
 					}
@@ -111,7 +97,7 @@ func (m *alarmMonitor) Inbound() chan<- dieu.Alarm {
 	return m.inbound
 }
 
-func (m *alarmMonitor) Outbound() <-chan AlarmEvent {
+func (m *alarmMonitor) Outbound() <-chan dieu.AlarmEvent {
 	return m.outbound
 }
 
@@ -123,7 +109,7 @@ func NewAlarmMonitor(zoneName string) (AlarmMonitor, error) {
 
 	return &alarmMonitor{
 		inbound:  make(chan dieu.Alarm, 30),
-		outbound: make(chan AlarmEvent, 60),
+		outbound: make(chan dieu.AlarmEvent, 60),
 		name:     path.Join(hostname, "zones", zoneName),
 	}, nil
 }

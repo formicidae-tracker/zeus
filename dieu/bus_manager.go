@@ -29,12 +29,13 @@ type messageDefinition struct {
 }
 
 type busManager struct {
-	name         string
-	intf         socketcan.RawInterface
-	capabilities []capability
-	alarms       map[arke.NodeID]chan<- dieu.Alarm
-	devices      map[deviceDefinition]*Device
-	callbacks    map[messageDefinition][]callback
+	name              string
+	intf              socketcan.RawInterface
+	capabilities      []capability
+	alarms            map[arke.NodeID]chan<- dieu.Alarm
+	devices           map[deviceDefinition]*Device
+	callbacks         map[messageDefinition][]callback
+	callbackWaitGroup sync.WaitGroup
 }
 
 func (b *busManager) receiveAndStampMessage(frames chan<- *StampedMessage) {
@@ -82,12 +83,10 @@ func (b *busManager) Listen() {
 
 	heartbeatTimeout := time.NewTicker(3 * dieu.HeartBeatPeriod)
 	defer heartbeatTimeout.Stop()
-	wg := sync.WaitGroup{}
 	for {
 		select {
 		case m, ok := <-frames:
 			if ok == false {
-				wg.Wait()
 				return
 			}
 			if m.M.MessageClassID() == arke.HeartBeatMessage {
@@ -96,12 +95,12 @@ func (b *busManager) Listen() {
 			} else {
 				mDef := messageDefinition{MessageID: m.M.MessageClassID(), ID: m.ID}
 				if callbacks, ok := b.callbacks[mDef]; ok == true {
-					wg.Add(1)
+					b.callbackWaitGroup.Add(1)
 					go func(m *StampedMessage, alarms chan<- dieu.Alarm) {
 						for _, callback := range callbacks {
 							callback(alarms, m)
 						}
-						wg.Done()
+						b.callbackWaitGroup.Done()
 					}(m, b.alarms[m.ID])
 				}
 			}
@@ -155,7 +154,12 @@ func (b *busManager) AssignCapabilitiesForID(ID arke.NodeID, capabilities []capa
 }
 
 func (b *busManager) Close() error {
-	return b.intf.Close()
+	err := b.intf.Close()
+	b.callbackWaitGroup.Wait()
+	for _, a := range b.alarms {
+		close(a)
+	}
+	return err
 }
 
 func NewBusManager(interfaceName string, alarms chan<- dieu.Alarm) (BusManager, error) {
