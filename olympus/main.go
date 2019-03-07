@@ -2,11 +2,14 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"os"
 )
 
 func Execute() error {
-	return nil
+
+	http.Handle("/", http.FileServer(http.Dir("./webapp/dist/webapp")))
+	return http.ListenAndServe(":3000", nil)
 }
 
 func main() {
