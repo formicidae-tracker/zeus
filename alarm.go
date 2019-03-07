@@ -17,7 +17,7 @@ const (
 type Alarm interface {
 	Priority() Priority
 	Reason() string
-	RepeatInterval() time.Duration
+	RepeatPeriod() time.Duration
 }
 
 type alarmString struct {
@@ -33,7 +33,7 @@ func (a alarmString) Reason() string {
 	return a.reason
 }
 
-func (a alarmString) RepeatInterval() time.Duration {
+func (a alarmString) RepeatPeriod() time.Duration {
 	return 500 * time.Millisecond
 }
 
@@ -64,7 +64,7 @@ func (a missingDeviceAlarm) Reason() string {
 	return fmt.Sprintf("Device '%s', with ID %d is missing on bus '%s'", Name(a.class), a.id, a.canInterface)
 }
 
-func (a missingDeviceAlarm) RepeatInterval() time.Duration {
+func (a missingDeviceAlarm) RepeatPeriod() time.Duration {
 	return HeartBeatPeriod
 }
 
@@ -103,7 +103,7 @@ func (a fanAlarm) Reason() string {
 	return fmt.Sprintf("Fan %s is %s", a.fan, status)
 }
 
-func (a fanAlarm) RepeatInterval() time.Duration {
+func (a fanAlarm) RepeatPeriod() time.Duration {
 	return 500 * time.Millisecond
 }
 

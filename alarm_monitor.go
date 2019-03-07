@@ -37,13 +37,14 @@ func (m *alarmMonitor) Name() string {
 	return m.name
 }
 
-func wakeupAfter(wakeup chan<- string, reason string, after time.Duration) {
+func wakeupAfter(wakeup chan<- string, quit <-chan struct{}, reason string, after time.Duration) {
 	time.Sleep(after)
+	select {
+	case <-quit:
+		return
+	default:
+	}
 	wakeup <- reason
-	defer func() {
-		//silently recovering writing to a closed channel
-		recover()
-	}()
 }
 
 func (m *alarmMonitor) Monitor() {
@@ -56,10 +57,13 @@ func (m *alarmMonitor) Monitor() {
 		close(clearWakeup)
 	}()
 
+	quit := make(chan struct{})
+
 	for {
 		select {
 		case a, ok := <-m.inbound:
 			if ok == false {
+				close(quit)
 				return
 			}
 			if t, ok := trigged[a.Reason()]; ok == false || t <= 0 {
@@ -76,7 +80,7 @@ func (m *alarmMonitor) Monitor() {
 			} else {
 				trigged[a.Reason()] += 1
 			}
-			wakeupAfter(clearWakeup, a.Reason(), 3*a.RepeatInterval())
+			go wakeupAfter(clearWakeup, quit, a.Reason(), 3*a.RepeatPeriod())
 		case r := <-clearWakeup:
 			t, ok := trigged[r]
 			if ok == false {

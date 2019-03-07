@@ -1,0 +1,124 @@
+package main
+
+import (
+	"math/rand"
+	"os"
+	"path"
+	"sync"
+	"time"
+
+	. "gopkg.in/check.v1"
+)
+
+type AlarmMonitorSuite struct {
+	Hostname string
+}
+
+func (s *AlarmMonitorSuite) SetUpSuite(c *C) {
+	var err error
+	s.Hostname, err = os.Hostname()
+	c.Assert(err, IsNil)
+}
+
+var _ = Suite(&AlarmMonitorSuite{})
+
+type testAlarm string
+
+func (a testAlarm) Reason() string {
+	return string(a)
+}
+
+func (a testAlarm) Priority() Priority {
+	return Warning
+}
+
+func (a testAlarm) RepeatPeriod() time.Duration {
+	return 5 * time.Millisecond
+}
+
+func (s *AlarmMonitorSuite) TestName(c *C) {
+	testName := "test-zone"
+	m, err := NewAlarmMonitor(testName)
+	c.Assert(err, IsNil)
+	c.Check(m.Name(), Equals, path.Join(s.Hostname, "zones", testName))
+}
+
+func (s *AlarmMonitorSuite) TestMonitor(c *C) {
+	m, err := NewAlarmMonitor("test-zone")
+	c.Assert(err, IsNil)
+	wg := sync.WaitGroup{}
+
+	alarms := []testAlarm{"once", "recurring"}
+
+	quit := make(chan struct{})
+
+	jitterAmount := 0.2 // 20 %
+
+	waiter := func(period time.Duration, jitter float64) {
+		// adds a little bit of jitter
+		mult := 1.0 + 2*jitter*rand.Float64() - jitter
+		time.Sleep(time.Duration(mult*float64(period.Nanoseconds())) * time.Nanosecond)
+
+	}
+
+	go func() {
+		wg.Add(1)
+		defer func() {
+			close(m.Inbound())
+			wg.Done()
+		}()
+
+		for {
+			waiter(alarms[1].RepeatPeriod(), jitterAmount)
+			select {
+			case <-quit:
+				return
+			default:
+			}
+			m.Inbound() <- alarms[1]
+		}
+	}()
+
+	go func() {
+		wg.Add(1)
+		m.Monitor()
+		wg.Done()
+	}()
+
+	e, ok := <-m.Outbound()
+	c.Check(ok, Equals, true)
+	c.Check(e.Alarm, Equals, alarms[1])
+	c.Check(e.Status, Equals, AlarmOn)
+
+	start := time.Now()
+	repeat := 10
+	go func() {
+		for i := 0; i < repeat; i++ {
+			select {
+			case <-quit:
+				return
+			default:
+			}
+			m.Inbound() <- alarms[0]
+			time.Sleep(alarms[0].RepeatPeriod())
+		}
+	}()
+	e, ok = <-m.Outbound()
+	c.Check(ok, Equals, true)
+	c.Check(e.Alarm, Equals, alarms[0])
+	c.Check(e.Status, Equals, AlarmOn)
+
+	e, ok = <-m.Outbound()
+	end := time.Now()
+	c.Check(ok, Equals, true)
+	c.Check(e.Alarm, Equals, alarms[0])
+	c.Check(e.Status, Equals, AlarmOff)
+
+	lasted := end.Sub(start)
+	expected := time.Duration(3+repeat-1) * alarms[0].RepeatPeriod()
+
+	c.Check(lasted > expected, Equals, true, Commentf("Lasted %s, expected at least %s", lasted, expected))
+
+	close(quit)
+	wg.Wait()
+}
