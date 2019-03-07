@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"time"
 
@@ -38,7 +37,7 @@ func (n *fileClimateReportNotifier) Notify() {
 	n.File.Close()
 }
 
-func NewFileClimateReportNotifier(filename string) (ClimateReportNotifier, error) {
+func NewFileClimateReportNotifier(filename string) (ClimateReportNotifier, string, error) {
 	res := &fileClimateReportNotifier{
 		Chan:  make(chan dieu.ClimateReport, 10),
 		Start: time.Now(),
@@ -48,10 +47,9 @@ func NewFileClimateReportNotifier(filename string) (ClimateReportNotifier, error
 	var fname string
 	res.File, fname, err = dieu.CreateFileWithoutOverwrite(filename)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	log.Printf("Will save climate data in '%s'", fname)
-	fmt.Fprintf(res.File, "#Starting date %s\n#Time(ms) Relative Humidity (%%) Temperature (°C) Temperature (°C) Temperature (°C) Temperature (°C)\n", res.Start)
+	fmt.Fprintf(res.File, "# Starting date %s\n# Time(ms) Relative Humidity (%%) Temperature (°C) Temperature (°C) Temperature (°C) Temperature (°C)\n", res.Start)
 
-	return res, nil
+	return res, fname, nil
 }

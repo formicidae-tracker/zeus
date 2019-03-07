@@ -14,7 +14,7 @@ func ComputeZoneRequirements(z *dieu.Zone) ([]capability, error) {
 		needClimateReport = true
 	}
 	if len(z.ClimateReportFile) != 0 {
-		fn, err := NewFileClimateReportNotifier(z.ClimateReportFile)
+		fn, _, err := NewFileClimateReportNotifier(z.ClimateReportFile)
 		if err != nil {
 			return res, err
 		}
