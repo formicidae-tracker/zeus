@@ -8,22 +8,22 @@ import (
 	"git.tuleu.science/fort/dieu"
 )
 
-type ClimateReportNotifier interface {
+type ClimateReporter interface {
 	C() chan<- dieu.ClimateReport
-	Notify()
+	Report()
 }
 
-type fileClimateReportNotifier struct {
+type fileClimateReporter struct {
 	File  *os.File
 	Start time.Time
 	Chan  chan dieu.ClimateReport
 }
 
-func (n *fileClimateReportNotifier) C() chan<- dieu.ClimateReport {
+func (n *fileClimateReporter) C() chan<- dieu.ClimateReport {
 	return n.Chan
 }
 
-func (n *fileClimateReportNotifier) Notify() {
+func (n *fileClimateReporter) Report() {
 	for cr := range n.Chan {
 		fmt.Fprintf(n.File,
 			"%d %.2f %.2f %.2f %.2f %.2f\n",
@@ -37,8 +37,8 @@ func (n *fileClimateReportNotifier) Notify() {
 	n.File.Close()
 }
 
-func NewFileClimateReportNotifier(filename string) (ClimateReportNotifier, string, error) {
-	res := &fileClimateReportNotifier{
+func NewFileClimateReporter(filename string) (ClimateReporter, string, error) {
+	res := &fileClimateReporter{
 		Chan:  make(chan dieu.ClimateReport, 10),
 		Start: time.Now(),
 	}
@@ -52,4 +52,8 @@ func NewFileClimateReportNotifier(filename string) (ClimateReportNotifier, strin
 	fmt.Fprintf(res.File, "# Starting date %s\n# Time(ms) Relative Humidity (%%) Temperature (°C) Temperature (°C) Temperature (°C) Temperature (°C)\n", res.Start)
 
 	return res, fname, nil
+}
+
+func NewTCPClimateReporterNotifier(address string) (ClimateReporter, error) {
+	return nil, nil
 }

@@ -12,37 +12,37 @@ import (
 	. "gopkg.in/check.v1"
 )
 
-type FileClimateReportNotifierSuite struct {
+type FileClimateReporterSuite struct {
 	TmpDir string
 }
 
-func (s *FileClimateReportNotifierSuite) SetUpSuite(c *C) {
+func (s *FileClimateReporterSuite) SetUpSuite(c *C) {
 	var err error
 	s.TmpDir, err = ioutil.TempDir("", "file-report-notifier")
 	c.Assert(err, IsNil)
 
 }
 
-func (s *FileClimateReportNotifierSuite) TearDownSuite(c *C) {
+func (s *FileClimateReporterSuite) TearDownSuite(c *C) {
 	c.Assert(os.RemoveAll(s.TmpDir), IsNil)
 }
 
-var _ = Suite(&FileClimateReportNotifierSuite{})
+var _ = Suite(&FileClimateReporterSuite{})
 
-func (s *FileClimateReportNotifierSuite) TestFileNameDoesNotOverwite(c *C) {
-	_, name1, err := NewFileClimateReportNotifier(filepath.Join(s.TmpDir, "test.txt"))
+func (s *FileClimateReporterSuite) TestFileNameDoesNotOverwite(c *C) {
+	_, name1, err := NewFileClimateReporter(filepath.Join(s.TmpDir, "test.txt"))
 	c.Check(err, IsNil)
-	_, name2, err := NewFileClimateReportNotifier(filepath.Join(s.TmpDir, "test.txt"))
+	_, name2, err := NewFileClimateReporter(filepath.Join(s.TmpDir, "test.txt"))
 
 	c.Check(name1, Equals, filepath.Join(s.TmpDir, "test.txt"))
 	c.Check(name2, Equals, filepath.Join(s.TmpDir, "test.1.txt"))
 }
 
-func (s *FileClimateReportNotifierSuite) TestFileNameWriting(c *C) {
-	n, fname, err := NewFileClimateReportNotifier(filepath.Join(s.TmpDir, "test.txt"))
+func (s *FileClimateReporterSuite) TestFileNameWriting(c *C) {
+	n, fname, err := NewFileClimateReporter(filepath.Join(s.TmpDir, "test.txt"))
 	c.Assert(err, IsNil)
 
-	fn := n.(*fileClimateReportNotifier)
+	fn := n.(*fileClimateReporter)
 
 	cr := dieu.ClimateReport{
 		Humidity:     50,
@@ -51,7 +51,7 @@ func (s *FileClimateReportNotifierSuite) TestFileNameWriting(c *C) {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		n.Notify()
+		n.Report()
 		wg.Done()
 	}()
 

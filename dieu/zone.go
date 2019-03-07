@@ -5,7 +5,7 @@ import "git.tuleu.science/fort/dieu"
 func ComputeZoneRequirements(z *dieu.Zone) ([]capability, error) {
 	res := []capability{}
 
-	notifiers := []ClimateReportNotifier{}
+	notifiers := []ClimateReporter{}
 	needClimateReport := false
 	if dieu.IsUndefined(z.MinimalTemperature) == false || dieu.IsUndefined(z.MaximalTemperature) == false {
 		needClimateReport = true
@@ -14,7 +14,7 @@ func ComputeZoneRequirements(z *dieu.Zone) ([]capability, error) {
 		needClimateReport = true
 	}
 	if len(z.ClimateReportFile) != 0 {
-		fn, _, err := NewFileClimateReportNotifier(z.ClimateReportFile)
+		fn, _, err := NewFileClimateReporter(z.ClimateReportFile)
 		if err != nil {
 			return res, err
 		}
