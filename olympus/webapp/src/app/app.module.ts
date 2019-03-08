@@ -10,6 +10,9 @@ import { ROUTES } from './app.route';
 import { HomeComponent } from './home/home.component';
 import { ZoneComponent } from './zone/zone.component';
 import { PageNotFoundComponent } from './page-not-found/page-not-found.component';
+import { ZonePreviewComponent } from './zone-preview/zone-preview.component';
+
+import { ZoneService } from './zone.service';
 
 @NgModule({
     imports: [
@@ -21,9 +24,10 @@ import { PageNotFoundComponent } from './page-not-found/page-not-found.component
 		AppComponent,
 		HomeComponent,
 		ZoneComponent,
-		PageNotFoundComponent
+		PageNotFoundComponent,
+		ZonePreviewComponent
 	],
-	providers: [],
+	providers: [ZoneService],
 	bootstrap: [AppComponent]
 })
 export class AppModule { }

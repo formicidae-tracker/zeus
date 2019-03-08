@@ -1,3 +1,12 @@
-<p>
-  home works!
-</p>
+<section class="jumbotron">
+  <div class="container">
+    <h1 class="text-center"> Active Zones </h1>
+  </div>
+</section>
+<div class="album py-5 ">
+  <div class="container">
+    <div class="row">
+      <app-zone-preview class="col-md-4" *ngFor="let z of zones" [zone]="z"></app-zone-preview>
+    </div>
+  </div>
+</div>
