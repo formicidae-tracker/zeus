@@ -1,6 +1,13 @@
-import { Component, AfterViewInit, ElementRef,ViewChild} from '@angular/core';
+import { Component, AfterViewInit, OnInit, ElementRef,ViewChild, Input} from '@angular/core';
 import ResizeObserver from 'resize-observer-polyfill';
 import { Chart } from 'chart.js'
+import { Zone }  from '../zone';
+
+export enum TimeWindow {
+	Week = 1,
+	Day,
+	Hour
+}
 
 
 @Component({
@@ -8,7 +15,11 @@ import { Chart } from 'chart.js'
   templateUrl: './climate-chart.component.html',
   styleUrls: ['./climate-chart.component.css']
 })
-export class ClimateChartComponent implements AfterViewInit {
+export class ClimateChartComponent implements AfterViewInit,OnInit {
+
+	public Window = TimeWindow;
+
+	timeWindow: TimeWindow;
 
     canvas: any;
 	ctx: any;
@@ -17,8 +28,15 @@ export class ClimateChartComponent implements AfterViewInit {
 	@ViewChild('climateChartMonitor')
 	public monitor: ElementRef
 
+	@Input() zone: Zone;
 
-	constructor() { }
+	constructor() {
+		this.timeWindow = TimeWindow.Hour;
+	}
+
+	ngOnInit() {
+
+	}
 
 	ngAfterViewInit() {
 		let ro = new ResizeObserver(entries => {
@@ -68,8 +86,20 @@ export class ClimateChartComponent implements AfterViewInit {
 			}
 
 		});
+
         //todo display a chart
     }
+
+	isSelected(w : TimeWindow) {
+		if ( w == this.timeWindow ) {
+			return ' active'
+		}
+		return ''
+	}
+
+	public selectTimeWindow(w: TimeWindow) {
+		this.timeWindow = w;
+	}
 
 
 

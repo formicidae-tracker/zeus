@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Title } from '@angular/platform-browser';
-import { Zone,ZoneService } from '../zone.service';
-
+import { ZoneService } from '../zone.service';
+import { Zone }  from '../zone';
 
 @Component({
     selector: 'app-home',

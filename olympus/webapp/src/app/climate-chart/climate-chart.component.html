@@ -1,3 +1,19 @@
+      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+        <h1 class="h2">Climate Report for {{zone.host}}.{{zone.name}}</h1>
+        <div class="btn-toolbar mb-2 mb-md-0" role="toolbar" aria-label="Select Graph Window">
+		  <div class="btn-group mr-2">
+			<button type="button" class="btn btn-outline-secondary" disabled>
+			  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 -5 24 29" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar">
+				<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+				<line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+			  </svg>
+			</button>
+			<button type="button" (click)="selectTimeWindow(Window.Week)" [class]="'btn btn-outline-secondary'+isSelected(Window.Week)">Week</button>
+			<button type="button" (click)="selectTimeWindow(Window.Day)" [class]="'btn btn-outline-secondary'+isSelected(Window.Day)">Day</button>
+			<button type="button" (click)="selectTimeWindow(Window.Hour)" [class]="'btn btn-outline-secondary'+isSelected(Window.Hour)">Hour</button>
+		  </div>
+        </div>
+      </div>
 <div #climateChartMonitor style="width:100%">
   <canvas id="climateChart"></canvas>
 </div>

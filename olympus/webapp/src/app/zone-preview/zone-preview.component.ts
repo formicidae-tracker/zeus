@@ -1,5 +1,5 @@
 import { Component, OnInit, Input } from '@angular/core';
-import { Zone } from '../zone.service';
+import { Zone } from '../zone';
 
 
 @Component({
@@ -8,7 +8,6 @@ import { Zone } from '../zone.service';
   styleUrls: ['./zone-preview.component.css']
 })
 export class ZonePreviewComponent implements OnInit {
-
     @Input() zone: Zone;
 
     constructor() { }
