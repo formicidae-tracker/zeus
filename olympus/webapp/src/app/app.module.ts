@@ -13,6 +13,7 @@ import { PageNotFoundComponent } from './page-not-found/page-not-found.component
 import { ZonePreviewComponent } from './zone-preview/zone-preview.component';
 
 import { ZoneService } from './zone.service';
+import { ClimateChartComponent } from './climate-chart/climate-chart.component';
 
 @NgModule({
     imports: [
@@ -25,7 +26,8 @@ import { ZoneService } from './zone.service';
 		HomeComponent,
 		ZoneComponent,
 		PageNotFoundComponent,
-		ZonePreviewComponent
+		ZonePreviewComponent,
+		ClimateChartComponent
 	],
 	providers: [ZoneService],
 	bootstrap: [AppComponent]
