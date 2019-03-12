@@ -55,7 +55,7 @@ export class AlarmAdapter implements Adapter<Alarm> {
 		return new Alarm(
 			item.Reason,
 			item.On,
-			new Date(item.LastChange),
+			item.LastChange==null?null:new Date(item.LastChange),
 			item.Level,
 			item.Triggers
 		);
