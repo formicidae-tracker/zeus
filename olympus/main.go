@@ -2,15 +2,16 @@ package main
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"path"
-	"strings"
+	"path/filepath"
 	"time"
 
 	"git.tuleu.science/fort/dieu"
 	"git.tuleu.science/fort/libarke/src-go/arke"
+	"github.com/gorilla/mux"
 )
 
 type RegisteredAlarm struct {
@@ -30,20 +31,14 @@ type RegisteredZone struct {
 }
 
 func Execute() error {
+	router := mux.NewRouter()
 
-	http.HandleFunc("/api/zone/", func(w http.ResponseWriter, r *http.Request) {
-		zoneWHost := strings.TrimPrefix(r.URL.EscapedPath(), "/api/zone/")
-		log.Printf(r.URL.EscapedPath())
-		zone := strings.TrimPrefix(path.Ext(zoneWHost), ".")
-		host := strings.TrimSuffix(zoneWHost, "."+zone)
+	router.HandleFunc("/api/host/{hname}/zone/{zname}", func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
 
-		if len(zone) == 0 || len(host) == 0 {
-			http.NotFound(w, r)
-			return
-		}
 		res := RegisteredZone{
-			Host:        host,
-			Name:        zone,
+			Host:        vars["hname"],
+			Name:        vars["zname"],
 			Temperature: 21.2,
 			Humidity:    62,
 			Alarms:      []RegisteredAlarm{},
@@ -76,15 +71,33 @@ func Execute() error {
 
 		data, err := json.Marshal(&res)
 		if err != nil {
-			http.Error(w, "Internal error", http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(data)
-	})
 
-	http.Handle("/", http.FileServer(http.Dir("./webapp/dist/webapp")))
-	return http.ListenAndServe(":3000", nil)
+	}).Methods("GET")
+
+	angularPaths := []string{
+		"/host/{h}/zone/{z}",
+	}
+
+	angularAssetsPath := "./webapp/dist/webapp"
+	for _, p := range angularPaths {
+		router.HandleFunc(p, func(w http.ResponseWriter, r *http.Request) {
+			indexBytes, err := ioutil.ReadFile(filepath.Join(angularAssetsPath, "index.html"))
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			w.Write(indexBytes)
+		}).Methods("GET")
+	}
+
+	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./webapp/dist/webapp")))
+
+	return http.ListenAndServe(":3000", router)
 }
 
 func main() {
