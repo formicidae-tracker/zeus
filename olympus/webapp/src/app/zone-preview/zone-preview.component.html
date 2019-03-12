@@ -5,15 +5,15 @@
       <path d="M18.182,19.576a8.573,8.573,0,0,0-.831,1.981l-2.391-.6-3.276,1.093.632,1.9,2.724-.907,1.985.5c-.008.154-.025.307-.025.463a9.147,9.147,0,0,0,.061,1H14.7l-3.252,2.168,1.11,1.664L15.3,27h2.212A7.084,7.084,0,0,0,24,32a7.084,7.084,0,0,0,6.485-5H32.7l2.748,1.832,1.11-1.664L33.3,25H30.939A9.147,9.147,0,0,0,31,24c0-.156-.017-.309-.025-.463l1.985-.5,2.724.907.632-1.9L33.04,20.959l-2.391.6a8.573,8.573,0,0,0-.831-1.981l2.957-.739,1.174-3.521-1.9-.632-.826,2.479-2.767.692c-.149-.142-.3-.287-.458-.416V16a4,4,0,0,0-8,0v1.439c-.161.129-.309.274-.458.416l-2.767-.692-.826-2.479-1.9.632,1.174,3.521Zm3.378-.8.44-.3V16a2,2,0,0,1,4,0v2.476l.44.3A6.3,6.3,0,0,1,29,24c0,3.309-2.243,6-5,6s-5-2.691-5-6A6.3,6.3,0,0,1,21.56,18.772Z"/>
     </g>
   </svg>
-  <a href="" [routerLink]="['host',zone.host,'zone',zone.name]">
+  <a href="" [routerLink]="['host',zone.Host,'zone',zone.Name]">
     <div class="card-img-overlay text-white">
-      <h3 class="card-title"> {{zone.host}}.{{zone.name}} </h3>
+      <h3 class="card-title"> {{zone.Host}}.{{zone.Name}} </h3>
     </div>
   </a>
-  <a href="" [routerLink]="['host',zone.host,'zone',zone.name]" class="list-group-item-action">
+  <a href="" [routerLink]="['host',zone.Host,'zone',zone.Name]" class="list-group-item-action">
   <ul class="list-group list-group-flush">
-    <li [class]="'list-group-item list-group-item-action list-group-item-' + zone.temperatureStatus()">Temperature<span class="float-right">{{zone.temperature}} °C</span></li>
-    <li [class]="'list-group-item list-group-item-action list-group-item-' + zone.humidityStatus()">Humidity<span class="float-right">{{zone.humidity}} %</span></li>
+    <li [class]="'list-group-item list-group-item-action list-group-item-' + zone.temperatureStatus()">Temperature<span class="float-right">{{zone.Temperature}} °C</span></li>
+    <li [class]="'list-group-item list-group-item-action list-group-item-' + zone.humidityStatus()">Humidity<span class="float-right">{{zone.Humidity}} %</span></li>
     <li [class]="'list-group-item list-group-item-action list-group-item-' + zone.alarmStatus()">Many Alarms</li>
   </ul>
     </a>

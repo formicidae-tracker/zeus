@@ -1,6 +1,6 @@
 import { Component, OnInit, Input } from '@angular/core';
 
-import { Alarm } from '../alarm';
+import { Alarm } from '../core/alarm.model';
 
 @Component({
   selector: 'app-alarm',

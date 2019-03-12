@@ -1,7 +1,6 @@
 import { Component, AfterViewInit, OnInit, ElementRef,ViewChild, Input} from '@angular/core';
 import ResizeObserver from 'resize-observer-polyfill';
 import { Chart } from 'chart.js'
-import { Zone }  from '../zone';
 
 export enum TimeWindow {
 	Week = 1,
@@ -28,7 +27,8 @@ export class ClimateChartComponent implements AfterViewInit,OnInit {
 	@ViewChild('climateChartMonitor')
 	public monitor: ElementRef
 
-	@Input() zone: Zone;
+	@Input() hostName: string;
+	@Input() zoneName: string;
 
 	constructor() {
 		this.timeWindow = TimeWindow.Hour;

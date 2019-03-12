@@ -1,5 +1,5 @@
 import { Component, OnInit, Input } from '@angular/core';
-import { Zone } from '../zone';
+import { Zone } from '../core/zone.model';
 
 
 @Component({

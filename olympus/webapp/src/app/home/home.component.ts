@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { ZoneService } from '../zone.service';
-import { Zone }  from '../zone';
+import { Zone }  from '../core/zone.model';
 
 @Component({
     selector: 'app-home',
@@ -11,12 +11,12 @@ import { Zone }  from '../zone';
 export class HomeComponent implements OnInit {
     zones: Zone[];
 
-    constructor(zs : ZoneService, title: Title) {
-        this.zones = zs.list();
-        title.setTitle('Olympus: Home')
+    constructor(private zs : ZoneService, private title: Title) {
     }
 
     ngOnInit() {
+		this.zones = this.zs.list();
+		this.title.setTitle('Olympus: Home')
     }
 
 }

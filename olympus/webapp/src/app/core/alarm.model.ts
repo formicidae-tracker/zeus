@@ -1,22 +1,19 @@
+import { Injectable } from '@angular/core';
+import { Adapter } from './adapter';
+
 export enum AlarmLevel {
 	Warning = 1,
 	Critical
 }
 
 export class Alarm {
-	Reason: string
-	On: boolean
-	LastChange: Date
-	Level: AlarmLevel
-	Triggers: number
 
-	constructor(r :string,on: boolean,level: AlarmLevel) {
-		this.Reason = r;
-		this.LastChange = null;
-		this.On = on;
-		this.Level = level;
-		this.Triggers = 0;
-	}
+	constructor(public Reason :string,
+				public On: boolean,
+				public LastChange: Date,
+				public Level: AlarmLevel,
+				public Triggers: number
+			   ) {}
 
 	action() {
 		if (this.On == false) {
@@ -28,6 +25,9 @@ export class Alarm {
 		return 'danger';
 	}
 }
+
+
+
 
 
 export function CompareAlarm(a :Alarm, b :Alarm){
@@ -43,4 +43,21 @@ export function CompareAlarm(a :Alarm, b :Alarm){
 		return -1;
 	}
 	return 1;
+}
+
+
+
+@Injectable({
+    providedIn: 'root'
+})
+export class AlarmAdapter implements Adapter<Alarm> {
+	adapt(item: any): Alarm {
+		return new Alarm(
+			item.Reason,
+			item.On,
+			new Date(item.LastChange),
+			item.Level,
+			item.Triggers
+		);
+	}
 }
