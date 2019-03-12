@@ -14,7 +14,7 @@
   <ul class="list-group list-group-flush">
     <li [class]="'list-group-item list-group-item-action list-group-item-' + zone.temperatureStatus()">Temperature<span class="float-right">{{zone.Temperature}} °C</span></li>
     <li [class]="'list-group-item list-group-item-action list-group-item-' + zone.humidityStatus()">Humidity<span class="float-right">{{zone.Humidity}} %</span></li>
-    <li [class]="'list-group-item list-group-item-action list-group-item-' + zone.alarmStatus()">Many Alarms</li>
+    <li [class]="'list-group-item list-group-item-action list-group-item-' + zone.alarmStatus()">{{zone.Alarms.length}} Defined Alarms <span class="float-right badge badge-secondary badge-pill">{{zone.numberOfActiveAlarms()}}</span></li>
   </ul>
     </a>
 

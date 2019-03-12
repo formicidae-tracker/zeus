@@ -14,7 +14,7 @@ export class ZoneService {
 
 
 
-    list() {
+    list(): Zone[] {
 		let t = 21.0;
 		let h = 45;
 		let a = [

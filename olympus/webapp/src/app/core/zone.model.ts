@@ -25,7 +25,10 @@ export class Zone {
 		}
 		let aRes = this.Alarms[0];
 		for ( let a of this.Alarms ) {
-			if ( a.Level > aRes.Level ) {
+			if (a.On == false ) {
+				continue;
+			}
+			if ( aRes.On == false || a.Level > aRes.Level ) {
 				aRes = a;
 			}
 
@@ -36,6 +39,16 @@ export class Zone {
 	sortedAlarm() {
 		let res = Object.assign([],this.Alarms);
 		return res.sort(CompareAlarm);
+	}
+
+	numberOfActiveAlarms() {
+		let res = 0;
+		for ( let a of this.Alarms ) {
+			if (a.On == true ) {
+				res += 1;
+			}
+		}
+		return res;
 	}
 
 }

@@ -29,7 +29,7 @@ export class ZoneComponent implements OnInit {
 			});
 
         this.title.setTitle('Olympus: '+this.hostName+'.'+this.zoneName)
-		interval(2000).subscribe(x => {
+		interval(20000).subscribe(x => {
 			if (this.zone.Alarms.length == 0) {
 				return;
 			}
