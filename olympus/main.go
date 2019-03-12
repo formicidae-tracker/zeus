@@ -33,6 +33,24 @@ type RegisteredZone struct {
 func Execute() error {
 	router := mux.NewRouter()
 
+	router.HandleFunc("/api/zones", func(w http.ResponseWriter, r *http.Request) {
+		res := []RegisteredZone{
+			{Host: "helms-deep", Name: "box"},
+			{Host: "helms-deep", Name: "tunnel"},
+			{Host: "minas-tirith", Name: "box"},
+			{Host: "rivendel", Name: "box"},
+		}
+
+		data, err := json.Marshal(&res)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(data)
+	})
+
 	router.HandleFunc("/api/host/{hname}/zone/{zname}", func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 

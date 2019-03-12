@@ -12,10 +12,19 @@ export class HomeComponent implements OnInit {
     zones: Zone[];
 
     constructor(private zs : ZoneService, private title: Title) {
+		this.zones = [];
     }
 
     ngOnInit() {
-		this.zones = this.zs.list();
+		this.zs.list().subscribe( (list) => {
+			for( let zd of list)  {
+				this.zs.getZone(zd.Host,zd.Name).subscribe( (zone) => {
+					console.log(zone);
+					this.zones.push(zone);
+				})
+			}
+		});
+
 		this.title.setTitle('Olympus: Home')
     }
 
