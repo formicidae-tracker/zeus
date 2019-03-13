@@ -143,11 +143,12 @@ func (cmd *RunCommand) Execute(args []string) error {
 	}
 
 	wg := sync.WaitGroup{}
-	for _, m := range managers {
+	for name, m := range managers {
 		wg.Add(1)
 		go func() {
-			log.Printf("Starting CAN loop")
+			log.Printf("Starting CAN loop for %s", name)
 			m.Listen()
+			log.Printf("CAN Loop %s stopped", name)
 			wg.Done()
 		}()
 

@@ -35,9 +35,10 @@ func (h *Hermes) RegisterZone(reg *dieu.ZoneRegistration, err *dieu.HermesError)
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 
-	if _, ok := h.zones[reg.Fullname()]; ok == true {
-		dieu.ReturnError(err, fmt.Errorf("hermes: zone %s is already registered", reg.Fullname()))
-		return nil
+	if z, ok := h.zones[reg.Fullname()]; ok == true {
+		//close everything
+		close(z.climate.Inbound())
+		delete(h.zones, reg.Fullname())
 	}
 	log.Printf("[rpc] Registering %s", reg.Fullname())
 	res := &ZoneData{
@@ -95,8 +96,8 @@ func (h *Hermes) UnregisterZone(reg *dieu.ZoneUnregistration, err *dieu.HermesEr
 }
 
 func (h *Hermes) ReportClimate(cr *dieu.NamedClimateReport, err *dieu.HermesError) error {
-	h.mutex.RLock()
-	defer h.mutex.RUnlock()
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
 
 	z, ok := h.zones[cr.ZoneIdentifier]
 	if ok == false {
