@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"git.tuleu.science/fort/dieu"
 	"git.tuleu.science/fort/libarke/src-go/arke"
 	"github.com/grandcat/zeroconf"
 )
@@ -87,12 +88,35 @@ func (cmd *RunCommand) Execute(args []string) error {
 			managers[z.CANInterface] = m
 		}
 
+		reporters := []ClimateReporter{}
+		if cmd.NoAvahi == false {
+			reporters = append(reporters, rpc[zname])
+		}
+		capabilities, err := ComputeZoneRequirements(&z)
+		if err != nil {
+			return err
+		}
+
+		alarms := []dieu.Alarm{}
+		for _, c := range capabilities {
+			alarms = append(alarms, c.Alarms()...)
+		}
+
 		if cmd.NoAvahi == false {
 			log.Printf("[%s]: opening RPC connection to %s", zname, olympusHost)
-			rpc[zname], err = NewRPCReporter(zname, olympusHost)
+			rpc[zname], err = NewRPCReporter(zname, olympusHost, alarms)
 			if err != nil {
 				return err
 			}
+			//ugly
+			for _, c := range capabilities {
+				cr, ok := c.(*ClimateRecordable)
+				if ok == false {
+					continue
+				}
+				cr.Notifiers = append(cr.Notifiers, rpc[zname].ReportChannel())
+			}
+
 			go rpc[zname].Report()
 		}
 
@@ -113,15 +137,6 @@ func (cmd *RunCommand) Execute(args []string) error {
 					log.Printf("%+v", ae)
 				}
 			}()
-		}
-
-		reporters := []ClimateReporter{}
-		if cmd.NoAvahi == false {
-			reporters = append(reporters, rpc[zname])
-		}
-		capabilities, err := ComputeZoneRequirements(&z, reporters)
-		if err != nil {
-			return err
 		}
 
 		m.AssignCapabilitiesForID(arke.NodeID(z.DevicesID), capabilities, alarmMonitors[zname].Inbound())

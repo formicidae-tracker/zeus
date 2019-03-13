@@ -81,7 +81,7 @@ func (s *RPCClimateReporterSuite) TearDownSuite(c *C) {
 
 func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 	go func() { s.H.C <- c }()
-	n, err := NewRPCReporter("test-zone", testAddress)
+	n, err := NewRPCReporter("test-zone", testAddress, []dieu.Alarm{})
 	c.Assert(err, IsNil)
 
 	wg := sync.WaitGroup{}

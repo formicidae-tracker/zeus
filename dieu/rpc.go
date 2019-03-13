@@ -86,7 +86,7 @@ func (r *RPCReporter) Report() {
 	r.Conn.Close()
 }
 
-func NewRPCReporter(name, address string) (*RPCReporter, error) {
+func NewRPCReporter(name, address string, alarms []dieu.Alarm) (*RPCReporter, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, err

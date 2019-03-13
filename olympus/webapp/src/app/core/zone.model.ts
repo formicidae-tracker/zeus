@@ -98,8 +98,10 @@ export class ZoneAdapter implements Adapter<Zone> {
 
 	adapt(item: any): Zone {
 		let alarms: Alarm[] = [];
-		for ( let a of item.Alarms ) {
-			alarms.push(this.alarmAdapter.adapt(a));
+		if (item.Alarms != null) {
+			for ( let a of item.Alarms ) {
+				alarms.push(this.alarmAdapter.adapt(a));
+			}
 		}
 		return new Zone(
 			item.Host,
