@@ -4,19 +4,18 @@ import { Chart } from 'chart.js'
 import { ClimateReportService } from '../climate-report.service';
 import { interval } from 'rxjs';
 
-
 export enum TimeWindow {
 	Week = 1,
 	Day,
 	Hour
 }
 
-
 @Component({
   selector: 'app-climate-chart',
   templateUrl: './climate-chart.component.html',
   styleUrls: ['./climate-chart.component.css']
 })
+
 export class ClimateChartComponent implements AfterViewInit,OnInit {
 
 	public Window = TimeWindow;

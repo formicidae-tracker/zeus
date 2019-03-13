@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"math"
 	"math/rand"
 	"sync"
@@ -132,7 +131,6 @@ func (m *climateReportManager) Sample() {
 	for {
 		select {
 		case r := <-m.requests:
-			log.Printf("request")
 			switch r.w {
 			case hour:
 				r.result <- ClimateReportTimeSerie{
@@ -182,8 +180,6 @@ func (m *climateReportManager) lastReport(w window) ClimateReportTimeSerie {
 		m.wg.Done()
 	}()
 	go func() {
-		log.Printf("sending request")
-
 		m.requests <- request{w: w, result: res}
 	}()
 	select {
@@ -259,15 +255,10 @@ func setClimateReporterStub() {
 				},
 			}
 			stubClimateReporter.Inbound() <- toAdd
-			if int(t.Sub(start).Seconds())%3600 == 0 {
-				log.Printf("%s done ", t.Sub(start))
-			}
 		}
 		toPrint := []interface{}{}
 		for _, d := range stubClimateReporter.(*climateReportManager).downsamplers {
 			toPrint = append(toPrint, len(d.points))
 		}
-
-		log.Printf("done %+v", toPrint)
 	}()
 }

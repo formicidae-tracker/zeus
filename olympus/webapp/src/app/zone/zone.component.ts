@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Title} from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
-import { Zone } from '../core/zone.model';
+import { Bounds,Zone } from '../core/zone.model';
 import { interval } from 'rxjs';
 import { ZoneService } from '../zone.service';
 
@@ -16,7 +16,7 @@ export class ZoneComponent implements OnInit {
     hostName: string
 	zone: Zone
     constructor(private route: ActivatedRoute, private title: Title, private zoneService: ZoneService) {
-		this.zone = new Zone("","",0,0,[]);
+		this.zone = new Zone("","",0,new Bounds(0,100),0,new Bounds(0,100),[]);
 	}
 
     ngOnInit() {
