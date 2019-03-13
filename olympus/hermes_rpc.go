@@ -5,6 +5,7 @@ import (
 	"log"
 	"path"
 	"sync"
+	"time"
 
 	"git.tuleu.science/fort/dieu"
 )
@@ -78,6 +79,7 @@ func (h *Hermes) RegisterZone(reg *dieu.ZoneRegistration, err *dieu.HermesError)
 
 	h.zones[reg.Fullname()] = res
 
+	*err = dieu.HermesError("")
 	return nil
 }
 
@@ -95,7 +97,7 @@ func (h *Hermes) UnregisterZone(reg *dieu.ZoneUnregistration, err *dieu.HermesEr
 	close(z.climate.Inbound())
 	delete(h.zones, reg.Fullname())
 
-	dieu.ReturnError(err, nil)
+	*err = dieu.HermesError("")
 	return nil
 }
 
@@ -111,7 +113,7 @@ func (h *Hermes) ReportClimate(cr *dieu.NamedClimateReport, err *dieu.HermesErro
 
 	z.zone.Temperature = float64((*cr).Temperatures[0])
 	z.zone.Humidity = float64((*cr).Humidity)
-
+	log.Printf("[rpc] New climate report %+v", cr)
 	z.climate.Inbound() <- dieu.ClimateReport{
 		Time:         cr.Time,
 		Humidity:     cr.Humidity,
@@ -136,7 +138,7 @@ func (h *Hermes) ReportAlarm(ae *dieu.HermesAlarmEvent, err *dieu.HermesError) e
 		return nil
 	}
 
-	log.Printf("[rpc] New alarm event %v", ae)
+	log.Printf("[rpc] New alarm event %+v", ae)
 	if ae.Status == true {
 		if z.zone.Alarms[aIdx].On == false {
 			z.zone.Alarms[aIdx].Triggers += 1
@@ -145,11 +147,13 @@ func (h *Hermes) ReportAlarm(ae *dieu.HermesAlarmEvent, err *dieu.HermesError) e
 	} else {
 		z.zone.Alarms[aIdx].On = false
 	}
+	log.Printf("good")
+	z.zone.Alarms[aIdx].LastChange = &time.Time{}
 	*z.zone.Alarms[aIdx].LastChange = ae.Time
-
+	log.Printf("bad")
 	//TODO: notify
 
-	dieu.ReturnError(err, nil)
+	*err = dieu.HermesError("")
 	return nil
 }
 

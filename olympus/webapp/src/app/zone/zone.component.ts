@@ -30,14 +30,10 @@ export class ZoneComponent implements OnInit {
 
         this.title.setTitle('Olympus: '+this.hostName+'.'+this.zoneName)
 		interval(20000).subscribe(x => {
-			if (this.zone.Alarms.length == 0) {
-				return;
-			}
-			this.zone.Alarms[0].On = !this.zone.Alarms[0].On;
-			this.zone.Alarms[0].LastChange = new Date();
-			if ( this.zone.Alarms[0].On == true ) {
-				this.zone.Alarms[0].Triggers += 1;
-			}
+			this.zoneService.getZone(this.hostName,this.zoneName)
+				.subscribe( (zone) => {
+					this.zone = zone;
+				});
 		});
 
     }

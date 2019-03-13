@@ -12,8 +12,8 @@
   </a>
   <a href="" [routerLink]="['host',zone.Host,'zone',zone.Name]" class="list-group-item-action">
   <ul class="list-group list-group-flush">
-    <li [class]="'list-group-item list-group-item-action list-group-item-' + zone.temperatureStatus()">Temperature<span class="float-right">{{zone.Temperature}} °C</span></li>
-    <li [class]="'list-group-item list-group-item-action list-group-item-' + zone.humidityStatus()">Humidity<span class="float-right">{{zone.Humidity}} %</span></li>
+    <li [class]="'list-group-item list-group-item-action list-group-item-' + zone.temperatureStatus()">Temperature<span class="float-right">{{zone.Temperature | number:'2.2-2'}} °C</span></li>
+    <li [class]="'list-group-item list-group-item-action list-group-item-' + zone.humidityStatus()">Humidity<span class="float-right">{{zone.Humidity | number:'2.2-2'}} %</span></li>
     <li [class]="'list-group-item list-group-item-action list-group-item-' + zone.alarmStatus()">{{zone.Alarms.length}} Defined Alarms <span class="float-right badge badge-secondary badge-pill">{{zone.numberOfActiveAlarms()}}</span></li>
   </ul>
     </a>

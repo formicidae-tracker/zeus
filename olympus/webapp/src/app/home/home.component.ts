@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { ZoneService } from '../zone.service';
 import { Zone }  from '../core/zone.model';
-
+import { interval } from 'rxjs';
 @Component({
     selector: 'app-home',
     templateUrl: './home.component.html',
@@ -26,6 +26,18 @@ export class HomeComponent implements OnInit {
 		});
 
 		this.title.setTitle('Olympus: Home')
+
+		interval(20000).subscribe(x => {
+			this.zs.list().subscribe( (list) => {
+				this.zones = [];
+				for( let zd of list)  {
+					this.zs.getZone(zd.Host,zd.Name).subscribe( (zone) => {
+						console.log(zone);
+						this.zones.push(zone);
+					})
+				}
+			});
+		})
     }
 
 }

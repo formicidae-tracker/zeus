@@ -20,6 +20,7 @@ func ComputeZoneRequirements(z *dieu.Zone) ([]capability, error) {
 			return res, err
 		}
 		reporters = append(reporters, fn)
+		go fn.Report()
 	}
 
 	if needClimateReport == true || len(reporters) != 0 {
@@ -34,6 +35,7 @@ func ComputeZoneRequirements(z *dieu.Zone) ([]capability, error) {
 			z.MinimalHumidity,
 			z.MaximalHumidity,
 			chans))
+
 	}
 	controlLight := false
 	controlTemperature := false

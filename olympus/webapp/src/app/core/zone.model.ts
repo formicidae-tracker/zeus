@@ -41,7 +41,7 @@ export class Zone {
 		if (this.Temperature > this.TemperatureBounds.Max ) {
 			return 'danger';
 		}
-		return 'sucess';
+		return 'success';
     }
 
     humidityStatus() {
