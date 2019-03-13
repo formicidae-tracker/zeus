@@ -2,6 +2,8 @@ import { Component, AfterViewInit, OnInit, ElementRef,ViewChild, Input} from '@a
 import ResizeObserver from 'resize-observer-polyfill';
 import { Chart } from 'chart.js'
 import { ClimateReportService } from '../climate-report.service';
+import { interval } from 'rxjs';
+
 
 export enum TimeWindow {
 	Week = 1,
@@ -36,7 +38,11 @@ export class ClimateChartComponent implements AfterViewInit,OnInit {
 	}
 
 	ngOnInit() {
+
 		this.updateChart();
+		interval(10000).subscribe(x => {
+			this.updateChart();
+		})
 	}
 
 	ngAfterViewInit() {
@@ -48,6 +54,9 @@ export class ClimateChartComponent implements AfterViewInit,OnInit {
 				this.chart.resize();
 			}
 		});
+		Chart.defaults.global.elements.point.radius = 0;
+		Chart.defaults.global.elements.point.hitRadius = 3;
+
 		ro.observe(this.monitor.nativeElement);
 		this.canvas = document.getElementById('climateChart');
 		this.ctx = this.canvas.getContext('2d');
@@ -169,6 +178,7 @@ export class ClimateChartComponent implements AfterViewInit,OnInit {
 
 
 	updateChart() {
+		console.time('updateChart');
 		let window = '';
 		switch(this.timeWindow) {
 			case TimeWindow.Hour:
@@ -207,7 +217,9 @@ export class ClimateChartComponent implements AfterViewInit,OnInit {
 				this.chart.data.datasets[4].data.push({x:t.X,y:t.Y});
 			}
 			this.chart.update();
+			console.timeEnd('updateChart');
 		})
+
 	}
 
 	isSelected(w : TimeWindow) {
