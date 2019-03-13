@@ -59,17 +59,17 @@ func (h *Hermes) RegisterZone(reg *dieu.ZoneRegistration, err *dieu.HermesError)
 	}
 	for _, a := range reg.Alarms {
 		regAlarm := RegisteredAlarm{
-			Reason:     a.Reason(),
+			Reason:     a.Reason,
 			On:         false,
 			LastChange: nil,
 			Triggers:   0,
 		}
-		if a.Priority() == dieu.Warning {
+		if a.Priority == dieu.Warning {
 			regAlarm.Level = 1
 		} else {
 			regAlarm.Level = 2
 		}
-		res.alarmMap[a.Reason()] = len(res.zone.Alarms)
+		res.alarmMap[a.Reason] = len(res.zone.Alarms)
 		res.zone.Alarms = append(res.zone.Alarms, regAlarm)
 	}
 	go func() {

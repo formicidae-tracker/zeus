@@ -11,6 +11,11 @@ type ZoneUnregistration struct {
 	Name string
 }
 
+type AlarmDefinition struct {
+	Reason   string
+	Priority Priority
+}
+
 type ZoneRegistration struct {
 	Host           string
 	Name           string
@@ -18,7 +23,7 @@ type ZoneRegistration struct {
 	MaxTemperature *float64
 	MinHumidity    *float64
 	MaxHumidity    *float64
-	Alarms         []Alarm
+	Alarms         []AlarmDefinition
 }
 
 type HermesAlarmEvent struct {

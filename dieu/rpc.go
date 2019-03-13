@@ -101,10 +101,17 @@ func NewRPCReporter(name, address string, alarms []dieu.Alarm) (*RPCReporter, er
 
 	herr := dieu.HermesError("")
 
-	rerr := conn.Call("Hermes.RegisterZone", &dieu.ZoneRegistration{
+	toSend := dieu.ZoneRegistration{
 		Host: hostname,
 		Name: name,
-	}, &herr)
+	}
+	for _, a := range alarms {
+		toSend.Alarms = append(toSend.Alarms, dieu.AlarmDefinition{
+			Reason:   a.Reason(),
+			Priority: a.Priority(),
+		})
+	}
+	rerr := conn.Call("Hermes.RegisterZone", toSend, &herr)
 	if rerr != nil {
 		return nil, fmt.Errorf("rpc: call: %s", rerr)
 	}
