@@ -99,6 +99,7 @@ func (b *busManager) Listen() {
 					b.callbackWaitGroup.Add(1)
 					go func(m *StampedMessage, alarms chan<- dieu.Alarm) {
 						for _, callback := range callbacks {
+							log.Printf("callback %+v", callback)
 							callback(alarms, m)
 						}
 						b.callbackWaitGroup.Done()
