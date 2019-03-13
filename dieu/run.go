@@ -101,13 +101,25 @@ func (cmd *RunCommand) Execute(args []string) error {
 			return err
 		}
 		go alarmMonitors[zname].Monitor()
-		go func() {
-			for ae := range alarmMonitors[zname].Outbound() {
-				rpc[zname].AlarmChannel() <- ae
-			}
-		}()
+		if cmd.NoAvahi == false {
+			go func() {
+				for ae := range alarmMonitors[zname].Outbound() {
+					rpc[zname].AlarmChannel() <- ae
+				}
+			}()
+		} else {
+			go func() {
+				for ae := range alarmMonitors[zname].Outbound() {
+					log.Printf("%+v", ae)
+				}
+			}()
+		}
 
-		capabilities, err := ComputeZoneRequirements(&z, []ClimateReporter{rpc[zname]})
+		reporters := []ClimateReporter{}
+		if cmd.NoAvahi == false {
+			reporters = append(reporters, rpc[zname])
+		}
+		capabilities, err := ComputeZoneRequirements(&z, reporters)
 		if err != nil {
 			return err
 		}
