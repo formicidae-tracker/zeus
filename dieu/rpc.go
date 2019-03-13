@@ -26,8 +26,6 @@ func (r *RPCReporter) AlarmChannel() chan<- dieu.AlarmEvent {
 }
 
 func (r *RPCReporter) Report() {
-	var err error
-
 	for {
 		var herr dieu.HermesError
 		select {
@@ -38,7 +36,7 @@ func (r *RPCReporter) Report() {
 				ncr := dieu.NamedClimateReport{cr, r.Name}
 				rerr := r.Conn.Call("Hermes.ReportClimate", ncr, &herr)
 				if rerr != nil {
-					log.Printf("[%s]: Could not transmit climate report: %s", r.Name, err)
+					log.Printf("[%s]: Could not transmit climate report: %s", r.Name, rerr)
 				}
 				if herr.ToError() != nil {
 					log.Printf("[%s]: Could not transmit climate report: %s", r.Name, herr.ToError())
@@ -51,10 +49,10 @@ func (r *RPCReporter) Report() {
 			} else {
 				rerr := r.Conn.Call("Hermes.ReportAlarm", ae, &herr)
 				if rerr != nil {
-					log.Printf("[%s]: Could not transmit climate report: %s", r.Name, err)
+					log.Printf("[%s]: Could not transmit alarm event: %s", r.Name, rerr)
 				}
 				if herr.ToError() != nil {
-					log.Printf("[%s]: Could not transmit climate report: %s", r.Name, herr.ToError())
+					log.Printf("[%s]: Could not transmit alarm event: %s", r.Name, herr.ToError())
 				}
 			}
 		}
