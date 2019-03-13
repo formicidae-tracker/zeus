@@ -88,6 +88,7 @@ func (b *busManager) Listen() {
 		select {
 		case m, ok := <-frames:
 			if ok == false {
+				log.Printf("closing loop")
 				return
 			}
 			if m.M.MessageClassID() == arke.HeartBeatMessage {

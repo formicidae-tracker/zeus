@@ -163,6 +163,7 @@ func (cmd *RunCommand) Execute(args []string) error {
 		m.Close()
 	}
 
+	log.Printf("waiting for everything to end")
 	wg.Wait()
 
 	return nil
