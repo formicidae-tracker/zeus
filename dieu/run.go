@@ -65,6 +65,8 @@ func (cmd *RunCommand) Execute(args []string) error {
 	start := time.Now().UTC()
 	init := make(chan struct{})
 	for zname, z := range c.Zones {
+		log.Printf("Loading zone '%s'", zname)
+		log.Printf("[%s]: compute interpoler", zname)
 		var err error
 		interpolers[zname], err = NewClimateInterpoler(z.States, z.Transitions, start)
 		if err != nil {
@@ -73,6 +75,7 @@ func (cmd *RunCommand) Execute(args []string) error {
 
 		m, ok := managers[z.CANInterface]
 		if ok == false {
+			log.Printf("[%s]: opening %s", zname, z.CANInterface)
 			var err error
 			m, err := NewBusManager(z.CANInterface)
 			if err != nil {
@@ -81,6 +84,7 @@ func (cmd *RunCommand) Execute(args []string) error {
 			managers[z.CANInterface] = m
 		}
 
+		log.Printf("[%s]: opening RPC connection to %s", zname, olympusHost)
 		rpc[zname], err = NewRPCReporter(zname, olympusHost)
 		if err != nil {
 			return err
@@ -106,6 +110,7 @@ func (cmd *RunCommand) Execute(args []string) error {
 		m.AssignCapabilitiesForID(arke.NodeID(z.DevicesID), capabilities, alarmMonitors[zname].Inbound())
 
 		go func(i ClimateInterpoler, caps []capability) {
+			log.Printf("[%s]: Starting inetrpolation loop ", zname)
 			quit := make(chan struct{})
 			go func() {
 				sigint := make(chan os.Signal, 1)
@@ -141,6 +146,7 @@ func (cmd *RunCommand) Execute(args []string) error {
 	for _, m := range managers {
 		wg.Add(1)
 		go func() {
+			log.Printf("Starting CAN loop")
 			m.Listen()
 			wg.Done()
 		}()
