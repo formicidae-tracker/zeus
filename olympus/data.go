@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"math"
 	"math/rand"
 	"sync"
@@ -164,9 +163,7 @@ func (m *climateReportManager) Sample() {
 			if ok == false {
 				return
 			}
-			log.Printf("coucou %+v", r)
 			m.addReportUnsafe(&r)
-			log.Printf("It was nice")
 		}
 	}
 }

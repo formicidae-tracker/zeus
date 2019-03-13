@@ -73,9 +73,7 @@ func (h *Hermes) RegisterZone(reg *dieu.ZoneRegistration, err *dieu.HermesError)
 		res.zone.Alarms = append(res.zone.Alarms, regAlarm)
 	}
 	go func() {
-		log.Printf("Sampling")
 		res.climate.Sample()
-		log.Printf("done :(")
 	}()
 
 	h.zones[reg.Fullname()] = res
@@ -111,13 +109,9 @@ func (h *Hermes) ReportClimate(cr *dieu.NamedClimateReport, err *dieu.HermesErro
 		return nil
 	}
 
-	log.Printf("coucou 1")
 	z.zone.Temperature = float64((*cr).Temperatures[0])
-	log.Printf("coucou 2")
 	z.zone.Humidity = float64((*cr).Humidity)
-	log.Printf("coucou 3")
 
-	log.Printf("[rpc] New climate report %v", cr)
 	z.climate.Inbound() <- dieu.ClimateReport{
 		Time:         cr.Time,
 		Humidity:     cr.Humidity,
