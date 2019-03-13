@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/rpc"
+	"os"
 	"sync"
 
 	"git.tuleu.science/fort/dieu"
@@ -11,26 +12,29 @@ import (
 )
 
 type Hermes struct {
-	C chan *C
+	hostname string
+	C        chan *C
 }
 
-func (h *Hermes) UnregisterZone(name *string, err *error) error {
+func (h *Hermes) UnregisterZone(zu *dieu.ZoneUnregistration, err *error) error {
 	c := <-h.C
-	c.Check(*name, Equals, "myself/zones/test-zone")
+	c.Check(zu.Host, Equals, h.hostname)
+	c.Check(zu.Name, Equals, "test-zone")
 	*err = nil
 	return nil
 }
 
-func (h *Hermes) RegisterZone(name *string, err *error) error {
+func (h *Hermes) RegisterZone(zr *dieu.ZoneRegistration, err *error) error {
 	c := <-h.C
-	c.Check(*name, Equals, "myself/zones/test-zone")
+	c.Check(zr.Host, Equals, h.hostname)
+	c.Check(zr.Name, Equals, "test-zone")
 	*err = nil
 	return nil
 }
 
 func (h *Hermes) ReportClimate(cr *dieu.NamedClimateReport, err *error) error {
 	c := <-h.C
-	c.Check(cr.ZoneIdentifier, Equals, "myself/zones/test-zone")
+	c.Check(cr.ZoneIdentifier, Equals, h.hostname+"/zone/test-zone")
 	c.Check(cr.Humidity, Equals, dieu.Humidity(50.0))
 	for i := 0; i < 4; i++ {
 		c.Check(cr.Temperatures[i], Equals, dieu.Temperature(21))
@@ -51,9 +55,11 @@ type RPCClimateReporterSuite struct {
 var _ = Suite(&RPCClimateReporterSuite{})
 
 func (s *RPCClimateReporterSuite) SetUpSuite(c *C) {
+	hostname, err := os.Hostname()
+	c.Assert(err, IsNil)
 	s.Http = &http.Server{Addr: testAddress}
 	s.Rpc = rpc.NewServer()
-	s.H = &Hermes{make(chan *C)}
+	s.H = &Hermes{hostname: hostname, C: make(chan *C)}
 	s.Rpc.Register(s.H)
 	s.Rpc.HandleHTTP(rpc.DefaultRPCPath, rpc.DefaultDebugPath)
 	s.Errors = make(chan error)
@@ -75,7 +81,7 @@ func (s *RPCClimateReporterSuite) TearDownSuite(c *C) {
 
 func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 	go func() { s.H.C <- c }()
-	n, err := NewRPCReporter("myself/zones/test-zone", testAddress)
+	n, err := NewRPCReporter("test-zone", testAddress)
 	c.Assert(err, IsNil)
 
 	wg := sync.WaitGroup{}

@@ -45,7 +45,7 @@ func (s *AlarmMonitorSuite) TestName(c *C) {
 	testName := "test-zone"
 	m, err := NewAlarmMonitor(testName)
 	c.Assert(err, IsNil)
-	c.Check(m.Name(), Equals, path.Join(s.Hostname, "zones", testName))
+	c.Check(m.Name(), Equals, path.Join(s.Hostname, "zone", testName))
 }
 
 func (s *AlarmMonitorSuite) TestMonitor(c *C) {

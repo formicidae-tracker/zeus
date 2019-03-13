@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"net/rpc"
+	"os"
+	"path"
 
 	"git.tuleu.science/fort/dieu"
 )
@@ -52,20 +54,35 @@ func (r *RPCReporter) Report() {
 		}
 	}
 
-	rerr := r.Conn.Call("Hermes.UnregisterZone", r.Name, &err)
+	name := path.Base(r.Name)
+	host := path.Dir(path.Dir(r.Name))
+	rerr := r.Conn.Call("Hermes.UnregisterZone", &dieu.ZoneUnregistration{
+		Name: name,
+		Host: host,
+	}, &err)
 	if rerr != nil {
-		log.Printf("[%s]: Could not unregister zone: %s", r.Name, err)
+		log.Printf("[%s]: Could not unregister zone: %s", r.Name, rerr)
 	}
 	r.Conn.Close()
 }
 
 func NewRPCReporter(name, address string) (*RPCReporter, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return nil, err
+	}
+
+	fullname := path.Join(hostname, "zone", name)
+
 	conn, err := rpc.DialHTTP("tcp", address)
 	if err != nil {
 		return nil, err
 	}
 
-	rerr := conn.Call("Hermes.RegisterZone", name, &err)
+	rerr := conn.Call("Hermes.RegisterZone", &dieu.ZoneRegistration{
+		Host: hostname,
+		Name: name,
+	}, &err)
 	if rerr != nil {
 		return nil, rerr
 	}
@@ -74,7 +91,7 @@ func NewRPCReporter(name, address string) (*RPCReporter, error) {
 	}
 
 	return &RPCReporter{
-		Name:           name,
+		Name:           fullname,
 		Conn:           conn,
 		ClimateReports: make(chan dieu.ClimateReport, 20),
 		AlarmReports:   make(chan dieu.AlarmEvent, 20),

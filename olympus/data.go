@@ -208,7 +208,7 @@ const (
 	weekSamples = 500
 )
 
-func NewClimateReportManager() (ClimateReportManager, error) {
+func NewClimateReportManager() ClimateReportManager {
 	return &climateReportManager{
 		inbound:  make(chan dieu.ClimateReport),
 		requests: make(chan request),
@@ -229,14 +229,14 @@ func NewClimateReportManager() (ClimateReportManager, error) {
 			newRollingDownsampler(7*24*time.Hour.Seconds(), weekSamples),
 			newRollingDownsampler(7*24*time.Hour.Seconds(), weekSamples),
 		},
-	}, nil
+	}
 }
 
 var stubClimateReporter ClimateReportManager
 
 func setClimateReporterStub() {
 
-	stubClimateReporter, _ = NewClimateReportManager()
+	stubClimateReporter = NewClimateReportManager()
 	end := time.Now()
 	start := end.Add(-7 * 24 * time.Hour)
 	go stubClimateReporter.Sample()

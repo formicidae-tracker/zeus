@@ -52,43 +52,30 @@ func LogWrap(h http.Handler) http.Handler {
 }
 
 func Execute() error {
-	setClimateReporterStub()
+	h := NewHermes()
+
 	router := mux.NewRouter()
 
 	router.HandleFunc("/api/zones", func(w http.ResponseWriter, r *http.Request) {
-		res := []RegisteredZone{
-			{Host: "helms-deep", Name: "box"},
-			{Host: "helms-deep", Name: "tunnel"},
-			{Host: "minas-tirith", Name: "box"},
-			{Host: "rivendel", Name: "box"},
-		}
-
+		res := h.Zones()
 		JSON(w, &res)
 	}).Methods("GET")
 
 	router.HandleFunc("/api/host/{hname}/zone/{zname}/climate-report", func(w http.ResponseWriter, r *http.Request) {
-		askedWindow := r.URL.Query().Get("window")
-		var res ClimateReportTimeSerie
-		switch askedWindow {
-		case "hour":
-			res = stubClimateReporter.LastHour()
-		case "day":
-			res = stubClimateReporter.LastDay()
-		case "week":
-			res = stubClimateReporter.LastWeek()
-		default:
-			res = stubClimateReporter.LastDay()
+		vars := mux.Vars(r)
+		res, err := h.ClimateReport(vars["hname"], vars["zname"], r.URL.Query().Get("window"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		JSON(w, &res)
 	}).Methods("GET")
 
 	router.HandleFunc("/api/host/{hname}/zone/{zname}", func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-
-		res := stubZone
-		stubZone.Host = vars["hname"]
-		stubZone.Name = vars["zname"]
-
+		res, err := h.Zone(vars["hname"], vars["zname"])
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 		JSON(w, &res)
 	}).Methods("GET")
 

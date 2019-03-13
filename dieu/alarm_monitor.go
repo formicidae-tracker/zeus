@@ -110,6 +110,6 @@ func NewAlarmMonitor(zoneName string) (AlarmMonitor, error) {
 	return &alarmMonitor{
 		inbound:  make(chan dieu.Alarm, 30),
 		outbound: make(chan dieu.AlarmEvent, 60),
-		name:     path.Join(hostname, "zones", zoneName),
+		name:     path.Join(hostname, "zone", zoneName),
 	}, nil
 }
