@@ -113,7 +113,7 @@ func (h *Hermes) ReportClimate(cr *dieu.NamedClimateReport, err *dieu.HermesErro
 
 	z.zone.Temperature = float64((*cr).Temperatures[0])
 	z.zone.Humidity = float64((*cr).Humidity)
-	log.Printf("[rpc] New climate report %+v", cr)
+	//	log.Printf("[rpc] New climate report %+v", cr)
 	z.climate.Inbound() <- dieu.ClimateReport{
 		Time:         cr.Time,
 		Humidity:     cr.Humidity,
