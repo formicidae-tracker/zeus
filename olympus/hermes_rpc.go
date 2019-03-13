@@ -30,12 +30,12 @@ type Hermes struct {
 	zones map[string]*ZoneData
 }
 
-func (h *Hermes) RegisterZone(reg *dieu.ZoneRegistration, err *error) error {
+func (h *Hermes) RegisterZone(reg *dieu.ZoneRegistration, err *dieu.HermesError) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 
 	if _, ok := h.zones[reg.Fullname()]; ok == true {
-		*err = fmt.Errorf("hermes: zone %s is already registered", reg.Fullname())
+		dieu.ReturnError(err, fmt.Errorf("hermes: zone %s is already registered", reg.Fullname()))
 		return nil
 	}
 	res := &ZoneData{
@@ -74,13 +74,13 @@ func (h *Hermes) RegisterZone(reg *dieu.ZoneRegistration, err *error) error {
 	return nil
 }
 
-func (h *Hermes) UnregisterZone(reg *dieu.ZoneUnregistration, err *error) error {
+func (h *Hermes) UnregisterZone(reg *dieu.ZoneUnregistration, err *dieu.HermesError) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 
 	z, ok := h.zones[reg.Fullname()]
 	if ok == false {
-		*err = ZoneNotFoundError(reg.Fullname())
+		dieu.ReturnError(err, ZoneNotFoundError(reg.Fullname()))
 		return nil
 	}
 
@@ -88,16 +88,17 @@ func (h *Hermes) UnregisterZone(reg *dieu.ZoneUnregistration, err *error) error 
 	close(z.climate.Inbound())
 	delete(h.zones, reg.Fullname())
 
+	dieu.ReturnError(err, nil)
 	return nil
 }
 
-func (h *Hermes) ReportClimate(cr *dieu.NamedClimateReport, err *error) error {
+func (h *Hermes) ReportClimate(cr *dieu.NamedClimateReport, err *dieu.HermesError) error {
 	h.mutex.RLock()
 	defer h.mutex.RUnlock()
 
 	z, ok := h.zones[cr.ZoneIdentifier]
 	if ok == false {
-		*err = ZoneNotFoundError(cr.ZoneIdentifier)
+		dieu.ReturnError(err, ZoneNotFoundError(cr.ZoneIdentifier))
 		return nil
 	}
 
@@ -109,21 +110,22 @@ func (h *Hermes) ReportClimate(cr *dieu.NamedClimateReport, err *error) error {
 	z.zone.Temperature = float64(cr.Temperatures[0])
 	z.zone.Humidity = float64(cr.Humidity)
 
+	dieu.ReturnError(err, nil)
 	return nil
 }
 
-func (h *Hermes) ReportAlarm(ae *dieu.AlarmEvent, err *error) error {
+func (h *Hermes) ReportAlarm(ae *dieu.AlarmEvent, err *dieu.HermesError) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 
 	z, ok := h.zones[ae.Zone]
 	if ok == false {
-		*err = ZoneNotFoundError(ae.Zone)
+		dieu.ReturnError(err, ZoneNotFoundError(ae.Zone))
 		return nil
 	}
 	aIdx, ok := z.alarmMap[ae.Alarm.Reason()]
 	if ok == false {
-		*err = fmt.Errorf("hermes: Zone '%s' does not defines alarm '%s'", ae.Zone, ae.Alarm.Reason())
+		dieu.ReturnError(err, fmt.Errorf("hermes: Zone '%s' does not defines alarm '%s'", ae.Zone, ae.Alarm.Reason()))
 		return nil
 	}
 
@@ -139,6 +141,7 @@ func (h *Hermes) ReportAlarm(ae *dieu.AlarmEvent, err *error) error {
 
 	//TODO: notify
 
+	dieu.ReturnError(err, nil)
 	return nil
 }
 

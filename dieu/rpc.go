@@ -29,24 +29,32 @@ func (r *RPCReporter) Report() {
 	var err error
 
 	for {
+		var herr dieu.HermesError
 		select {
 		case cr, ok := <-r.ClimateReports:
 			if ok == false {
 				r.ClimateReports = nil
 			} else {
 				ncr := dieu.NamedClimateReport{cr, r.Name}
-				rerr := r.Conn.Call("Hermes.ReportClimate", ncr, &err)
+				rerr := r.Conn.Call("Hermes.ReportClimate", ncr, &herr)
 				if rerr != nil {
 					log.Printf("[%s]: Could not transmit climate report: %s", r.Name, err)
 				}
+				if herr.ToError() != nil {
+					log.Printf("[%s]: Could not transmit climate report: %s", r.Name, herr.ToError())
+				}
+
 			}
 		case ae, ok := <-r.AlarmReports:
 			if ok == false {
 				r.AlarmReports = nil
 			} else {
-				rerr := r.Conn.Call("Hermes.ReportAlarm", ae, &err)
+				rerr := r.Conn.Call("Hermes.ReportAlarm", ae, &herr)
 				if rerr != nil {
 					log.Printf("[%s]: Could not transmit climate report: %s", r.Name, err)
+				}
+				if herr.ToError() != nil {
+					log.Printf("[%s]: Could not transmit climate report: %s", r.Name, herr.ToError())
 				}
 			}
 		}
@@ -57,12 +65,16 @@ func (r *RPCReporter) Report() {
 
 	name := path.Base(r.Name)
 	host := path.Dir(path.Dir(r.Name))
+	herr := dieu.HermesError("")
 	rerr := r.Conn.Call("Hermes.UnregisterZone", &dieu.ZoneUnregistration{
 		Name: name,
 		Host: host,
-	}, &err)
+	}, &herr)
 	if rerr != nil {
 		log.Printf("[%s]: Could not unregister zone: %s", r.Name, rerr)
+	}
+	if herr.ToError() != nil {
+		log.Printf("[%s]: Could not unregister zone: %s", r.Name, herr.ToError())
 	}
 	r.Conn.Close()
 }
@@ -80,15 +92,17 @@ func NewRPCReporter(name, address string) (*RPCReporter, error) {
 		return nil, fmt.Errorf("rpc: conn: %s", err)
 	}
 
+	herr := dieu.HermesError("")
+
 	rerr := conn.Call("Hermes.RegisterZone", &dieu.ZoneRegistration{
 		Host: hostname,
 		Name: name,
-	}, &err)
+	}, &herr)
 	if rerr != nil {
 		return nil, fmt.Errorf("rpc: call: %s", rerr)
 	}
-	if err != nil {
-		return nil, fmt.Errorf("rpc: Hermes.RegisterZone: %s", err)
+	if herr.ToError() != nil {
+		return nil, fmt.Errorf("rpc: Hermes.RegisterZone: %s", herr.ToError())
 	}
 
 	return &RPCReporter{

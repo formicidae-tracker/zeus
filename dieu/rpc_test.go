@@ -16,30 +16,30 @@ type Hermes struct {
 	C        chan *C
 }
 
-func (h *Hermes) UnregisterZone(zu *dieu.ZoneUnregistration, err *error) error {
+func (h *Hermes) UnregisterZone(zu *dieu.ZoneUnregistration, err *dieu.HermesError) error {
 	c := <-h.C
 	c.Check(zu.Host, Equals, h.hostname)
 	c.Check(zu.Name, Equals, "test-zone")
-	*err = nil
+	*err = dieu.HermesError("")
 	return nil
 }
 
-func (h *Hermes) RegisterZone(zr *dieu.ZoneRegistration, err *error) error {
+func (h *Hermes) RegisterZone(zr *dieu.ZoneRegistration, err *dieu.HermesError) error {
 	c := <-h.C
 	c.Check(zr.Host, Equals, h.hostname)
 	c.Check(zr.Name, Equals, "test-zone")
-	*err = nil
+	*err = dieu.HermesError("")
 	return nil
 }
 
-func (h *Hermes) ReportClimate(cr *dieu.NamedClimateReport, err *error) error {
+func (h *Hermes) ReportClimate(cr *dieu.NamedClimateReport, err *dieu.HermesError) error {
 	c := <-h.C
 	c.Check(cr.ZoneIdentifier, Equals, h.hostname+"/zone/test-zone")
 	c.Check(cr.Humidity, Equals, dieu.Humidity(50.0))
 	for i := 0; i < 4; i++ {
 		c.Check(cr.Temperatures[i], Equals, dieu.Temperature(21))
 	}
-	*err = nil
+	*err = dieu.HermesError("")
 	return nil
 }
 

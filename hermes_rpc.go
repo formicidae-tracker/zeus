@@ -1,6 +1,9 @@
 package dieu
 
-import "path"
+import (
+	"errors"
+	"path"
+)
 
 type ZoneUnregistration struct {
 	Host string
@@ -23,4 +26,20 @@ func (zr ZoneUnregistration) Fullname() string {
 
 func (zr ZoneRegistration) Fullname() string {
 	return path.Join(zr.Host, "zone", zr.Name)
+}
+
+type HermesError string
+
+func (e HermesError) ToError() error {
+	if len(e) == 0 {
+		return nil
+	}
+	return errors.New(string(e))
+}
+
+func ReturnError(ret *HermesError, val error) {
+	if val == nil {
+		*ret = HermesError("")
+	}
+	*ret = HermesError(val.Error())
 }

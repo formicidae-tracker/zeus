@@ -164,7 +164,7 @@ func Execute() error {
 			log.Printf("Using zeroconf discovery service")
 			server, err := zeroconf.Register("Olympus", "_olympus._tcp", "local.", opts.RPC, nil, nil)
 			if err != nil {
-				log.Printf("[avahi] register error: %", err)
+				log.Printf("[avahi] register error: %s", err)
 				return
 			}
 			sigint := make(chan os.Signal, 1)
