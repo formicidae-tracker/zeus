@@ -10,7 +10,14 @@ import (
 	"path/filepath"
 
 	"github.com/gorilla/mux"
+	"github.com/jessevdk/go-flags"
 )
+
+type Options struct {
+	Address string `long:"http-listen" short:"l" description:"Address for the HTTP server" default:":3000"`
+	RPC     string `long:"rpc-listen" short:"r" description:"Address for the RPC Service" default:":3001"`
+	NoAvahi bool   `long:"no-avahi" short:"n" description:"Do not use avahi service broadcast"`
+}
 
 func JSON(w http.ResponseWriter, obj interface{}) {
 	data, err := json.Marshal(obj)
@@ -52,6 +59,12 @@ func LogWrap(h http.Handler) http.Handler {
 }
 
 func Execute() error {
+	opts := Options{}
+
+	if _, err := flags.Parse(&opts); err != nil {
+		return err
+	}
+
 	h := NewHermes()
 
 	router := mux.NewRouter()
@@ -99,7 +112,8 @@ func Execute() error {
 	router.Use(LogWrap)
 	router.Use(RecoverWrap)
 
-	return http.ListenAndServe(":3000", router)
+	log.Printf("Listening on %s", opts.Address)
+	return http.ListenAndServe(opts.Address, router)
 }
 
 func main() {
