@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/rpc"
 	"os"
@@ -76,7 +77,7 @@ func NewRPCReporter(name, address string) (*RPCReporter, error) {
 
 	conn, err := rpc.DialHTTP("tcp", address)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("rpc: conn: %s", err)
 	}
 
 	rerr := conn.Call("Hermes.RegisterZone", &dieu.ZoneRegistration{
@@ -84,10 +85,10 @@ func NewRPCReporter(name, address string) (*RPCReporter, error) {
 		Name: name,
 	}, &err)
 	if rerr != nil {
-		return nil, rerr
+		return nil, fmt.Errorf("rpc: call: %s", rerr)
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("rpc: Hermes.RegisterZone: %s", err)
 	}
 
 	return &RPCReporter{
