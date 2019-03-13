@@ -142,7 +142,7 @@ func (h *Hermes) ReportAlarm(ae *dieu.AlarmEvent, err *error) error {
 	return nil
 }
 
-func (h *Hermes) Zones() []RegisteredZone {
+func (h *Hermes) getZones() []RegisteredZone {
 	h.mutex.RLock()
 	defer h.mutex.RUnlock()
 
@@ -158,7 +158,7 @@ func (h *Hermes) Zones() []RegisteredZone {
 	return res
 }
 
-func (h *Hermes) Zone(host, name string) (*RegisteredZone, error) {
+func (h *Hermes) getZone(host, name string) (*RegisteredZone, error) {
 	h.mutex.RLock()
 	defer h.mutex.RUnlock()
 
@@ -172,7 +172,7 @@ func (h *Hermes) Zone(host, name string) (*RegisteredZone, error) {
 	return res, nil
 }
 
-func (h *Hermes) ClimateReport(host, name, window string) (ClimateReportTimeSerie, error) {
+func (h *Hermes) getClimateReport(host, name, window string) (ClimateReportTimeSerie, error) {
 	h.mutex.RLock()
 	defer h.mutex.RUnlock()
 
