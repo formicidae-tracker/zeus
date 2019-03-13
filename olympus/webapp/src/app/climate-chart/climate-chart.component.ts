@@ -150,6 +150,7 @@ export class ClimateChartComponent implements AfterViewInit,OnInit {
 							id: 'y-humidity',
 							gridLines: { drawOnChartArea: false},
 							scaleLabel:{display: true,labelString: 'Humidity (%)'},
+							ticks: {min: 20.0,max:85.0}
 						},
 						{
 							type: 'linear',
@@ -157,6 +158,7 @@ export class ClimateChartComponent implements AfterViewInit,OnInit {
 							position: 'left',
 							id: 'y-temperature',
 							scaleLabel:{display: true,labelString: 'Temperature (°C)'},
+							ticks: {min: 15.0,max:35.0}
 						}
 					]
 				}

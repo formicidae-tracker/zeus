@@ -8,19 +8,15 @@ import (
 	"time"
 
 	"git.tuleu.science/fort/dieu"
+	"github.com/dgryski/go-lttb"
 )
 
-type Point struct {
-	X float64
-	Y float64
-}
-
 type ClimateReportTimeSerie struct {
-	Humidity        []Point
-	TemperatureAnt  []Point
-	TemperatureAux1 []Point
-	TemperatureAux2 []Point
-	TemperatureAux3 []Point
+	Humidity        []lttb.Point
+	TemperatureAnt  []lttb.Point
+	TemperatureAux1 []lttb.Point
+	TemperatureAux2 []lttb.Point
+	TemperatureAux3 []lttb.Point
 }
 
 type ClimateReportManager interface {
@@ -45,73 +41,54 @@ type request struct {
 }
 
 type climateReportManager struct {
-	inbound         chan dieu.ClimateReport
-	requests        chan request
-	quit            chan struct{}
-	wg              sync.WaitGroup
-	hour, day, week ClimateReportTimeSerie
-	start           *time.Time
+	inbound      chan dieu.ClimateReport
+	requests     chan request
+	quit         chan struct{}
+	wg           sync.WaitGroup
+	downsamplers []rollingDownsampler
+	start        *time.Time
 }
 
-func truncate(ts ClimateReportTimeSerie, duration time.Duration) ClimateReportTimeSerie {
-	if len(ts.Humidity) == 0 {
-		return ts
+type rollingDownsampler struct {
+	xPeriod   float64
+	threshold int
+	sampled   bool
+	points    []lttb.Point
+}
+
+func newRollingDownsampler(period float64, nbSamples int) rollingDownsampler {
+	res := rollingDownsampler{
+		xPeriod:   period,
+		threshold: nbSamples,
+		sampled:   false,
+		points:    make([]lttb.Point, 0, nbSamples),
 	}
+	return res
+}
 
+func (d *rollingDownsampler) add(p lttb.Point) {
+	d.points = append(d.points, p)
 	idx := 0
-	ellapsed := ts.Humidity[len(ts.Humidity)-1].X
+	last := d.points[len(d.points)-1].X
 	for {
-		start := ts.Humidity[idx].X
-
-		if ellapsed-start > float64(duration.Nanoseconds()/1e6) {
-			idx += 1
-		} else {
+		if (last - d.points[idx].X) <= d.xPeriod {
 			break
 		}
+		idx += 1
 	}
 
 	if idx != 0 {
-		ts.Humidity = ts.Humidity[idx:]
-		ts.TemperatureAnt = ts.TemperatureAnt[idx:]
-		ts.TemperatureAux1 = ts.TemperatureAux1[idx:]
-		ts.TemperatureAux2 = ts.TemperatureAux2[idx:]
-		ts.TemperatureAux3 = ts.TemperatureAux3[idx:]
+		d.points = d.points[idx:]
 	}
-	return ts
+	d.sampled = false
 }
 
-func appendPoints(ts ClimateReportTimeSerie, humidity, temperatureAnt, temperatureAux1, temperatureAux2, temperatureAux3 Point) ClimateReportTimeSerie {
-	ts.Humidity = append(ts.Humidity, humidity)
-	ts.TemperatureAnt = append(ts.TemperatureAnt, temperatureAnt)
-	ts.TemperatureAux1 = append(ts.TemperatureAux1, temperatureAux1)
-	ts.TemperatureAux2 = append(ts.TemperatureAux2, temperatureAux2)
-	ts.TemperatureAux3 = append(ts.TemperatureAux3, temperatureAux3)
-	return ts
-}
-
-func downsample(ts ClimateReportTimeSerie, duration time.Duration) ClimateReportTimeSerie {
-	res := ClimateReportTimeSerie{make([]Point, 0, len(ts.Humidity)), make([]Point, 0, len(ts.Humidity)), make([]Point, 0, len(ts.Humidity)), make([]Point, 0, len(ts.Humidity)), make([]Point, 0, len(ts.Humidity))}
-
-	if len(ts.Humidity) == 0 {
-		return res
+func (d *rollingDownsampler) getPoints() []lttb.Point {
+	if d.sampled == false {
+		d.points = lttb.LTTB(d.points, d.threshold)
+		d.sampled = true
 	}
-	res = appendPoints(res, ts.Humidity[0], ts.TemperatureAnt[0], ts.TemperatureAux1[0], ts.TemperatureAux2[0], ts.TemperatureAux3[0])
-	lastTime := ts.Humidity[0].X
-	for i := 1; i < (len(ts.Humidity) - 1); i++ {
-		curTime := ts.Humidity[i].X
-		ellapsed := curTime - lastTime
-		if ellapsed < float64(duration.Nanoseconds()/1e6) {
-
-			continue
-		}
-		res = appendPoints(res, ts.Humidity[i], ts.TemperatureAnt[i], ts.TemperatureAux1[i], ts.TemperatureAux2[i], ts.TemperatureAux3[i])
-		lastTime = curTime
-	}
-	if len(ts.Humidity) > 1 {
-		lastIdx := len(ts.Humidity) - 1
-		res = appendPoints(res, ts.Humidity[lastIdx], ts.TemperatureAnt[lastIdx], ts.TemperatureAux1[lastIdx], ts.TemperatureAux2[lastIdx], ts.TemperatureAux3[lastIdx])
-	}
-	return res
+	return d.points
 }
 
 func (m *climateReportManager) addReportUnsafe(r *dieu.ClimateReport) {
@@ -119,38 +96,32 @@ func (m *climateReportManager) addReportUnsafe(r *dieu.ClimateReport) {
 		m.start = &time.Time{}
 		*m.start = r.Time
 	}
-
-	ellapsed := float64(r.Time.Sub(*m.start).Nanoseconds() / 1e6)
-
-	m.hour = appendPoints(m.hour,
-		Point{X: ellapsed, Y: float64(r.Humidity)},
-		Point{X: ellapsed, Y: float64(r.Temperatures[0])},
-		Point{X: ellapsed, Y: float64(r.Temperatures[1])},
-		Point{X: ellapsed, Y: float64(r.Temperatures[2])},
-		Point{X: ellapsed, Y: float64(r.Temperatures[3])})
-
-	m.day = appendPoints(m.day,
-		Point{X: ellapsed, Y: float64(r.Humidity)},
-		Point{X: ellapsed, Y: float64(r.Temperatures[0])},
-		Point{X: ellapsed, Y: float64(r.Temperatures[1])},
-		Point{X: ellapsed, Y: float64(r.Temperatures[2])},
-		Point{X: ellapsed, Y: float64(r.Temperatures[3])})
-
-	m.week = appendPoints(m.week,
-		Point{X: ellapsed, Y: float64(r.Humidity)},
-		Point{X: ellapsed, Y: float64(r.Temperatures[0])},
-		Point{X: ellapsed, Y: float64(r.Temperatures[1])},
-		Point{X: ellapsed, Y: float64(r.Temperatures[2])},
-		Point{X: ellapsed, Y: float64(r.Temperatures[3])})
-
-	m.hour = downsample(m.hour, 5*time.Second)
-	m.hour = truncate(m.hour, 1*time.Hour)
-	m.day = downsample(m.day, 5*time.Minute)
-	m.day = truncate(m.day, 24*time.Hour)
-
-	m.week = downsample(m.week, 30*time.Minute)
-	m.week = truncate(m.week, 7*24*time.Hour)
+	ellapsed := r.Time.Sub(*m.start).Seconds()
+	for i := 0; i < 3; i++ {
+		m.downsamplers[5*i].add(lttb.Point{X: ellapsed, Y: float64(r.Humidity)})
+		for j := 0; j < 4; j++ {
+			m.downsamplers[5*i+j+1].add(lttb.Point{X: ellapsed, Y: float64(r.Temperatures[j])})
+		}
+	}
 }
+
+const (
+	humidityHourIdx = iota
+	temperatureAntHourIdx
+	temperatureAux1HourIdx
+	temperatureAux2HourIdx
+	temperatureAux3HourIdx
+	humidityDayIdx
+	temperatureAntDayIdx
+	temperatureAux1DayIdx
+	temperatureAux2DayIdx
+	temperatureAux3DayIdx
+	humidityWeekIdx
+	temperatureAntWeekIdx
+	temperatureAux1WeekIdx
+	temperatureAux2WeekIdx
+	temperatureAux3WeekIdx
+)
 
 func (m *climateReportManager) Sample() {
 	m.quit = make(chan struct{})
@@ -164,11 +135,29 @@ func (m *climateReportManager) Sample() {
 			log.Printf("request")
 			switch r.w {
 			case hour:
-				r.result <- m.hour
+				r.result <- ClimateReportTimeSerie{
+					Humidity:        m.downsamplers[humidityHourIdx].getPoints(),
+					TemperatureAnt:  m.downsamplers[temperatureAntHourIdx].getPoints(),
+					TemperatureAux1: m.downsamplers[temperatureAux1HourIdx].getPoints(),
+					TemperatureAux2: m.downsamplers[temperatureAux2HourIdx].getPoints(),
+					TemperatureAux3: m.downsamplers[temperatureAux3HourIdx].getPoints(),
+				}
 			case day:
-				r.result <- m.day
+				r.result <- ClimateReportTimeSerie{
+					Humidity:        m.downsamplers[humidityDayIdx].getPoints(),
+					TemperatureAnt:  m.downsamplers[temperatureAntDayIdx].getPoints(),
+					TemperatureAux1: m.downsamplers[temperatureAux1DayIdx].getPoints(),
+					TemperatureAux2: m.downsamplers[temperatureAux2DayIdx].getPoints(),
+					TemperatureAux3: m.downsamplers[temperatureAux3DayIdx].getPoints(),
+				}
 			case week:
-				r.result <- m.week
+				r.result <- ClimateReportTimeSerie{
+					Humidity:        m.downsamplers[humidityWeekIdx].getPoints(),
+					TemperatureAnt:  m.downsamplers[temperatureAntWeekIdx].getPoints(),
+					TemperatureAux1: m.downsamplers[temperatureAux1WeekIdx].getPoints(),
+					TemperatureAux2: m.downsamplers[temperatureAux2WeekIdx].getPoints(),
+					TemperatureAux3: m.downsamplers[temperatureAux3WeekIdx].getPoints(),
+				}
 			default:
 				r.result <- ClimateReportTimeSerie{}
 			}
@@ -217,10 +206,33 @@ func (m *climateReportManager) LastWeek() ClimateReportTimeSerie {
 	return m.lastReport(week)
 }
 
+const (
+	hourSamples = 600
+	daySamples  = 480
+	weekSamples = 500
+)
+
 func NewClimateReportManager() (ClimateReportManager, error) {
 	return &climateReportManager{
 		inbound:  make(chan dieu.ClimateReport),
 		requests: make(chan request),
+		downsamplers: []rollingDownsampler{
+			newRollingDownsampler(time.Hour.Seconds(), hourSamples),
+			newRollingDownsampler(time.Hour.Seconds(), hourSamples),
+			newRollingDownsampler(time.Hour.Seconds(), hourSamples),
+			newRollingDownsampler(time.Hour.Seconds(), hourSamples),
+			newRollingDownsampler(time.Hour.Seconds(), hourSamples),
+			newRollingDownsampler(24*time.Hour.Seconds(), daySamples),
+			newRollingDownsampler(24*time.Hour.Seconds(), daySamples),
+			newRollingDownsampler(24*time.Hour.Seconds(), daySamples),
+			newRollingDownsampler(24*time.Hour.Seconds(), daySamples),
+			newRollingDownsampler(24*time.Hour.Seconds(), daySamples),
+			newRollingDownsampler(7*24*time.Hour.Seconds(), weekSamples),
+			newRollingDownsampler(7*24*time.Hour.Seconds(), weekSamples),
+			newRollingDownsampler(7*24*time.Hour.Seconds(), weekSamples),
+			newRollingDownsampler(7*24*time.Hour.Seconds(), weekSamples),
+			newRollingDownsampler(7*24*time.Hour.Seconds(), weekSamples),
+		},
 	}, nil
 }
 
@@ -247,7 +259,15 @@ func setClimateReporterStub() {
 				},
 			}
 			stubClimateReporter.Inbound() <- toAdd
+			if int(t.Sub(start).Seconds())%3600 == 0 {
+				log.Printf("%s done ", t.Sub(start))
+			}
 		}
-		log.Printf("done")
+		toPrint := []interface{}{}
+		for _, d := range stubClimateReporter.(*climateReportManager).downsamplers {
+			toPrint = append(toPrint, len(d.points))
+		}
+
+		log.Printf("done %+v", toPrint)
 	}()
 }
