@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"path"
 	"sync"
 
@@ -38,6 +39,7 @@ func (h *Hermes) RegisterZone(reg *dieu.ZoneRegistration, err *dieu.HermesError)
 		dieu.ReturnError(err, fmt.Errorf("hermes: zone %s is already registered", reg.Fullname()))
 		return nil
 	}
+	log.Printf("[rpc] Registering %s", reg.Fullname())
 	res := &ZoneData{
 		zone: RegisteredZone{
 			Host: reg.Host,
@@ -83,7 +85,7 @@ func (h *Hermes) UnregisterZone(reg *dieu.ZoneUnregistration, err *dieu.HermesEr
 		dieu.ReturnError(err, ZoneNotFoundError(reg.Fullname()))
 		return nil
 	}
-
+	log.Printf("[rpc] Unregistering  %s", reg.Fullname())
 	//it will close Sample go routine
 	close(z.climate.Inbound())
 	delete(h.zones, reg.Fullname())
@@ -102,6 +104,7 @@ func (h *Hermes) ReportClimate(cr *dieu.NamedClimateReport, err *dieu.HermesErro
 		return nil
 	}
 
+	log.Printf("[rpc] New climate report %v", cr)
 	z.climate.Inbound() <- dieu.ClimateReport{
 		Time:         cr.Time,
 		Humidity:     cr.Humidity,
@@ -129,6 +132,7 @@ func (h *Hermes) ReportAlarm(ae *dieu.AlarmEvent, err *dieu.HermesError) error {
 		return nil
 	}
 
+	log.Printf("[rpc] New alarm event %v", ae)
 	if ae.Status == dieu.AlarmOn {
 		if z.zone.Alarms[aIdx].On == false {
 			z.zone.Alarms[aIdx].Triggers += 1

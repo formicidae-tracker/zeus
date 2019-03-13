@@ -77,7 +77,7 @@ func (cmd *RunCommand) Execute(args []string) error {
 		if ok == false {
 			log.Printf("[%s]: opening %s", zname, z.CANInterface)
 			var err error
-			m, err := NewBusManager(z.CANInterface)
+			m, err = NewBusManager(z.CANInterface)
 			if err != nil {
 				return err
 			}
