@@ -3,6 +3,7 @@ package dieu
 import (
 	"errors"
 	"path"
+	"time"
 )
 
 type ZoneUnregistration struct {
@@ -18,6 +19,13 @@ type ZoneRegistration struct {
 	MinHumidity    *float64
 	MaxHumidity    *float64
 	Alarms         []Alarm
+}
+
+type HermesAlarmEvent struct {
+	ZoneIdentifier string
+	Reason         string
+	Status         bool
+	Time           time.Time
 }
 
 func (zr ZoneUnregistration) Fullname() string {

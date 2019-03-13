@@ -121,23 +121,23 @@ func (h *Hermes) ReportClimate(cr *dieu.NamedClimateReport, err *dieu.HermesErro
 	return nil
 }
 
-func (h *Hermes) ReportAlarm(ae *dieu.AlarmEvent, err *dieu.HermesError) error {
+func (h *Hermes) ReportAlarm(ae *dieu.HermesAlarmEvent, err *dieu.HermesError) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 
-	z, ok := h.zones[ae.Zone]
+	z, ok := h.zones[ae.ZoneIdentifier]
 	if ok == false {
-		dieu.ReturnError(err, ZoneNotFoundError(ae.Zone))
+		dieu.ReturnError(err, ZoneNotFoundError(ae.ZoneIdentifier))
 		return nil
 	}
-	aIdx, ok := z.alarmMap[ae.Alarm.Reason()]
+	aIdx, ok := z.alarmMap[ae.Reason]
 	if ok == false {
-		dieu.ReturnError(err, fmt.Errorf("hermes: Zone '%s' does not defines alarm '%s'", ae.Zone, ae.Alarm.Reason()))
+		dieu.ReturnError(err, fmt.Errorf("hermes: Zone '%s' does not defines alarm '%s'", ae.ZoneIdentifier, ae.Reason))
 		return nil
 	}
 
 	log.Printf("[rpc] New alarm event %v", ae)
-	if ae.Status == dieu.AlarmOn {
+	if ae.Status == true {
 		if z.zone.Alarms[aIdx].On == false {
 			z.zone.Alarms[aIdx].Triggers += 1
 		}
@@ -158,6 +158,7 @@ func (h *Hermes) getZones() []RegisteredZone {
 	defer h.mutex.RUnlock()
 
 	res := make([]RegisteredZone, 0, len(h.zones))
+	log.Printf("I have %d zones", len(h.zones))
 	for _, z := range h.zones {
 		toAppend := RegisteredZone{
 			Host: z.zone.Host,

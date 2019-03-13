@@ -47,7 +47,16 @@ func (r *RPCReporter) Report() {
 			if ok == false {
 				r.AlarmReports = nil
 			} else {
-				rerr := r.Conn.Call("Hermes.ReportAlarm", ae, &herr)
+				toSend := dieu.HermesAlarmEvent{
+					Time:           ae.Time,
+					Reason:         ae.Alarm.Reason(),
+					ZoneIdentifier: ae.Zone,
+					Status:         false,
+				}
+				if ae.Status == dieu.AlarmOn {
+					toSend.Status = true
+				}
+				rerr := r.Conn.Call("Hermes.ReportAlarm", toSend, &herr)
 				if rerr != nil {
 					log.Printf("[%s]: Could not transmit alarm event: %s", r.Name, rerr)
 				}
