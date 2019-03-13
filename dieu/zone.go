@@ -2,10 +2,9 @@ package main
 
 import "git.tuleu.science/fort/dieu"
 
-func ComputeZoneRequirements(z *dieu.Zone) ([]capability, error) {
+func ComputeZoneRequirements(z *dieu.Zone, reporters []ClimateReporter) ([]capability, error) {
 	res := []capability{}
 
-	notifiers := []ClimateReporter{}
 	needClimateReport := false
 	if dieu.IsUndefined(z.MinimalTemperature) == false || dieu.IsUndefined(z.MaximalTemperature) == false {
 		needClimateReport = true
@@ -18,13 +17,13 @@ func ComputeZoneRequirements(z *dieu.Zone) ([]capability, error) {
 		if err != nil {
 			return res, err
 		}
-		notifiers = append(notifiers, fn)
+		reporters = append(reporters, fn)
 	}
 
-	if needClimateReport == true || len(notifiers) != 0 {
+	if needClimateReport == true || len(reporters) != 0 {
 
 		chans := []chan<- dieu.ClimateReport{}
-		for _, n := range notifiers {
+		for _, n := range reporters {
 			chans = append(chans, n.ReportChannel())
 		}
 

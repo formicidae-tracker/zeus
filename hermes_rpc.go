@@ -8,7 +8,8 @@ type ZoneUnregistration struct {
 }
 
 type ZoneRegistration struct {
-	ZoneUnregistration
+	Host           string
+	Name           string
 	MinTemperature *float64
 	MaxTemperature *float64
 	MinHumidity    *float64

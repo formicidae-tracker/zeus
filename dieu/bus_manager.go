@@ -83,6 +83,7 @@ func (b *busManager) Listen() {
 
 	heartbeatTimeout := time.NewTicker(3 * dieu.HeartBeatPeriod)
 	defer heartbeatTimeout.Stop()
+
 	for {
 		select {
 		case m, ok := <-frames:
@@ -131,6 +132,15 @@ func (b *busManager) assignCapabilityUnsafe(c capability, ID arke.NodeID) {
 		}
 	}
 
+	deviceMap := make(map[arke.NodeClass]*Device)
+	for _, class := range c.Requirements() {
+		deviceMap[class] = b.devices[deviceDefinition{
+			Class: class,
+			ID:    ID,
+		}]
+	}
+	c.SetDevices(deviceMap)
+
 	for messageClass, callback := range c.Callbacks() {
 		mDef := messageDefinition{
 			MessageID: messageClass,
@@ -138,7 +148,6 @@ func (b *busManager) assignCapabilityUnsafe(c capability, ID arke.NodeID) {
 		}
 		b.callbacks[mDef] = append(b.callbacks[mDef], callback)
 	}
-
 }
 
 func (b *busManager) AssignCapabilitiesForID(ID arke.NodeID, capabilities []capability, alarms chan<- dieu.Alarm) error {
@@ -162,7 +171,7 @@ func (b *busManager) Close() error {
 	return err
 }
 
-func NewBusManager(interfaceName string, alarms chan<- dieu.Alarm) (BusManager, error) {
+func NewBusManager(interfaceName string) (BusManager, error) {
 	intf, err := socketcan.NewRawInterface(interfaceName)
 	if err != nil {
 		return nil, err
