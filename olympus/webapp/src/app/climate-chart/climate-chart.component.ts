@@ -1,6 +1,7 @@
 import { Component, AfterViewInit, OnInit, ElementRef,ViewChild, Input} from '@angular/core';
 import ResizeObserver from 'resize-observer-polyfill';
 import { Chart } from 'chart.js'
+import { ClimateReportService } from '../climate-report.service';
 
 export enum TimeWindow {
 	Week = 1,
@@ -30,12 +31,12 @@ export class ClimateChartComponent implements AfterViewInit,OnInit {
 	@Input() hostName: string;
 	@Input() zoneName: string;
 
-	constructor() {
+	constructor(private climateReport: ClimateReportService) {
 		this.timeWindow = TimeWindow.Hour;
 	}
 
 	ngOnInit() {
-
+		this.updateChart();
 	}
 
 	ngAfterViewInit() {
@@ -134,8 +135,6 @@ export class ClimateChartComponent implements AfterViewInit,OnInit {
 			options: {
 				responsive: false,
 				legend: {position: 'bottom'},
-				stacked: false,
-				hoverMode: 'index',
 				scales: {
 					xAxes: [
 						{
@@ -164,8 +163,50 @@ export class ClimateChartComponent implements AfterViewInit,OnInit {
 			}
 		});
 
-        //todo display a chart
     }
+
+
+	updateChart() {
+		let window = '';
+		switch(this.timeWindow) {
+			case TimeWindow.Hour:
+				window = 'hour';
+				break;
+			case TimeWindow.Week:
+				window = 'week';
+				break
+			case TimeWindow.Day:
+				window = 'day';
+				break;
+			default:
+				window = 'hour';
+				break;
+		}
+
+		this.climateReport.getReport(this.hostName,this.zoneName,window).subscribe((cr) => {
+			this.chart.data.datasets[0].data = [];
+			this.chart.data.datasets[1].data = [];
+			this.chart.data.datasets[2].data = [];
+			this.chart.data.datasets[3].data = [];
+			this.chart.data.datasets[4].data = [];
+			for (let h of cr.Humidity) {
+				this.chart.data.datasets[0].data.push({x:h.X,y:h.Y});
+			}
+			for (let t of cr.TemperatureAnt) {
+				this.chart.data.datasets[1].data.push({x:t.X,y:t.Y});
+			}
+			for (let t of cr.TemperatureAux1) {
+				this.chart.data.datasets[2].data.push({x:t.X,y:t.Y});
+			}
+			for (let t of cr.TemperatureAux2) {
+				this.chart.data.datasets[3].data.push({x:t.X,y:t.Y});
+			}
+			for (let t of cr.TemperatureAux3) {
+				this.chart.data.datasets[4].data.push({x:t.X,y:t.Y});
+			}
+			this.chart.update();
+		})
+	}
 
 	isSelected(w : TimeWindow) {
 		if ( w == this.timeWindow ) {
@@ -176,6 +217,7 @@ export class ClimateChartComponent implements AfterViewInit,OnInit {
 
 	public selectTimeWindow(w: TimeWindow) {
 		this.timeWindow = w;
+		this.updateChart();
 	}
 
 

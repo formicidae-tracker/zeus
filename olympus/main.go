@@ -31,6 +31,7 @@ type RegisteredZone struct {
 }
 
 func Execute() error {
+	setClimateReporterStub()
 	router := mux.NewRouter()
 
 	router.HandleFunc("/api/zones", func(w http.ResponseWriter, r *http.Request) {
@@ -45,6 +46,29 @@ func Execute() error {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(data)
+	})
+
+	router.HandleFunc("/api/host/{hname}/zone/{zname}/climate-report", func(w http.ResponseWriter, r *http.Request) {
+		askedWindow := r.URL.Query().Get("window")
+		var res ClimateReportTimeSerie
+		switch askedWindow {
+		case "hour":
+			res = stubClimateReporter.LastHour()
+		case "day":
+			res = stubClimateReporter.LastDay()
+		case "week":
+			res = stubClimateReporter.LastWeek()
+		default:
+			res = stubClimateReporter.LastDay()
+		}
+
+		data, err := json.Marshal(&res)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
