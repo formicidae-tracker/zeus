@@ -43,11 +43,13 @@ func (h *Hermes) RegisterZone(reg *dieu.ZoneRegistration, err *dieu.HermesError)
 	log.Printf("[rpc] Registering %s", reg.Fullname())
 	res := &ZoneData{
 		zone: RegisteredZone{
-			Host: reg.Host,
-			Name: reg.Name,
+			Host:        reg.Host,
+			Name:        reg.Name,
+			Temperature: 0.0,
 			TemperatureBounds: Bounds{
 				nil, nil,
 			},
+			Humidity: 0.0,
 			HumidityBounds: Bounds{
 				nil, nil,
 			},
@@ -70,7 +72,11 @@ func (h *Hermes) RegisterZone(reg *dieu.ZoneRegistration, err *dieu.HermesError)
 		res.alarmMap[a.Reason()] = len(res.zone.Alarms)
 		res.zone.Alarms = append(res.zone.Alarms, regAlarm)
 	}
-	go res.climate.Sample()
+	go func() {
+		log.Printf("Sampling")
+		res.climate.Sample()
+		log.Printf("done :(")
+	}()
 
 	h.zones[reg.Fullname()] = res
 
@@ -105,17 +111,19 @@ func (h *Hermes) ReportClimate(cr *dieu.NamedClimateReport, err *dieu.HermesErro
 		return nil
 	}
 
+	log.Printf("coucou 1")
+	z.zone.Temperature = float64((*cr).Temperatures[0])
+	log.Printf("coucou 2")
+	z.zone.Humidity = float64((*cr).Humidity)
+	log.Printf("coucou 3")
+
 	log.Printf("[rpc] New climate report %v", cr)
 	z.climate.Inbound() <- dieu.ClimateReport{
 		Time:         cr.Time,
 		Humidity:     cr.Humidity,
-		Temperatures: cr.Temperatures,
+		Temperatures: [4]dieu.Temperature{cr.Temperatures[0], cr.Temperatures[1], cr.Temperatures[2], cr.Temperatures[3]},
 	}
-	log.Printf("coucou")
-	z.zone.Temperature = float64(cr.Temperatures[0])
-	z.zone.Humidity = float64(cr.Humidity)
-	log.Printf("coucou")
-	dieu.ReturnError(err, nil)
+	*err = dieu.HermesError("")
 	return nil
 }
 
