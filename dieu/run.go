@@ -15,6 +15,7 @@ import (
 )
 
 type RunCommand struct {
+	NoAvahi bool `long:"no-olympus" short:"n" description:"Do not connect to olympus"`
 }
 
 func GetOlympusHost() (string, error) {
@@ -51,12 +52,14 @@ func (cmd *RunCommand) Execute(args []string) error {
 		return err
 	}
 
-	olympusHost, err := GetOlympusHost()
-	if err != nil {
-		return err
+	var olympusHost string
+	if cmd.NoAvahi == false {
+		olympusHost, err = GetOlympusHost()
+		if err != nil {
+			return err
+		}
+		log.Printf("Will send all data to olympus at %s", olympusHost)
 	}
-	log.Printf("Will send all data to olympus at %s", olympusHost)
-
 	managers := map[string]BusManager{}
 	rpc := map[string]*RPCReporter{}
 	alarmMonitors := map[string]AlarmMonitor{}
@@ -84,12 +87,14 @@ func (cmd *RunCommand) Execute(args []string) error {
 			managers[z.CANInterface] = m
 		}
 
-		log.Printf("[%s]: opening RPC connection to %s", zname, olympusHost)
-		rpc[zname], err = NewRPCReporter(zname, olympusHost)
-		if err != nil {
-			return err
+		if cmd.NoAvahi == false {
+			log.Printf("[%s]: opening RPC connection to %s", zname, olympusHost)
+			rpc[zname], err = NewRPCReporter(zname, olympusHost)
+			if err != nil {
+				return err
+			}
+			go rpc[zname].Report()
 		}
-		go rpc[zname].Report()
 
 		alarmMonitors[zname], err = NewAlarmMonitor(zname)
 		if err != nil {
