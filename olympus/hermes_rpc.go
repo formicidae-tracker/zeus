@@ -111,9 +111,10 @@ func (h *Hermes) ReportClimate(cr *dieu.NamedClimateReport, err *dieu.HermesErro
 		Humidity:     cr.Humidity,
 		Temperatures: cr.Temperatures,
 	}
+	log.Printf("coucou")
 	z.zone.Temperature = float64(cr.Temperatures[0])
 	z.zone.Humidity = float64(cr.Humidity)
-
+	log.Printf("coucou")
 	dieu.ReturnError(err, nil)
 	return nil
 }

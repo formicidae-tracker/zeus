@@ -164,7 +164,7 @@ func (b *busManager) AssignCapabilitiesForID(ID arke.NodeID, capabilities []capa
 
 func (b *busManager) Close() error {
 	err := b.intf.Close()
-	b.callbackWaitGroup.Wait()
+	//	b.callbackWaitGroup.Wait()
 	for _, a := range b.alarms {
 		close(a)
 	}
