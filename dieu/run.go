@@ -159,6 +159,7 @@ func (cmd *RunCommand) Execute(args []string) error {
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
 	for _, m := range managers {
+		log.Printf("closing interface")
 		m.Close()
 	}
 
