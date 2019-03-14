@@ -1,8 +1,8 @@
-import { Component, AfterViewInit, OnInit, ElementRef,ViewChild, Input} from '@angular/core';
+import { Component, AfterViewInit, OnInit, OnDestroy, ElementRef,ViewChild, Input} from '@angular/core';
 import ResizeObserver from 'resize-observer-polyfill';
 import { Chart } from 'chart.js'
 import { ClimateReportService } from '../climate-report.service';
-import { interval } from 'rxjs';
+import { Subscription, timer } from 'rxjs';
 
 export enum TimeWindow {
 	Week = 1,
@@ -16,7 +16,7 @@ export enum TimeWindow {
   styleUrls: ['./climate-chart.component.css']
 })
 
-export class ClimateChartComponent implements AfterViewInit,OnInit {
+export class ClimateChartComponent implements AfterViewInit,OnInit,OnDestroy {
 
 	public Window = TimeWindow;
 
@@ -25,6 +25,7 @@ export class ClimateChartComponent implements AfterViewInit,OnInit {
     canvas: any;
 	ctx: any;
 	chart : any;
+	update: Subscription;
 
 	@ViewChild('climateChartMonitor')
 	public monitor: ElementRef
@@ -37,11 +38,15 @@ export class ClimateChartComponent implements AfterViewInit,OnInit {
 	}
 
 	ngOnInit() {
-		this.updateChart();
-		interval(10000).subscribe(x => {
+		this.update = timer(0,10000).subscribe(  (x) => {
 			this.updateChart();
-		})
+		});
 	}
+
+	ngOnDestroy() {
+		this.update.unsubscribe();
+	}
+
 
 	ngAfterViewInit() {
 		let ro = new ResizeObserver(entries => {
@@ -171,7 +176,6 @@ export class ClimateChartComponent implements AfterViewInit,OnInit {
 				}
 			}
 		});
-
     }
 
 

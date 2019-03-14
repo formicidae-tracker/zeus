@@ -1,8 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Title} from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
 import { Bounds,Zone } from '../core/zone.model';
-import { interval } from 'rxjs';
+import { Subscription,timer } from 'rxjs';
 import { ZoneService } from '../zone.service';
 
 @Component({
@@ -11,10 +11,12 @@ import { ZoneService } from '../zone.service';
 	styleUrls: ['./zone.component.css']
 })
 
-export class ZoneComponent implements OnInit {
+export class ZoneComponent implements OnInit,OnDestroy {
     zoneName: string
     hostName: string
 	zone: Zone
+	update : Subscription;
+
     constructor(private route: ActivatedRoute,
 				private title: Title,
 				private zoneService: ZoneService) {
@@ -24,27 +26,24 @@ export class ZoneComponent implements OnInit {
     ngOnInit() {
         this.zoneName = this.route.snapshot.paramMap.get('zoneName');
         this.hostName = this.route.snapshot.paramMap.get('hostName');
-
-		this.zoneService.getZone(this.hostName,this.zoneName)
-			.subscribe( (zone) => {
-				this.zone = zone;
-			});
-
         this.title.setTitle('Olympus: '+this.hostName+'.'+this.zoneName)
-		interval(5000).subscribe( (x) => {
-				this.zoneService.getZone(this.hostName,this.zoneName)
-					.subscribe(
-						(zone) => {
-							this.zone = zone;
-						},
-						(error)  => {
-							this.zone = null;
-						},
-						() => {
+		this.update = timer(0,5000).subscribe( (x) => {
+			this.zoneService.getZone(this.hostName,this.zoneName)
+				.subscribe(
+					(zone) => {
+						this.zone = zone;
+					},
+					(error)  => {
+						this.zone = null;
+					},
+					() => {
 
-						});
-			});
-
+					});
+		});
     }
+
+	ngOnDestroy() {
+		this.update.unsubscribe();
+	}
 
 }
