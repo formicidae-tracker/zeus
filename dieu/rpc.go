@@ -130,13 +130,14 @@ func NewRPCReporter(name, address string, zone dieu.Zone) (*RPCReporter, error) 
 	if err != nil {
 		return nil, err
 	}
+	logger := log.New(os.Stderr, "[zone/"+name+"/rpc]:", log.LstdFlags)
+
+	logger.Printf("Opening connection to '%s'", address)
 
 	conn, err := rpc.DialHTTP("tcp", address)
 	if err != nil {
 		return nil, fmt.Errorf("rpc: conn: %s", err)
 	}
-
-	logger := log.New(os.Stderr, "[zone/"+name+"]:", log.LstdFlags)
 
 	herr := dieu.HermesError("")
 	reg := dieu.ZoneRegistration{

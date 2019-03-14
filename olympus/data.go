@@ -81,8 +81,7 @@ func (d *rollingDownsampler) add(p lttb.Point) {
 }
 
 func (d *rollingDownsampler) getPoints() []lttb.Point {
-	d.points = lttb.LTTB(d.points, d.threshold)
-	return d.points
+	return lttb.LTTB(d.points, d.threshold)
 }
 
 func (m *climateReportManager) addReportUnsafe(r *dieu.ClimateReport) {

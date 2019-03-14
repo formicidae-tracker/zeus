@@ -68,9 +68,11 @@ func (cmd *RunCommand) Execute(args []string) error {
 	interpolers := map[string]ClimateInterpoler{}
 	start := time.Now().UTC()
 	init := make(chan struct{})
+	wgInterpolation := &sync.WaitGroup{}
 	for zname, z := range c.Zones {
 		log.Printf("Loading zone '%s'", zname)
-		log.Printf("[%s]: compute interpoler", zname)
+		logger := log.New(os.Stderr, "[zone/"+zname+"/climate]: ", log.LstdFlags)
+		logger.Printf("Compute Climate Interpoler")
 		var err error
 		interpolers[zname], err = NewClimateInterpoler(z.States, z.Transitions, start)
 		if err != nil {
@@ -79,7 +81,6 @@ func (cmd *RunCommand) Execute(args []string) error {
 
 		m, ok := managers[z.CANInterface]
 		if ok == false {
-			log.Printf("[%s]: opening %s", zname, z.CANInterface)
 			var err error
 			m, err = NewBusManager(z.CANInterface)
 			if err != nil {
@@ -90,7 +91,6 @@ func (cmd *RunCommand) Execute(args []string) error {
 
 		reporters := []ClimateReporter{}
 		if cmd.NoAvahi == false {
-			log.Printf("[%s]: opening RPC connection to %s", zname, olympusHost)
 			rpc[zname], err = NewRPCReporter(zname, olympusHost, z)
 			if err != nil {
 				return err
@@ -129,9 +129,10 @@ func (cmd *RunCommand) Execute(args []string) error {
 		}
 
 		m.AssignCapabilitiesForID(arke.NodeID(z.DevicesID), capabilities, alarmMonitors[zname].Inbound())
-
+		wgInterpolation.Add(1)
 		go func(i ClimateInterpoler, caps []capability) {
-			log.Printf("[%s]: Starting inetrpolation loop ", zname)
+			defer wgInterpolation.Done()
+			log.Printf("[%s]: Starting interpolation loop ", zname)
 			quit := make(chan struct{})
 			go func() {
 				sigint := make(chan os.Signal, 1)
@@ -145,16 +146,22 @@ func (cmd *RunCommand) Execute(args []string) error {
 			for _, c := range caps {
 				c.Action(cur.State(now))
 			}
+			logger.Printf("Starting interpolation is %s", cur)
 
-			timer := time.NewTicker(5 * time.Second)
+			timer := time.NewTicker(10 * time.Second)
 			defer timer.Stop()
 			for {
 				select {
 				case <-quit:
+					logger.Printf("Closing climate interpolation")
 					return
 				case <-timer.C:
 					now := time.Now()
-					cur := i.CurrentInterpolation(now)
+					new := i.CurrentInterpolation(now)
+					if cur != new {
+						logger.Printf("New interpolation %s", new)
+						cur = new
+					}
 					for _, c := range caps {
 						c.Action(cur.State(now))
 					}
@@ -163,14 +170,12 @@ func (cmd *RunCommand) Execute(args []string) error {
 		}(interpolers[zname], capabilities)
 	}
 
-	wg := sync.WaitGroup{}
-	for name, m := range managers {
-		wg.Add(1)
+	wgManager := &sync.WaitGroup{}
+	for _, m := range managers {
+		wgManager.Add(1)
 		go func() {
-			log.Printf("Starting CAN loop for %s", name)
 			m.Listen()
-			log.Printf("CAN Loop %s stopped", name)
-			wg.Done()
+			wgManager.Done()
 		}()
 
 	}
@@ -180,13 +185,19 @@ func (cmd *RunCommand) Execute(args []string) error {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
-	for _, m := range managers {
-		log.Printf("closing interface")
+	wgInterpolation.Wait()
+	for intfName, m := range managers {
+		log.Printf("Closing interface '%s'", intfName)
 		m.Close()
 	}
 
-	log.Printf("waiting for everything to end")
-	wg.Wait()
+	for zname, r := range rpc {
+		log.Printf("Closing rpc connection for '%s'", zname)
+		close(r.ReportChannel())
+	}
+
+	log.Printf("Waiting graceful exit")
+	wgManager.Wait()
 
 	return nil
 }

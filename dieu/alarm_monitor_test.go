@@ -92,7 +92,8 @@ func (s *AlarmMonitorSuite) TestMonitor(c *C) {
 
 	e, ok := <-m.Outbound()
 	c.Check(ok, Equals, true)
-	c.Check(e.Alarm, Equals, alarms[1])
+	c.Check(e.Reason, Equals, alarms[1].Reason())
+	c.Check(e.Priority, Equals, alarms[1].Priority())
 	c.Check(e.Status, Equals, dieu.AlarmOn)
 
 	start := time.Now()
@@ -110,13 +111,15 @@ func (s *AlarmMonitorSuite) TestMonitor(c *C) {
 	}()
 	e, ok = <-m.Outbound()
 	c.Check(ok, Equals, true)
-	c.Check(e.Alarm, Equals, alarms[0])
+	c.Check(e.Reason, Equals, alarms[0].Reason())
+	c.Check(e.Priority, Equals, alarms[0].Priority())
 	c.Check(e.Status, Equals, dieu.AlarmOn)
 
 	e, ok = <-m.Outbound()
 	end := time.Now()
 	c.Check(ok, Equals, true)
-	c.Check(e.Alarm, Equals, alarms[0])
+	c.Check(e.Reason, Equals, alarms[0].Reason())
+	c.Check(e.Priority, Equals, alarms[0].Priority())
 	c.Check(e.Status, Equals, dieu.AlarmOff)
 
 	lasted := end.Sub(start)

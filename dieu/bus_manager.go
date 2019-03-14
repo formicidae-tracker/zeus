@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"syscall"
 	"time"
@@ -36,6 +37,7 @@ type busManager struct {
 	devices           map[deviceDefinition]*Device
 	callbacks         map[messageDefinition][]callback
 	callbackWaitGroup sync.WaitGroup
+	log               *log.Logger
 }
 
 func (b *busManager) receiveAndStampMessage(frames chan<- *StampedMessage) {
@@ -45,16 +47,16 @@ func (b *busManager) receiveAndStampMessage(frames chan<- *StampedMessage) {
 			if errno, ok := err.(syscall.Errno); ok == true {
 				if errno == syscall.EBADF || errno == syscall.ENETDOWN || errno == syscall.ENODEV {
 					close(frames)
-					log.Printf("Closed CAN Interface '%s': %s", b.name, err)
+					b.log.Printf("Closed CAN Interface: %s", err)
 					return
 				}
 			}
-			log.Printf("Could not receive CAN frame on '%s': %s", b.name, err)
+			b.log.Printf("Could not receive CAN frame on: %s", err)
 		}
 		t := time.Now()
 		m, ID, err := arke.ParseMessage(&f)
 		if err != nil {
-			log.Printf("Could not parse CAN Frame on '%s': %s", b.name, err)
+			b.log.Printf("Could not parse CAN Frame on: %s", err)
 		}
 		frames <- &StampedMessage{
 			M:  m,
@@ -84,10 +86,12 @@ func (b *busManager) Listen() {
 	heartbeatTimeout := time.NewTicker(3 * dieu.HeartBeatPeriod)
 	defer heartbeatTimeout.Stop()
 
+	b.log.Printf("started listening loop")
 	for {
 		select {
 		case m, ok := <-frames:
 			if ok == false {
+				b.log.Printf("ended listening loop")
 				return
 			}
 			if m.M.MessageClassID() == arke.HeartBeatMessage {
@@ -164,14 +168,17 @@ func (b *busManager) AssignCapabilitiesForID(ID arke.NodeID, capabilities []capa
 
 func (b *busManager) Close() error {
 	err := b.intf.Close()
-	//	b.callbackWaitGroup.Wait()
+	b.callbackWaitGroup.Wait()
 	for _, a := range b.alarms {
 		close(a)
 	}
+	b.log.Printf("Closed")
 	return err
 }
 
 func NewBusManager(interfaceName string) (BusManager, error) {
+	logger := log.New(os.Stderr, "[CAN/"+interfaceName+"]: ", log.LstdFlags)
+	logger.Printf("Opening CAN Interface")
 	intf, err := socketcan.NewRawInterface(interfaceName)
 	if err != nil {
 		return nil, err
@@ -182,5 +189,6 @@ func NewBusManager(interfaceName string) (BusManager, error) {
 		callbacks: make(map[messageDefinition][]callback),
 		devices:   make(map[deviceDefinition]*Device),
 		alarms:    make(map[arke.NodeID]chan<- dieu.Alarm),
+		log:       logger,
 	}, nil
 }
