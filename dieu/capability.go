@@ -21,6 +21,7 @@ type capability interface {
 	SetDevices(devices map[arke.NodeClass]*Device)
 	Action(s dieu.State) error
 	Callbacks() map[arke.MessageClass]callback
+	Close() error
 }
 
 type ClimateControllable struct {
@@ -59,6 +60,10 @@ func (c *ClimateControllable) SetDevices(devices map[arke.NodeClass]*Device) {
 	if c.zeus == nil {
 		panic("Zeus is missing")
 	}
+}
+
+func (c *ClimateControllable) Close() error {
+	return nil
 }
 
 var zeusFanNames = []string{"Zeus Wind", "Zeus Extrcation Left", "Zeus Extraction Right"}
@@ -199,6 +204,10 @@ func (c *LightControllable) Action(s dieu.State) error {
 	})
 }
 
+func (c *LightControllable) Close() error {
+	return nil
+}
+
 func (c *LightControllable) Callbacks() map[arke.MessageClass]callback {
 	return nil
 }
@@ -221,6 +230,13 @@ func NewClimateRecordableCapability(minT, maxT dieu.Temperature, minH, maxH dieu
 	}
 
 	return res
+}
+
+func (r *ClimateRecordable) Close() error {
+	for _, n := range r.Notifiers {
+		close(n)
+	}
+	return nil
 }
 
 func (r *ClimateRecordable) Requirements() []arke.NodeClass {

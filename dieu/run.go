@@ -65,6 +65,7 @@ func (cmd *RunCommand) Execute(args []string) error {
 	rpc := map[string]*RPCReporter{}
 	alarmMonitors := map[string]AlarmMonitor{}
 
+	allCapabilities := []capability{}
 	interpolers := map[string]*InterpolationManager{}
 	init := make(chan struct{})
 	quit := make(chan struct{})
@@ -101,6 +102,7 @@ func (cmd *RunCommand) Execute(args []string) error {
 		if err != nil {
 			return err
 		}
+		allCapabilities = append(allCapabilities, capabilities...)
 
 		interpolers[zname], err = NewInterpolationManager(zname, z.States, z.Transitions, capabilities, stateReports)
 		if err != nil {
@@ -138,7 +140,6 @@ func (cmd *RunCommand) Execute(args []string) error {
 			m.Listen()
 			wgManager.Done()
 		}()
-
 	}
 
 	close(init)
@@ -152,15 +153,10 @@ func (cmd *RunCommand) Execute(args []string) error {
 		log.Printf("Closing interface '%s'", intfName)
 		m.Close()
 	}
-
 	wgManager.Wait()
 
-	// ugly but capability wont close the report channel we pass to them
-	// we do it after bus manager and all callbacks are ended
-
-	for zname, r := range rpc {
-		log.Printf("Closing rpc connection for '%s'", zname)
-		close(r.ReportChannel())
+	for _, c := range allCapabilities {
+		c.Close()
 	}
 
 	log.Printf("Waiting graceful exit")

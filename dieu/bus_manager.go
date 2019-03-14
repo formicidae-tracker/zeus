@@ -36,7 +36,7 @@ type busManager struct {
 	alarms            map[arke.NodeID]chan<- dieu.Alarm
 	devices           map[deviceDefinition]*Device
 	callbacks         map[messageDefinition][]callback
-	callbackWaitGroup sync.WaitGroup
+	callbackWaitGroup *sync.WaitGroup
 	log               *log.Logger
 }
 
@@ -183,11 +183,12 @@ func NewBusManager(interfaceName string) (BusManager, error) {
 		return nil, err
 	}
 	return &busManager{
-		name:      interfaceName,
-		intf:      intf,
-		callbacks: make(map[messageDefinition][]callback),
-		devices:   make(map[deviceDefinition]*Device),
-		alarms:    make(map[arke.NodeID]chan<- dieu.Alarm),
-		log:       logger,
+		name:              interfaceName,
+		intf:              intf,
+		callbacks:         make(map[messageDefinition][]callback),
+		devices:           make(map[deviceDefinition]*Device),
+		alarms:            make(map[arke.NodeID]chan<- dieu.Alarm),
+		log:               logger,
+		callbackWaitGroup: &sync.WaitGroup{},
 	}, nil
 }
