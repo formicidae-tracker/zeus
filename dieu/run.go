@@ -59,7 +59,11 @@ func (cmd *RunCommand) Execute(args []string) error {
 		if err != nil {
 			return err
 		}
+		if len(olympusHost) == 0 {
+			return fmt.Errorf("Could not find an olympus host")
+		}
 		log.Printf("Will send all data to olympus at %s", olympusHost)
+
 	}
 	managers := map[string]BusManager{}
 	rpc := map[string]*RPCReporter{}
