@@ -1,4 +1,4 @@
-<div class="container-fluid">
+<div  *ngIf="zone != null" class="container-fluid">
   <div class="row">
     <nav class="col-md-4  d-md-block sidebar">
       <div class="sidebar-sticky">
@@ -31,5 +31,11 @@
     <main role="main" class="col-md-7 ml-sm-auto col-lg-8 pt-3 px-4">
 	  <app-climate-chart [hostName]="hostName" [zoneName]="zoneName"></app-climate-chart>
 	</main>
+  </div>
+</div>
+<div *ngIf="zone == null">
+  <div class="jumbotron">
+	<h1>{{hostName}}.{{zoneName}} does not exists</h1>
+	<p>It seems that this Dieu finished its work</p>
   </div>
 </div>

@@ -37,7 +37,6 @@ export class ClimateChartComponent implements AfterViewInit,OnInit {
 	}
 
 	ngOnInit() {
-
 		this.updateChart();
 		interval(10000).subscribe(x => {
 			this.updateChart();
