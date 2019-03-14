@@ -31,7 +31,7 @@ type Hermes struct {
 	zones map[string]*ZoneData
 }
 
-func BuildRegisteredAlarm(ae *dieu.AlarmEvent) RegisteredAlarm {
+func buildRegisteredAlarm(ae *dieu.AlarmEvent) RegisteredAlarm {
 	res := RegisteredAlarm{
 		Reason:     ae.Reason,
 		Level:      dieu.MapPriority(ae.Priority),
@@ -50,7 +50,7 @@ func (z *ZoneData) registerAlarm(ae *dieu.AlarmEvent) {
 
 	z.alarmMap[ae.Reason] = len(z.zone.Alarms)
 
-	z.zone.Alarms = append(z.zone.Alarms, BuildRegisteredAlarm(ae))
+	z.zone.Alarms = append(z.zone.Alarms, buildRegisteredAlarm(ae))
 }
 
 func (h *Hermes) RegisterZone(reg *dieu.ZoneRegistration, err *dieu.HermesError) error {
@@ -164,6 +164,32 @@ func (h *Hermes) ReportAlarm(ae *dieu.AlarmEvent, err *dieu.HermesError) error {
 	z.zone.Alarms[aIdx].LastChange = &time.Time{}
 	*z.zone.Alarms[aIdx].LastChange = ae.Time
 	//TODO: notify
+
+	*err = dieu.HermesError("")
+	return nil
+}
+
+func (h *Hermes) ReportState(sr *dieu.StateReport, err *dieu.HermesError) error {
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
+
+	z, ok := h.zones[sr.Zone]
+	if ok == false {
+		*err = dieu.HermesError(ZoneNotFoundError(sr.Zone).Error())
+		return nil
+	}
+
+	if z.zone.Current == nil {
+		z.zone.Current = &dieu.State{}
+	}
+	*z.zone.Current = sr.Current
+	if sr.Next != nil && sr.NextTime != nil {
+		z.zone.Next = sr.Next
+		z.zone.NextTime = sr.NextTime
+	} else {
+		z.zone.Next = nil
+		z.zone.NextTime = nil
+	}
 
 	*err = dieu.HermesError("")
 	return nil

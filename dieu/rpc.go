@@ -16,6 +16,7 @@ type RPCReporter struct {
 	Conn           *rpc.Client
 	ClimateReports chan dieu.ClimateReport
 	AlarmReports   chan dieu.AlarmEvent
+	StateReports   chan dieu.StateReport
 	log            *log.Logger
 }
 
@@ -25,6 +26,10 @@ func (r *RPCReporter) ReportChannel() chan<- dieu.ClimateReport {
 
 func (r *RPCReporter) AlarmChannel() chan<- dieu.AlarmEvent {
 	return r.AlarmReports
+}
+
+func (r *RPCReporter) StateChannel() chan<- dieu.StateReport {
+	return r.StateReports
 }
 
 func (r *RPCReporter) reconnect() error {
@@ -89,7 +94,7 @@ func (r *RPCReporter) Report() {
 				r.ClimateReports = nil
 			} else {
 				ncr := dieu.NamedClimateReport{cr, r.Registration.Fullname()}
-				if rerr == nil && trials < maxAttempt {
+				if rerr == nil && trials <= maxAttempt {
 					rerr := r.Conn.Call("Hermes.ReportClimate", ncr, &herr)
 					if rerr != nil {
 						r.log.Printf("Could not transmit climate report: %s", rerr)
@@ -103,7 +108,7 @@ func (r *RPCReporter) Report() {
 			if ok == false {
 				r.AlarmReports = nil
 			} else {
-				if rerr == nil && trials < maxAttempt {
+				if rerr == nil && trials <= maxAttempt {
 					rerr := r.Conn.Call("Hermes.ReportAlarm", ae, &herr)
 					if rerr != nil {
 						r.log.Printf("Could not transmit alarm event: %s", rerr)
@@ -113,8 +118,22 @@ func (r *RPCReporter) Report() {
 					}
 				}
 			}
+		case sr, ok := <-r.StateReports:
+			if ok == false {
+				r.StateReports = nil
+			} else {
+				if rerr == nil && trials <= maxAttempt {
+					rerr := r.Conn.Call("Hermes.ReportState", sr, &herr)
+					if rerr != nil {
+						r.log.Printf("Could not transmit state report: %s", rerr)
+					}
+					if herr.ToError() != nil {
+						r.log.Printf("Could not transmit state report: %s", herr.ToError())
+					}
+				}
+			}
 		}
-		if r.AlarmReports == nil && r.ClimateReports == nil {
+		if r.AlarmReports == nil && r.ClimateReports == nil && r.StateReports == nil {
 			break
 		}
 
@@ -189,6 +208,7 @@ func NewRPCReporter(name, address string, zone dieu.Zone) (*RPCReporter, error) 
 		Addr:           address,
 		ClimateReports: make(chan dieu.ClimateReport, 20),
 		AlarmReports:   make(chan dieu.AlarmEvent, 20),
+		StateReports:   make(chan dieu.StateReport, 20),
 		log:            logger,
 	}, nil
 }

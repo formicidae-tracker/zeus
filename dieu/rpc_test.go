@@ -98,5 +98,6 @@ func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 	go func() { s.H.C <- c }()
 	close(n.ReportChannel())
 	close(n.AlarmChannel())
+	close(n.StateChannel())
 	wg.Wait()
 }

@@ -28,6 +28,9 @@ type RegisteredZone struct {
 	Humidity          float64
 	HumidityBounds    Bounds
 	Alarms            []RegisteredAlarm
+	Current           *dieu.State
+	Next              *dieu.State
+	NextTime          *time.Time
 }
 
 var stubZone RegisteredZone

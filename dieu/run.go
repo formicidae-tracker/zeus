@@ -65,19 +65,12 @@ func (cmd *RunCommand) Execute(args []string) error {
 	rpc := map[string]*RPCReporter{}
 	alarmMonitors := map[string]AlarmMonitor{}
 
-	interpolers := map[string]ClimateInterpoler{}
-	start := time.Now().UTC()
+	interpolers := map[string]*InterpolationManager{}
 	init := make(chan struct{})
+	quit := make(chan struct{})
 	wgInterpolation := &sync.WaitGroup{}
 	for zname, z := range c.Zones {
 		log.Printf("Loading zone '%s'", zname)
-		logger := log.New(os.Stderr, "[zone/"+zname+"/climate]: ", log.LstdFlags)
-		logger.Printf("Compute Climate Interpoler")
-		var err error
-		interpolers[zname], err = NewClimateInterpoler(z.States, z.Transitions, start)
-		if err != nil {
-			return err
-		}
 
 		m, ok := managers[z.CANInterface]
 		if ok == false {
@@ -89,6 +82,8 @@ func (cmd *RunCommand) Execute(args []string) error {
 			managers[z.CANInterface] = m
 		}
 
+		var stateReports chan<- dieu.StateReport = nil
+
 		reporters := []ClimateReporter{}
 		if cmd.NoAvahi == false {
 			rpc[zname], err = NewRPCReporter(zname, olympusHost, z)
@@ -96,6 +91,7 @@ func (cmd *RunCommand) Execute(args []string) error {
 				return err
 			}
 			reporters = append(reporters, rpc[zname])
+			stateReports = rpc[zname].StateChannel()
 			go rpc[zname].Report()
 		}
 
@@ -104,9 +100,9 @@ func (cmd *RunCommand) Execute(args []string) error {
 			return err
 		}
 
-		alarms := []dieu.Alarm{}
-		for _, c := range capabilities {
-			alarms = append(alarms, c.Alarms()...)
+		interpolers[zname], err = NewInterpolationManager(zname, z.States, z.Transitions, capabilities, stateReports)
+		if err != nil {
+			return err
 		}
 
 		alarmMonitors[zname], err = NewAlarmMonitor(zname)
@@ -130,44 +126,7 @@ func (cmd *RunCommand) Execute(args []string) error {
 
 		m.AssignCapabilitiesForID(arke.NodeID(z.DevicesID), capabilities, alarmMonitors[zname].Inbound())
 		wgInterpolation.Add(1)
-		go func(i ClimateInterpoler, caps []capability) {
-			defer wgInterpolation.Done()
-			log.Printf("[%s]: Starting interpolation loop ", zname)
-			quit := make(chan struct{})
-			go func() {
-				sigint := make(chan os.Signal, 1)
-				signal.Notify(sigint, os.Interrupt)
-				<-sigint
-				close(quit)
-			}()
-			<-init
-			now := time.Now()
-			cur := i.CurrentInterpolation(now)
-			for _, c := range caps {
-				c.Action(cur.State(now))
-			}
-			logger.Printf("Starting interpolation is %s", cur)
-
-			timer := time.NewTicker(10 * time.Second)
-			defer timer.Stop()
-			for {
-				select {
-				case <-quit:
-					logger.Printf("Closing climate interpolation")
-					return
-				case <-timer.C:
-					now := time.Now()
-					new := i.CurrentInterpolation(now)
-					if cur != new {
-						logger.Printf("New interpolation %s", new)
-						cur = new
-					}
-					for _, c := range caps {
-						c.Action(cur.State(now))
-					}
-				}
-			}
-		}(interpolers[zname], capabilities)
+		go interpolers[zname].Interpolate(wgInterpolation, init, quit)
 	}
 
 	wgManager := &sync.WaitGroup{}
@@ -185,12 +144,14 @@ func (cmd *RunCommand) Execute(args []string) error {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
+	close(quit) //will close interpolers
 	wgInterpolation.Wait()
 	for intfName, m := range managers {
 		log.Printf("Closing interface '%s'", intfName)
 		m.Close()
 	}
 
+	//ugly but capability wont close the report channel we pass to them
 	for zname, r := range rpc {
 		log.Printf("Closing rpc connection for '%s'", zname)
 		close(r.ReportChannel())

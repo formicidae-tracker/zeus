@@ -21,7 +21,6 @@ type capability interface {
 	SetDevices(devices map[arke.NodeClass]*Device)
 	Action(s dieu.State) error
 	Callbacks() map[arke.MessageClass]callback
-	Alarms() []dieu.Alarm
 }
 
 type ClimateControllable struct {
@@ -39,24 +38,6 @@ func NewClimateControllable(forceHumidity bool) *ClimateControllable {
 		zeusResetGuard:    time.Now(),
 		withCelaeno:       forceHumidity,
 	}
-}
-
-func (c *ClimateControllable) Alarms() []dieu.Alarm {
-	res := []dieu.Alarm{
-		dieu.SensorReadoutIssue,
-		dieu.TemperatureUnreachable,
-		dieu.NewFanAlarm(zeusFanNames[0], arke.FanStalled),
-		dieu.NewFanAlarm(zeusFanNames[1], arke.FanStalled),
-		dieu.NewFanAlarm(zeusFanNames[2], arke.FanStalled),
-	}
-	if c.withCelaeno == true {
-		res = append(res, dieu.WaterLevelUnreadable)
-		res = append(res, dieu.WaterLevelCritical)
-		res = append(res, dieu.WaterLevelWarning)
-		res = append(res, dieu.HumidityUnreachable)
-		res = append(res, dieu.NewFanAlarm("Celaeno Fan", arke.FanStalled))
-	}
-	return res
 }
 
 func (c *ClimateControllable) Requirements() []arke.NodeClass {
@@ -200,10 +181,6 @@ func NewLightControllable() *LightControllable {
 	return &LightControllable{}
 }
 
-func (c *LightControllable) Alarms() []dieu.Alarm {
-	return []dieu.Alarm{}
-}
-
 func (c *LightControllable) Requirements() []arke.NodeClass {
 	return []arke.NodeClass{arke.HeliosClass}
 }
@@ -248,10 +225,6 @@ func NewClimateRecordableCapability(minT, maxT dieu.Temperature, minH, maxH dieu
 
 func (r *ClimateRecordable) Requirements() []arke.NodeClass {
 	return []arke.NodeClass{arke.ZeusClass}
-}
-
-func (c *ClimateRecordable) Alarms() []dieu.Alarm {
-	return []dieu.Alarm{dieu.TemperatureOutOfBound, dieu.HumidityOutOfBound}
 }
 
 func (r *ClimateRecordable) SetDevices(map[arke.NodeClass]*Device) {}
