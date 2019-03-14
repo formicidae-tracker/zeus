@@ -275,16 +275,20 @@ func (r *ClimateRecordable) Callbacks() map[arke.MessageClass]callback {
 				alarms <- dieu.TemperatureOutOfBound
 			}
 
-			for _, n := range r.Notifiers {
-				n <- dieu.ClimateReport{
-					Time:     mm.T,
-					Humidity: dieu.Humidity(report.Humidity),
-					Temperatures: [4]dieu.Temperature{
-						dieu.Temperature(report.Temperature[0]),
-						dieu.Temperature(report.Temperature[1]),
-						dieu.Temperature(report.Temperature[2]),
-						dieu.Temperature(report.Temperature[3]),
-					},
+			creport := dieu.ClimateReport{
+				Time:     mm.T,
+				Humidity: dieu.Humidity(report.Humidity),
+				Temperatures: [4]dieu.Temperature{
+					dieu.Temperature(report.Temperature[0]),
+					dieu.Temperature(report.Temperature[1]),
+					dieu.Temperature(report.Temperature[2]),
+					dieu.Temperature(report.Temperature[3]),
+				},
+			}
+
+			if creport.Good() == true {
+				for _, n := range r.Notifiers {
+					n <- creport
 				}
 			}
 
