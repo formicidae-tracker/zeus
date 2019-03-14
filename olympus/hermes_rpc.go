@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"path"
 	"sync"
 	"time"
@@ -29,6 +30,7 @@ type ZoneData struct {
 type Hermes struct {
 	mutex *sync.RWMutex
 	zones map[string]*ZoneData
+	log   *log.Logger
 }
 
 func buildRegisteredAlarm(ae *dieu.AlarmEvent) RegisteredAlarm {
@@ -62,7 +64,7 @@ func (h *Hermes) RegisterZone(reg *dieu.ZoneRegistration, err *dieu.HermesError)
 		close(z.climate.Inbound())
 		delete(h.zones, reg.Fullname())
 	}
-	log.Printf("[rpc] Registering %s", reg.Fullname())
+	h.log.Printf("Registering %s", reg.Fullname())
 	res := &ZoneData{
 		zone: RegisteredZone{
 			Host:        reg.Host,
@@ -106,7 +108,7 @@ func (h *Hermes) UnregisterZone(reg *dieu.ZoneUnregistration, err *dieu.HermesEr
 		*err = dieu.HermesError(ZoneNotFoundError(reg.Fullname()).Error())
 		return nil
 	}
-	log.Printf("[rpc] Unregistering  %s", reg.Fullname())
+	h.log.Printf("Unregistering  %s", reg.Fullname())
 	//it will close Sample go routine
 	close(z.climate.Inbound())
 	delete(h.zones, reg.Fullname())
@@ -127,7 +129,6 @@ func (h *Hermes) ReportClimate(cr *dieu.NamedClimateReport, err *dieu.HermesErro
 
 	z.zone.Temperature = float64((*cr).Temperatures[0])
 	z.zone.Humidity = float64((*cr).Humidity)
-	//	log.Printf("[rpc] New climate report %+v", cr)
 	z.climate.Inbound() <- dieu.ClimateReport{
 		Time:         cr.Time,
 		Humidity:     cr.Humidity,
@@ -152,7 +153,7 @@ func (h *Hermes) ReportAlarm(ae *dieu.AlarmEvent, err *dieu.HermesError) error {
 		return nil
 	}
 
-	log.Printf("[rpc] New alarm event %+v", ae)
+	h.log.Printf("New alarm event %+v", ae)
 	if ae.Status == dieu.AlarmOn {
 		if z.zone.Alarms[aIdx].On == false {
 			z.zone.Alarms[aIdx].Triggers += 1
@@ -179,6 +180,7 @@ func (h *Hermes) ReportState(sr *dieu.StateReport, err *dieu.HermesError) error 
 		return nil
 	}
 
+	h.log.Printf("New state %+v", sr)
 	if z.zone.Current == nil {
 		z.zone.Current = &dieu.State{}
 	}
@@ -200,7 +202,6 @@ func (h *Hermes) getZones() []RegisteredZone {
 	defer h.mutex.RUnlock()
 
 	res := make([]RegisteredZone, 0, len(h.zones))
-	log.Printf("I have %d zones", len(h.zones))
 	for _, z := range h.zones {
 		toAppend := RegisteredZone{
 			Host: z.zone.Host,
@@ -253,5 +254,6 @@ func NewHermes() *Hermes {
 	return &Hermes{
 		mutex: &sync.RWMutex{},
 		zones: make(map[string]*ZoneData),
+		log:   log.New(os.Stderr, "[rpc] :", log.LstdFlags),
 	}
 }
