@@ -2,7 +2,7 @@ package main
 
 import "git.tuleu.science/fort/dieu"
 
-func ComputeZoneRequirements(z *dieu.Zone) ([]capability, error) {
+func ComputeZoneRequirements(z *dieu.Zone, reporters []ClimateReporter) ([]capability, error) {
 	res := []capability{}
 
 	needClimateReport := false
@@ -12,8 +12,6 @@ func ComputeZoneRequirements(z *dieu.Zone) ([]capability, error) {
 	if dieu.IsUndefined(z.MinimalHumidity) == false || dieu.IsUndefined(z.MaximalHumidity) == false {
 		needClimateReport = true
 	}
-	reporters := []ClimateReporter{}
-
 	if len(z.ClimateReportFile) != 0 {
 		fn, _, err := NewFileClimateReporter(z.ClimateReportFile)
 		if err != nil {

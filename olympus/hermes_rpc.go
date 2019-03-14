@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"path"
 	"sync"
@@ -32,6 +31,28 @@ type Hermes struct {
 	zones map[string]*ZoneData
 }
 
+func BuildRegisteredAlarm(ae *dieu.AlarmEvent) RegisteredAlarm {
+	res := RegisteredAlarm{
+		Reason:     ae.Reason,
+		Level:      dieu.MapPriority(ae.Priority),
+		LastChange: &time.Time{},
+		Triggers:   0,
+		On:         false,
+	}
+	*res.LastChange = ae.Time
+	return res
+}
+
+func (z *ZoneData) registerAlarm(ae *dieu.AlarmEvent) {
+	if _, ok := z.alarmMap[ae.Reason]; ok == true {
+		return
+	}
+
+	z.alarmMap[ae.Reason] = len(z.zone.Alarms)
+
+	z.zone.Alarms = append(z.zone.Alarms, BuildRegisteredAlarm(ae))
+}
+
 func (h *Hermes) RegisterZone(reg *dieu.ZoneRegistration, err *dieu.HermesError) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
@@ -58,21 +79,6 @@ func (h *Hermes) RegisterZone(reg *dieu.ZoneRegistration, err *dieu.HermesError)
 		climate:  NewClimateReportManager(),
 		alarmMap: make(map[string]int),
 	}
-	for _, a := range reg.Alarms {
-		regAlarm := RegisteredAlarm{
-			Reason:     a.Reason,
-			On:         false,
-			LastChange: nil,
-			Triggers:   0,
-		}
-		if a.Priority == dieu.Warning {
-			regAlarm.Level = 1
-		} else {
-			regAlarm.Level = 2
-		}
-		res.alarmMap[a.Reason] = len(res.zone.Alarms)
-		res.zone.Alarms = append(res.zone.Alarms, regAlarm)
-	}
 	go func() {
 		res.climate.Sample()
 	}()
@@ -83,13 +89,21 @@ func (h *Hermes) RegisterZone(reg *dieu.ZoneRegistration, err *dieu.HermesError)
 	return nil
 }
 
+func (h *Hermes) ZoneIsRegistered(reg *dieu.ZoneUnregistration, ok *bool) error {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+
+	_, *ok = h.zones[reg.Fullname()]
+	return nil
+}
+
 func (h *Hermes) UnregisterZone(reg *dieu.ZoneUnregistration, err *dieu.HermesError) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 
 	z, ok := h.zones[reg.Fullname()]
 	if ok == false {
-		dieu.ReturnError(err, ZoneNotFoundError(reg.Fullname()))
+		*err = dieu.HermesError(ZoneNotFoundError(reg.Fullname()).Error())
 		return nil
 	}
 	log.Printf("[rpc] Unregistering  %s", reg.Fullname())
@@ -107,7 +121,7 @@ func (h *Hermes) ReportClimate(cr *dieu.NamedClimateReport, err *dieu.HermesErro
 
 	z, ok := h.zones[cr.ZoneIdentifier]
 	if ok == false {
-		dieu.ReturnError(err, ZoneNotFoundError(cr.ZoneIdentifier))
+		*err = dieu.HermesError(ZoneNotFoundError(cr.ZoneIdentifier).Error())
 		return nil
 	}
 
@@ -123,23 +137,23 @@ func (h *Hermes) ReportClimate(cr *dieu.NamedClimateReport, err *dieu.HermesErro
 	return nil
 }
 
-func (h *Hermes) ReportAlarm(ae *dieu.HermesAlarmEvent, err *dieu.HermesError) error {
+func (h *Hermes) ReportAlarm(ae *dieu.AlarmEvent, err *dieu.HermesError) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 
-	z, ok := h.zones[ae.ZoneIdentifier]
+	z, ok := h.zones[ae.Zone]
 	if ok == false {
-		dieu.ReturnError(err, ZoneNotFoundError(ae.ZoneIdentifier))
+		*err = dieu.HermesError(ZoneNotFoundError(ae.Zone).Error())
 		return nil
 	}
 	aIdx, ok := z.alarmMap[ae.Reason]
 	if ok == false {
-		dieu.ReturnError(err, fmt.Errorf("hermes: Zone '%s' does not defines alarm '%s'", ae.ZoneIdentifier, ae.Reason))
+		z.registerAlarm(ae)
 		return nil
 	}
 
 	log.Printf("[rpc] New alarm event %+v", ae)
-	if ae.Status == true {
+	if ae.Status == dieu.AlarmOn {
 		if z.zone.Alarms[aIdx].On == false {
 			z.zone.Alarms[aIdx].Triggers += 1
 		}
@@ -147,10 +161,8 @@ func (h *Hermes) ReportAlarm(ae *dieu.HermesAlarmEvent, err *dieu.HermesError) e
 	} else {
 		z.zone.Alarms[aIdx].On = false
 	}
-	log.Printf("good")
 	z.zone.Alarms[aIdx].LastChange = &time.Time{}
 	*z.zone.Alarms[aIdx].LastChange = ae.Time
-	log.Printf("bad")
 	//TODO: notify
 
 	*err = dieu.HermesError("")

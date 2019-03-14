@@ -90,9 +90,16 @@ func (cmd *RunCommand) Execute(args []string) error {
 
 		reporters := []ClimateReporter{}
 		if cmd.NoAvahi == false {
+			log.Printf("[%s]: opening RPC connection to %s", zname, olympusHost)
+			rpc[zname], err = NewRPCReporter(zname, olympusHost, z)
+			if err != nil {
+				return err
+			}
 			reporters = append(reporters, rpc[zname])
+			go rpc[zname].Report()
 		}
-		capabilities, err := ComputeZoneRequirements(&z)
+
+		capabilities, err := ComputeZoneRequirements(&z, reporters)
 		if err != nil {
 			return err
 		}
@@ -100,24 +107,6 @@ func (cmd *RunCommand) Execute(args []string) error {
 		alarms := []dieu.Alarm{}
 		for _, c := range capabilities {
 			alarms = append(alarms, c.Alarms()...)
-		}
-
-		if cmd.NoAvahi == false {
-			log.Printf("[%s]: opening RPC connection to %s", zname, olympusHost)
-			rpc[zname], err = NewRPCReporter(zname, olympusHost, alarms)
-			if err != nil {
-				return err
-			}
-			//ugly
-			for _, c := range capabilities {
-				cr, ok := c.(*ClimateRecordable)
-				if ok == false {
-					continue
-				}
-				cr.Notifiers = append(cr.Notifiers, rpc[zname].ReportChannel())
-			}
-
-			go rpc[zname].Report()
 		}
 
 		alarmMonitors[zname], err = NewAlarmMonitor(zname)
@@ -157,7 +146,7 @@ func (cmd *RunCommand) Execute(args []string) error {
 				c.Action(cur.State(now))
 			}
 
-			timer := time.NewTimer(5 * time.Second)
+			timer := time.NewTicker(5 * time.Second)
 			defer timer.Stop()
 			for {
 				select {

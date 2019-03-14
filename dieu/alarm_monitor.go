@@ -57,10 +57,11 @@ func (m *alarmMonitor) Monitor() {
 			if t, ok := trigged[a.Reason()]; ok == false || t <= 0 {
 				go func() {
 					m.outbound <- dieu.AlarmEvent{
-						Alarm:  a,
-						Status: dieu.AlarmOn,
-						Time:   time.Now(),
-						Zone:   m.name,
+						Reason:   a.Reason(),
+						Priority: a.Priority(),
+						Status:   dieu.AlarmOn,
+						Time:     time.Now(),
+						Zone:     m.name,
 					}
 				}()
 				trigged[a.Reason()] = 1
@@ -79,10 +80,11 @@ func (m *alarmMonitor) Monitor() {
 			if t == 1 {
 				go func() {
 					m.outbound <- dieu.AlarmEvent{
-						Alarm:  alarms[r],
-						Status: dieu.AlarmOff,
-						Time:   time.Now(),
-						Zone:   m.name,
+						Reason:   alarms[r].Reason(),
+						Priority: alarms[r].Priority(),
+						Status:   dieu.AlarmOff,
+						Time:     time.Now(),
+						Zone:     m.name,
 					}
 				}()
 			}

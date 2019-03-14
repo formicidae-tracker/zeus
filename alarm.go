@@ -117,8 +117,25 @@ const (
 )
 
 type AlarmEvent struct {
-	Zone   string
-	Alarm  Alarm
-	Status AlarmStatus
-	Time   time.Time
+	Zone     string
+	Reason   string
+	Priority Priority
+	Status   AlarmStatus
+	Time     time.Time
+}
+
+var levelByPriority map[Priority]int
+
+func MapPriority(p Priority) int {
+	if r, ok := levelByPriority[p]; ok == true {
+		return r
+	}
+	return levelByPriority[Emergency]
+}
+
+func init() {
+	levelByPriority = map[Priority]int{
+		Warning:   1,
+		Emergency: 2,
+	}
 }
