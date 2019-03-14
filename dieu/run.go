@@ -119,11 +119,13 @@ func (cmd *RunCommand) Execute(args []string) error {
 				for ae := range alarmMonitors[zname].Outbound() {
 					rpc[zname].AlarmChannel() <- ae
 				}
+				close(rpc[zname].AlarmChannel())
 			}()
 		} else {
 			go func() {
+				logger := log.New(os.Stderr, "[zone/"+zname+"/alarm]: ", log.LstdFlags)
 				for ae := range alarmMonitors[zname].Outbound() {
-					log.Printf("%+v", ae)
+					logger.Printf("%+v", ae)
 				}
 			}()
 		}

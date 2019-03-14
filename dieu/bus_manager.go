@@ -37,6 +37,7 @@ type busManager struct {
 	devices           map[deviceDefinition]*Device
 	callbacks         map[messageDefinition][]callback
 	callbackWaitGroup *sync.WaitGroup
+	listenWaitGroup   *sync.WaitGroup
 	log               *log.Logger
 }
 
@@ -84,7 +85,11 @@ func (b *busManager) Listen() {
 	go b.receiveAndStampMessage(frames)
 
 	heartbeatTimeout := time.NewTicker(3 * dieu.HeartBeatPeriod)
-	defer heartbeatTimeout.Stop()
+	b.listenWaitGroup.Add(1)
+	defer func() {
+		heartbeatTimeout.Stop()
+		b.listenWaitGroup.Done()
+	}()
 
 	b.log.Printf("started listening loop")
 	for {
@@ -168,6 +173,7 @@ func (b *busManager) AssignCapabilitiesForID(ID arke.NodeID, capabilities []capa
 
 func (b *busManager) Close() error {
 	err := b.intf.Close()
+	b.listenWaitGroup.Wait()
 	b.callbackWaitGroup.Wait()
 	for _, a := range b.alarms {
 		close(a)
@@ -190,5 +196,6 @@ func NewBusManager(interfaceName string) (BusManager, error) {
 		alarms:            make(map[arke.NodeID]chan<- dieu.Alarm),
 		log:               logger,
 		callbackWaitGroup: &sync.WaitGroup{},
+		listenWaitGroup:   &sync.WaitGroup{},
 	}, nil
 }
