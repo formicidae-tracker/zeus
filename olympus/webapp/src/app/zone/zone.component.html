@@ -32,27 +32,17 @@
 	  <h2> Climate Target for {{hostName}}.{{zoneName}} </h2>
 	  <div *ngIf="zone.Current != null">
 		<h5 class="text-center"> Current State: '{{zone.Current.Name}}'</h5>
-		<div class="table-responsive">
-		  <table class="table table-stripped table-sm">
-			<thead>
-			  <tr>
-				<th>Temperature</th>
-				<th>Humidity</th>
-				<th>Wind</th>
-				<th>Visible Light</th>
-				<th>UV Light</th>
-			  </tr>
-			</thead>
-			<tbody>
-			  <tr>
-				<td></td>
-			  </tr>
-			</tbody>
-		  </table>
-		</div>
+        <app-state [state]="zone.Current"> </app-state>
 	  </div>
 	  <div *ngIf="zone.Current == null">
-		foo
+		<h5 class="text-center"> No Current State Defined</h5>
+	  </div>
+      <div *ngIf="zone.Next != null">
+		<h5 class="text-center"> Next State: '{{zone.Next.Name}}' on {{ zone.NextTime | date: 'short' }}</h5>
+        <app-state [state]="zone.Next"> </app-state>
+	  </div>
+	  <div *ngIf="zone.Next == null">
+		<h5 class="text-center"> No Next State Defined</h5>
 	  </div>
 	  <app-climate-chart [hostName]="hostName" [zoneName]="zoneName"></app-climate-chart>
 	</main>
