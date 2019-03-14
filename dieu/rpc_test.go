@@ -88,8 +88,7 @@ func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		n.Report()
-		wg.Done()
+		n.Report(&wg)
 	}()
 
 	go func() { s.H.C <- c }()

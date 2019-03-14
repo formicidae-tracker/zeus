@@ -69,6 +69,7 @@ func (cmd *RunCommand) Execute(args []string) error {
 	init := make(chan struct{})
 	quit := make(chan struct{})
 	wgInterpolation := &sync.WaitGroup{}
+	wgRpc := &sync.WaitGroup{}
 	for zname, z := range c.Zones {
 		log.Printf("Loading zone '%s'", zname)
 
@@ -92,7 +93,8 @@ func (cmd *RunCommand) Execute(args []string) error {
 			}
 			reporters = append(reporters, rpc[zname])
 			stateReports = rpc[zname].StateChannel()
-			go rpc[zname].Report()
+			wgRpc.Add(1)
+			go rpc[zname].Report(wgRpc)
 		}
 
 		capabilities, err := ComputeZoneRequirements(&z, reporters)
@@ -159,7 +161,7 @@ func (cmd *RunCommand) Execute(args []string) error {
 
 	log.Printf("Waiting graceful exit")
 	wgManager.Wait()
-
+	wgRpc.Wait()
 	return nil
 }
 

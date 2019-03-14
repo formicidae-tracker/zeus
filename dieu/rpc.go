@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/rpc"
 	"os"
+	"sync"
 	"time"
 
 	"git.tuleu.science/fort/dieu"
@@ -66,7 +67,8 @@ func (r *RPCReporter) reconnect() error {
 
 const maxAttempt = 10000
 
-func (r *RPCReporter) Report() {
+func (r *RPCReporter) Report(wg *sync.WaitGroup) {
+	defer wg.Done()
 	var rerr error
 	trials := 0
 	resetConnection := time.NewTimer(20 * time.Second)
@@ -142,6 +144,8 @@ func (r *RPCReporter) Report() {
 			r.Conn.Close()
 		}
 	}
+
+	r.log.Printf("Unregistering zone")
 
 	herr := dieu.HermesError("")
 	rerr = r.Conn.Call("Hermes.UnregisterZone", &dieu.ZoneUnregistration{

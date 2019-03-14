@@ -172,7 +172,6 @@ func (b *busManager) Close() error {
 	for _, a := range b.alarms {
 		close(a)
 	}
-	b.log.Printf("Closed")
 	return err
 }
 
