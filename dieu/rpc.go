@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/rpc"
 	"os"
+	"time"
 
 	"git.tuleu.science/fort/dieu"
 )
@@ -58,21 +59,37 @@ func (r *RPCReporter) reconnect() error {
 	return herr.ToError()
 }
 
+const maxAttempt = 10000
+
 func (r *RPCReporter) Report() {
 	var rerr error
-
+	trials := 0
+	resetConnection := time.NewTimer(20 * time.Second)
+	resetConnection.Stop()
 	for {
 		if rerr != nil {
-			rerr = r.reconnect()
+			if trials < maxAttempt {
+				resetConnection = time.NewTimer(5 * time.Second)
+			} else {
+				log.Printf("Disabling connection after %d attemps", maxAttempt)
+				rerr = nil
+			}
 		}
 		var herr dieu.HermesError
 		select {
+		case <-resetConnection.C:
+			trials += 1
+			rerr = r.reconnect()
+			if rerr == nil {
+				trials = 0
+			}
+			resetConnection.Stop()
 		case cr, ok := <-r.ClimateReports:
 			if ok == false {
 				r.ClimateReports = nil
 			} else {
 				ncr := dieu.NamedClimateReport{cr, r.Registration.Fullname()}
-				if rerr == nil {
+				if rerr == nil && trials < maxAttempt {
 					rerr := r.Conn.Call("Hermes.ReportClimate", ncr, &herr)
 					if rerr != nil {
 						r.log.Printf("Could not transmit climate report: %s", rerr)
@@ -80,15 +97,13 @@ func (r *RPCReporter) Report() {
 					if herr.ToError() != nil {
 						r.log.Printf("Could not transmit climate report: %s", herr.ToError())
 					}
-				} else {
-					r.log.Printf("Discarded Report Climate error: %s", rerr)
 				}
 			}
 		case ae, ok := <-r.AlarmReports:
 			if ok == false {
 				r.AlarmReports = nil
 			} else {
-				if rerr == nil {
+				if rerr == nil && trials < maxAttempt {
 					rerr := r.Conn.Call("Hermes.ReportAlarm", ae, &herr)
 					if rerr != nil {
 						r.log.Printf("Could not transmit alarm event: %s", rerr)
@@ -96,8 +111,6 @@ func (r *RPCReporter) Report() {
 					if herr.ToError() != nil {
 						r.log.Printf("Could not transmit alarm event: %s", herr.ToError())
 					}
-				} else {
-					r.log.Printf("Discarded Alarm Event: error: %s", rerr)
 				}
 			}
 		}
