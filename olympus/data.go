@@ -59,7 +59,6 @@ func newRollingDownsampler(period float64, nbSamples int) rollingDownsampler {
 	res := rollingDownsampler{
 		xPeriod:   period,
 		threshold: nbSamples,
-		sampled:   false,
 		points:    make([]lttb.Point, 0, nbSamples),
 	}
 	return res
@@ -79,14 +78,10 @@ func (d *rollingDownsampler) add(p lttb.Point) {
 	if idx != 0 {
 		d.points = d.points[idx:]
 	}
-	d.sampled = false
 }
 
 func (d *rollingDownsampler) getPoints() []lttb.Point {
-	if d.sampled == false {
-		d.points = lttb.LTTB(d.points, d.threshold)
-		d.sampled = true
-	}
+	d.points = lttb.LTTB(d.points, d.threshold)
 	return d.points
 }
 
