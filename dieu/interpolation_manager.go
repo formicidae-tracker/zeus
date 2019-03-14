@@ -24,6 +24,22 @@ func (i *InterpolationManager) SendState(s dieu.State) {
 	}
 }
 
+func (i *InterpolationManager) StateReport(s dieu.State, t time.Time) dieu.StateReport {
+	report := dieu.StateReport{
+		Zone:     i.name,
+		Current:  s,
+		NextTime: nil,
+		Next:     nil,
+	}
+	if nextT, ok := i.interpoler.NextInterpolationTime(t); ok == true {
+		report.NextTime = &time.Time{}
+		*report.NextTime = nextT
+		report.Next = &dieu.State{}
+		*report.Next = i.interpoler.CurrentInterpolation(nextT.Add(1 * time.Second)).State(nextT)
+	}
+	return report
+}
+
 func (i *InterpolationManager) Interpolate(wg *sync.WaitGroup, init, quit <-chan struct{}) {
 	defer func() {
 		if i.reports != nil {
@@ -38,6 +54,11 @@ func (i *InterpolationManager) Interpolate(wg *sync.WaitGroup, init, quit <-chan
 	i.log.Printf("Starting interpolation is %s", cur)
 
 	i.SendState(cur.State(now))
+
+	if i.reports != nil {
+		report := i.StateReport(cur.State(now), now)
+		i.reports <- report
+	}
 
 	timer := time.NewTicker(10 * time.Second)
 	defer timer.Stop()
@@ -57,18 +78,7 @@ func (i *InterpolationManager) Interpolate(wg *sync.WaitGroup, init, quit <-chan
 			i.log.Printf("New interpolation %s", new)
 			i.SendState(s)
 			if i.reports != nil {
-				report := dieu.StateReport{
-					Zone:     i.name,
-					Current:  s,
-					NextTime: nil,
-					Next:     nil,
-				}
-				if nextT, ok := i.interpoler.NextInterpolationTime(now); ok == true {
-					report.NextTime = &time.Time{}
-					*report.NextTime = nextT
-					report.Next = &dieu.State{}
-					*report.Next = i.interpoler.CurrentInterpolation(nextT.Add(1 * time.Second)).State(nextT)
-				}
+				report := i.StateReport(s, now)
 				i.reports <- report
 			}
 		}
