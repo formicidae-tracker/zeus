@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { Adapter } from './adapter';
 
-import {Alarm,AlarmLevel,CompareAlarm,AlarmAdapter} from './alarm.model';
+import { State,StateAdapter } from './state.model';
+import { Alarm,AlarmLevel,CompareAlarm,AlarmAdapter} from './alarm.model';
 
 export class Bounds {
 	constructor(public Min: number,
@@ -32,7 +33,10 @@ export class Zone {
 				public TemperatureBounds: Bounds,
 				public Humidity: number,
 				public HumidityBounds: Bounds,
-				public Alarms: Alarm[]) {}
+				public Alarms: Alarm[],
+				public Current: State,
+				public Next: State,
+				public NextTime: Date) {}
 
     temperatureStatus() {
 		if (this.Temperature < this.TemperatureBounds.Min ) {
@@ -94,7 +98,9 @@ export class Zone {
 })
 export class ZoneAdapter implements Adapter<Zone> {
 
-	constructor(private alarmAdapter: AlarmAdapter, private boundsAdapter: BoundsAdapter) {}
+	constructor(private alarmAdapter: AlarmAdapter,
+				private boundsAdapter: BoundsAdapter,
+				private stateAdapter: StateAdapter) {}
 
 	adapt(item: any): Zone {
 		let alarms: Alarm[] = [];
@@ -103,6 +109,17 @@ export class ZoneAdapter implements Adapter<Zone> {
 				alarms.push(this.alarmAdapter.adapt(a));
 			}
 		}
+		let current: State = null;
+		let next: State = null;
+		let nextTime: Date = null;
+		if (item.Current != null) {
+			current = this.stateAdapter.adapt(item.Current);
+		}
+		if ( item.Next != null && item.NextTime != null ) {
+			next = this.stateAdapter.adapt(item.Next);
+			nextTime = new Date(item.NextTime);
+		}
+
 		return new Zone(
 			item.Host,
 			item.Name,
@@ -110,7 +127,10 @@ export class ZoneAdapter implements Adapter<Zone> {
 			this.boundsAdapter.adapt(item.TemperatureBounds),
 			item.Humidity,
 			this.boundsAdapter.adapt(item.HumidityBounds),
-			alarms
+			alarms,
+			current,
+			next,
+			nextTime
 		);
 	}
 }

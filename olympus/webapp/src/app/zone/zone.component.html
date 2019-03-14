@@ -29,6 +29,31 @@
     </nav>
 
     <main role="main" class="col-md-7 ml-sm-auto col-lg-8 pt-3 px-4">
+	  <h2> Climate Target for {{hostName}}.{{zoneName}} </h2>
+	  <div *ngIf="zone.Current != null">
+		<h5 class="text-center"> Current State: '{{zone.Current.Name}}'</h5>
+		<div class="table-responsive">
+		  <table class="table table-stripped table-sm">
+			<thead>
+			  <tr>
+				<th>Temperature</th>
+				<th>Humidity</th>
+				<th>Wind</th>
+				<th>Visible Light</th>
+				<th>UV Light</th>
+			  </tr>
+			</thead>
+			<tbody>
+			  <tr>
+				<td></td>
+			  </tr>
+			</tbody>
+		  </table>
+		</div>
+	  </div>
+	  <div *ngIf="zone.Current == null">
+		foo
+	  </div>
 	  <app-climate-chart [hostName]="hostName" [zoneName]="zoneName"></app-climate-chart>
 	</main>
   </div>

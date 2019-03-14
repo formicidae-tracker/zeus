@@ -18,7 +18,9 @@ export class ZoneService {
 
 	getZone(host: string, zone: string): Observable<Zone> {
 		return this.httpClient.get<any>('api/host/'+host+'/zone/'+zone).pipe(
-			map(item => this.adapter.adapt(item)));
+			map(item => {
+				return this.adapter.adapt(item)
+			}));
 	}
 
 }
