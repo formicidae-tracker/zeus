@@ -15,6 +15,7 @@ type RPCReporter struct {
 	Conn           *rpc.Client
 	ClimateReports chan dieu.ClimateReport
 	AlarmReports   chan dieu.AlarmEvent
+	log            *log.Logger
 }
 
 func (r *RPCReporter) ReportChannel() chan<- dieu.ClimateReport {
@@ -26,7 +27,7 @@ func (r *RPCReporter) AlarmChannel() chan<- dieu.AlarmEvent {
 }
 
 func (r *RPCReporter) reconnect() error {
-	log.Printf("[%s] Reconnecting '%s'", r.Registration.Fullname(), r.Addr)
+	r.log.Printf("Reconnecting '%s'", r.Addr)
 	var err error
 	r.Conn, err = rpc.DialHTTP("tcp", r.Addr)
 	if err != nil {
@@ -74,13 +75,13 @@ func (r *RPCReporter) Report() {
 				if rerr == nil {
 					rerr := r.Conn.Call("Hermes.ReportClimate", ncr, &herr)
 					if rerr != nil {
-						log.Printf("[%s]: Could not transmit climate report: %s", r.Registration.Fullname(), rerr)
+						r.log.Printf("Could not transmit climate report: %s", rerr)
 					}
 					if herr.ToError() != nil {
-						log.Printf("[%s]: Could not transmit climate report: %s", r.Registration.Fullname(), herr.ToError())
+						r.log.Printf("Could not transmit climate report: %s", herr.ToError())
 					}
 				} else {
-					log.Printf("[%s] Discarded Report Climate error: %s", r.Registration.Fullname(), rerr)
+					r.log.Printf("Discarded Report Climate error: %s", rerr)
 				}
 			}
 		case ae, ok := <-r.AlarmReports:
@@ -90,13 +91,13 @@ func (r *RPCReporter) Report() {
 				if rerr == nil {
 					rerr := r.Conn.Call("Hermes.ReportAlarm", ae, &herr)
 					if rerr != nil {
-						log.Printf("[%s]: Could not transmit alarm event: %s", r.Registration.Fullname(), rerr)
+						r.log.Printf("Could not transmit alarm event: %s", rerr)
 					}
 					if herr.ToError() != nil {
-						log.Printf("[%s]: Could not transmit alarm event: %s", r.Registration.Fullname(), herr.ToError())
+						r.log.Printf("Could not transmit alarm event: %s", herr.ToError())
 					}
 				} else {
-					log.Printf("[%s] Discarded Alarm Event: error: %s", r.Registration.Fullname(), rerr)
+					r.log.Printf("Discarded Alarm Event: error: %s", rerr)
 				}
 			}
 		}
@@ -105,7 +106,7 @@ func (r *RPCReporter) Report() {
 		}
 
 		if rerr != nil {
-			log.Printf("[%s] Disconnecting '%s' due to rpc error %s", r.Registration.Fullname(), r.Addr, rerr)
+			r.log.Printf("Disconnecting '%s' due to rpc error %s", r.Addr, rerr)
 			r.Conn.Close()
 		}
 	}
@@ -116,10 +117,10 @@ func (r *RPCReporter) Report() {
 		Host: r.Registration.Host,
 	}, &herr)
 	if rerr != nil {
-		log.Printf("[%s]: Could not unregister zone: %s", r.Registration.Name, rerr)
+		r.log.Printf("Could not unregister zone: %s", rerr)
 	}
 	if herr.ToError() != nil {
-		log.Printf("[%s]: Could not unregister zone: %s", r.Registration.Name, herr.ToError())
+		r.log.Printf("Could not unregister zone: %s", herr.ToError())
 	}
 	r.Conn.Close()
 }
@@ -134,6 +135,8 @@ func NewRPCReporter(name, address string, zone dieu.Zone) (*RPCReporter, error) 
 	if err != nil {
 		return nil, fmt.Errorf("rpc: conn: %s", err)
 	}
+
+	logger := log.New(os.Stderr, "[zone/"+name+"]:", log.LstdFlags)
 
 	herr := dieu.HermesError("")
 	reg := dieu.ZoneRegistration{
@@ -172,5 +175,6 @@ func NewRPCReporter(name, address string, zone dieu.Zone) (*RPCReporter, error) 
 		Addr:           address,
 		ClimateReports: make(chan dieu.ClimateReport, 20),
 		AlarmReports:   make(chan dieu.AlarmEvent, 20),
+		log:            logger,
 	}, nil
 }
