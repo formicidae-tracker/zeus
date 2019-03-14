@@ -8,7 +8,7 @@ require (
 	github.com/golang/mock v1.2.0
 	github.com/gorilla/mux v1.7.0
 	github.com/grandcat/zeroconf v0.0.0-20190118114326-c2d1b4121200
-	github.com/jessevdk/go-flags v1.4.0
+	github.com/jessevdk/go-flags v1.4.1-0.20181221193153-c0795c8afcf4
 	github.com/miekg/dns v1.1.6 // indirect
 	golang.org/x/net v0.0.0-20190313082753-5c2c250b6a70 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127
