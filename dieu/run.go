@@ -153,14 +153,17 @@ func (cmd *RunCommand) Execute(args []string) error {
 		m.Close()
 	}
 
-	//ugly but capability wont close the report channel we pass to them
+	wgManager.Wait()
+
+	// ugly but capability wont close the report channel we pass to them
+	// we do it after bus manager and all callbacks are ended
+
 	for zname, r := range rpc {
 		log.Printf("Closing rpc connection for '%s'", zname)
 		close(r.ReportChannel())
 	}
 
 	log.Printf("Waiting graceful exit")
-	wgManager.Wait()
 	wgRpc.Wait()
 	return nil
 }
