@@ -16,6 +16,7 @@ import { ZonePreviewComponent } from './zone-preview/zone-preview.component';
 import { ZoneService } from './zone.service';
 import { ClimateChartComponent } from './climate-chart/climate-chart.component';
 import { AlarmComponent } from './alarm/alarm.component';
+import { StateComponent } from './state/state.component';
 
 @NgModule({
     imports: [
@@ -31,7 +32,8 @@ import { AlarmComponent } from './alarm/alarm.component';
 		PageNotFoundComponent,
 		ZonePreviewComponent,
 		ClimateChartComponent,
-		AlarmComponent
+		AlarmComponent,
+		StateComponent
 	],
 	providers: [ZoneService],
 	bootstrap: [AppComponent]
