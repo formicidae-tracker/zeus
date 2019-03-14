@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"math"
 	"os"
 	"path"
 	"sync"
@@ -24,10 +25,28 @@ func (i *InterpolationManager) SendState(s dieu.State) {
 	}
 }
 
+func sanitizeUnit(u dieu.BoundedUnit) float64 {
+	if dieu.IsUndefined(u) || math.IsNaN(u.Value()) {
+		return -1000.0
+	}
+	return u.Value()
+}
+
+func sanitizeState(s dieu.State) dieu.State {
+	return dieu.State{
+		Name:         s.Name,
+		Temperature:  dieu.Temperature(sanitizeUnit(s.Temperature)),
+		Humidity:     dieu.Humidity(sanitizeUnit(s.Humidity)),
+		Wind:         dieu.Wind(sanitizeUnit(s.Wind)),
+		VisibleLight: dieu.Light(sanitizeUnit(s.VisibleLight)),
+		UVLight:      dieu.Light(sanitizeUnit(s.UVLight)),
+	}
+}
+
 func (i *InterpolationManager) StateReport(s dieu.State, t time.Time) dieu.StateReport {
 	report := dieu.StateReport{
 		Zone:     i.name,
-		Current:  s,
+		Current:  sanitizeState(s),
 		NextTime: nil,
 		Next:     nil,
 	}
@@ -35,7 +54,7 @@ func (i *InterpolationManager) StateReport(s dieu.State, t time.Time) dieu.State
 		report.NextTime = &time.Time{}
 		*report.NextTime = nextT
 		report.Next = &dieu.State{}
-		*report.Next = i.interpoler.CurrentInterpolation(nextT.Add(1 * time.Second)).State(nextT)
+		*report.Next = sanitizeState(i.interpoler.CurrentInterpolation(nextT.Add(1 * time.Second)).State(nextT))
 	}
 	return report
 }
