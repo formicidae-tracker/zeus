@@ -98,7 +98,6 @@ func (b *busManager) Listen() {
 	for {
 		select {
 		case m, ok := <-frames:
-			b.log.Printf("%+v", m)
 			if ok == false {
 				b.log.Printf("ended listening loop")
 				return
@@ -119,7 +118,6 @@ func (b *busManager) Listen() {
 				}
 			}
 		case <-heartbeatTimeout.C:
-			b.log.Printf("timeouts ")
 			for d, ok := range receivedHeartbeat {
 				if ok == false {
 					b.alarms[d.ID] <- dieu.NewMissingDeviceAlarm(b.name, d.Class, d.ID)

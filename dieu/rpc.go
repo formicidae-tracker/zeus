@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/rpc"
 	"os"
@@ -171,12 +172,12 @@ func (r *RPCReporter) Report(wg *sync.WaitGroup) {
 	r.Conn.Close()
 }
 
-func NewRPCReporter(name, address string, zone dieu.Zone) (*RPCReporter, error) {
+func NewRPCReporter(name, address string, zone dieu.Zone, logs io.Writer) (*RPCReporter, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, err
 	}
-	logger := log.New(os.Stderr, "[zone/"+name+"/rpc]:", log.LstdFlags)
+	logger := log.New(logs, "[zone/"+name+"/rpc]:", log.LstdFlags)
 
 	logger.Printf("Opening connection to '%s'", address)
 

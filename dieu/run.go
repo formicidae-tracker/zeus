@@ -97,7 +97,7 @@ func (cmd *RunCommand) Execute(args []string) error {
 
 		reporters := []ClimateReporter{}
 		if cmd.NoAvahi == false {
-			rpc[zname], err = NewRPCReporter(zname, olympusHost, z)
+			rpc[zname], err = NewRPCReporter(zname, olympusHost, z, os.Stderr)
 			if err != nil {
 				return err
 			}

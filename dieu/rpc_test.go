@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/rpc"
@@ -82,7 +83,8 @@ func (s *RPCClimateReporterSuite) TearDownSuite(c *C) {
 func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 	go func() { s.H.C <- c }()
 	zone := dieu.Zone{}
-	n, err := NewRPCReporter("test-zone", testAddress, zone)
+
+	n, err := NewRPCReporter("test-zone", testAddress, zone, bytes.NewBuffer([]byte{}))
 	c.Assert(err, IsNil)
 
 	wg := sync.WaitGroup{}

@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"sync"
 	"syscall"
 	"testing"
+	"time"
 
 	"git.tuleu.science/fort/dieu"
 	"git.tuleu.science/fort/libarke/src-go/arke"
@@ -61,8 +63,8 @@ func (c *stubCapability) Close() error {
 	return nil
 }
 
-func makeIDT(m arke.MessageClass, ID arke.NodeID) uint32 {
-	return uint32(uint32(arke.StandardMessage)<<9 | uint32(m)<<3 | uint32(ID))
+func makeIDT(t arke.MessageType, m arke.MessageClass, ID arke.NodeID) uint32 {
+	return uint32(uint32(t)<<9 | uint32(m)<<3 | uint32(ID))
 }
 
 func TestBusManagerClose(t *testing.T) {
@@ -70,25 +72,45 @@ func TestBusManagerClose(t *testing.T) {
 	s.SetUpMock(t)
 	defer s.ctrl.Finish()
 
-	manager := NewBusManager("mock", s.intf, dieu.HeartBeatPeriod)
+	manager := NewBusManager("mock", s.intf, 5*time.Millisecond)
+	//removes all the nasty logs
+	manager.(*busManager).log.SetOutput(bytes.NewBuffer([]byte{}))
 
 	cap := &stubCapability{
 		ready:   make(chan struct{}),
 		release: make(chan struct{}),
 	}
 
-	alarms := make(chan dieu.Alarm)
+	alarms := make(chan dieu.Alarm, 10)
 	err := manager.AssignCapabilitiesForID(1, []capability{cap}, alarms)
 	if err != nil {
 		t.Error(err)
 	}
 
-	s.intf.EXPECT().Send(socketcan.CanFrame{455, 2, []byte{136, 19}, false, false})
-	s.intf.EXPECT().Close().Return(nil)
+	err = manager.AssignCapabilitiesForID(1, []capability{}, alarms)
+	if err == nil {
+		t.Error("Should be able to assign ID only once")
+	}
+
+	closedInterface := make(chan struct{})
+
+	s.intf.EXPECT().Send(socketcan.CanFrame{455, 2, []byte{5, 0}, false, false})
+	s.intf.EXPECT().Close().AnyTimes().DoAndReturn(func() error {
+		close(closedInterface)
+		return nil
+	})
 	gomock.InOrder(
 		s.intf.EXPECT().Receive().Return(
 			socketcan.CanFrame{
-				ID:       makeIDT(arke.ZeusStatusMessage, 1),
+				ID:       makeIDT(arke.HeartBeat, arke.ZeusStatusMessage, 1),
+				Extended: false,
+				RTR:      false,
+				Dlc:      7,
+				Data:     []byte{0, 0, 0, 0, 0, 0, 0, 0},
+			}, nil),
+		s.intf.EXPECT().Receive().Return(
+			socketcan.CanFrame{
+				ID:       makeIDT(arke.StandardMessage, arke.ZeusStatusMessage, 1),
 				Extended: false,
 				RTR:      false,
 				Dlc:      7,
@@ -96,7 +118,10 @@ func TestBusManagerClose(t *testing.T) {
 			}, nil),
 		s.intf.EXPECT().Receive().Return(socketcan.CanFrame{}, nil),
 		s.intf.EXPECT().Receive().Return(socketcan.CanFrame{}, errors.New("foo")),
-		s.intf.EXPECT().Receive().Return(socketcan.CanFrame{}, syscall.EBADF),
+		s.intf.EXPECT().Receive().AnyTimes().DoAndReturn(func() (socketcan.CanFrame, error) {
+			<-closedInterface
+			return socketcan.CanFrame{}, syscall.EBADF
+		}),
 	)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -105,15 +130,15 @@ func TestBusManagerClose(t *testing.T) {
 		wg.Done()
 	}()
 
-	// //time.Sleep(20 * time.Millisecond)
-	// select {
-	// case <-alarms:
-	// default:
-	// 	t.Error("Should have received an alarm")
-	// }
-
 	closed := make(chan struct{})
 	<-cap.ready
+
+	a, ok := <-alarms
+	if ok == true {
+		if _, ok := a.(dieu.MissingDeviceAlarm); ok == false {
+			t.Error("Should have received a missing device alarm")
+		}
+	}
 	go func() {
 		manager.Close()
 		close(closed)
@@ -126,8 +151,9 @@ func TestBusManagerClose(t *testing.T) {
 	}
 	close(cap.release)
 
-	_, ok := <-closed
+	_, ok = <-closed
 	if ok != false {
 		t.Error("Should be closed")
 	}
+
 }
