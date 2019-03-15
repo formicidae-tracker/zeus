@@ -67,7 +67,7 @@ func Execute() error {
 		if err != nil {
 			log.Printf("Could not parse CAN Frame: %s", err)
 		} else {
-			out.Printf("ID:%d %+v", ID, m)
+			out.Printf("ID:%d %#v", ID, m)
 		}
 	}
 
