@@ -150,7 +150,7 @@ func (h *Hermes) ReportAlarm(ae *dieu.AlarmEvent, err *dieu.HermesError) error {
 	aIdx, ok := z.alarmMap[ae.Reason]
 	if ok == false {
 		z.registerAlarm(ae)
-		return nil
+		aIdx = z.alarmMap[ae.Reason]
 	}
 
 	h.log.Printf("New alarm event %+v", ae)
