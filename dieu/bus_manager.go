@@ -39,6 +39,7 @@ type busManager struct {
 	callbackWaitGroup *sync.WaitGroup
 	listenWaitGroup   *sync.WaitGroup
 	log               *log.Logger
+	heartbeat         time.Duration
 }
 
 func (b *busManager) receiveAndStampMessage(frames chan<- *StampedMessage) {
@@ -53,16 +54,18 @@ func (b *busManager) receiveAndStampMessage(frames chan<- *StampedMessage) {
 				}
 			}
 			b.log.Printf("Could not receive CAN frame on: %s", err)
-		}
-		t := time.Now()
-		m, ID, err := arke.ParseMessage(&f)
-		if err != nil {
-			b.log.Printf("Could not parse CAN Frame on: %s", err)
-		}
-		frames <- &StampedMessage{
-			M:  m,
-			ID: ID,
-			T:  t,
+		} else {
+			t := time.Now()
+			m, ID, err := arke.ParseMessage(&f)
+			if err != nil {
+				b.log.Printf("Could not parse CAN Frame on: %s", err)
+			} else {
+				frames <- &StampedMessage{
+					M:  m,
+					ID: ID,
+					T:  t,
+				}
+			}
 		}
 	}
 }
@@ -77,14 +80,14 @@ func (b *busManager) Listen() {
 	}
 
 	for c, _ := range allClasses {
-		arke.SendHeartBeatRequest(b.intf, c, dieu.HeartBeatPeriod)
+		arke.SendHeartBeatRequest(b.intf, c, b.heartbeat)
 	}
 
 	frames := make(chan *StampedMessage, 10)
 
 	go b.receiveAndStampMessage(frames)
 
-	heartbeatTimeout := time.NewTicker(3 * dieu.HeartBeatPeriod)
+	heartbeatTimeout := time.NewTicker(3 * b.heartbeat)
 	b.listenWaitGroup.Add(1)
 	defer func() {
 		heartbeatTimeout.Stop()
@@ -95,6 +98,7 @@ func (b *busManager) Listen() {
 	for {
 		select {
 		case m, ok := <-frames:
+			b.log.Printf("%+v", m)
 			if ok == false {
 				b.log.Printf("ended listening loop")
 				return
@@ -115,6 +119,7 @@ func (b *busManager) Listen() {
 				}
 			}
 		case <-heartbeatTimeout.C:
+			b.log.Printf("timeouts ")
 			for d, ok := range receivedHeartbeat {
 				if ok == false {
 					b.alarms[d.ID] <- dieu.NewMissingDeviceAlarm(b.name, d.Class, d.ID)
@@ -181,13 +186,8 @@ func (b *busManager) Close() error {
 	return err
 }
 
-func NewBusManager(interfaceName string) (BusManager, error) {
+func NewBusManager(interfaceName string, intf socketcan.RawInterface, heartbeat time.Duration) BusManager {
 	logger := log.New(os.Stderr, "[CAN/"+interfaceName+"]: ", log.LstdFlags)
-	logger.Printf("Opening CAN Interface")
-	intf, err := socketcan.NewRawInterface(interfaceName)
-	if err != nil {
-		return nil, err
-	}
 	return &busManager{
 		name:              interfaceName,
 		intf:              intf,
@@ -197,5 +197,6 @@ func NewBusManager(interfaceName string) (BusManager, error) {
 		log:               logger,
 		callbackWaitGroup: &sync.WaitGroup{},
 		listenWaitGroup:   &sync.WaitGroup{},
-	}, nil
+		heartbeat:         heartbeat,
+	}
 }

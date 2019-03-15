@@ -12,6 +12,7 @@ import (
 
 	"git.tuleu.science/fort/dieu"
 	"git.tuleu.science/fort/libarke/src-go/arke"
+	socketcan "github.com/atuleu/golang-socketcan"
 	"github.com/grandcat/zeroconf"
 )
 
@@ -76,16 +77,20 @@ func (cmd *RunCommand) Execute(args []string) error {
 	wgInterpolation := &sync.WaitGroup{}
 	wgRpc := &sync.WaitGroup{}
 	for zname, z := range c.Zones {
-		log.Printf("Loading zone '%s'", zname)
+		logger := log.New(os.Stderr, "[zone/"+zname+"]: ", log.LstdFlags)
+
+		logger.Printf("Loading zone")
 
 		m, ok := managers[z.CANInterface]
 		if ok == false {
 			var err error
-			m, err = NewBusManager(z.CANInterface)
+			logger.Printf("Opening interface '%s'", z.CANInterface)
+			intf, err := socketcan.NewRawInterface(z.CANInterface)
 			if err != nil {
 				return err
 			}
-			managers[z.CANInterface] = m
+
+			managers[z.CANInterface] = NewBusManager(z.CANInterface, intf, dieu.HeartBeatPeriod)
 		}
 
 		var stateReports chan<- dieu.StateReport = nil

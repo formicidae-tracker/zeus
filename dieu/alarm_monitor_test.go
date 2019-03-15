@@ -19,13 +19,13 @@ type AlarmMonitorSuite struct {
 	Hostname string
 }
 
+var _ = Suite(&AlarmMonitorSuite{})
+
 func (s *AlarmMonitorSuite) SetUpSuite(c *C) {
 	var err error
 	s.Hostname, err = os.Hostname()
 	c.Assert(err, IsNil)
 }
-
-var _ = Suite(&AlarmMonitorSuite{})
 
 type testAlarm string
 
