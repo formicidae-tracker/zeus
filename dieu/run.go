@@ -113,7 +113,7 @@ func (cmd *RunCommand) Execute(args []string) error {
 		}
 		allCapabilities = append(allCapabilities, capabilities...)
 
-		interpolers[zname], err = NewInterpolationManager(zname, z.States, z.Transitions, capabilities, stateReports)
+		interpolers[zname], err = NewInterpolationManager(zname, z.States, z.Transitions, capabilities, stateReports, os.Stderr)
 		if err != nil {
 			return err
 		}

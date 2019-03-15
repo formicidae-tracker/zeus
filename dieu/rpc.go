@@ -13,13 +13,15 @@ import (
 )
 
 type RPCReporter struct {
-	Registration   dieu.ZoneRegistration
-	Addr           string
-	Conn           *rpc.Client
-	ClimateReports chan dieu.ClimateReport
-	AlarmReports   chan dieu.AlarmEvent
-	StateReports   chan dieu.StateReport
-	log            *log.Logger
+	Registration       dieu.ZoneRegistration
+	Addr               string
+	Conn               *rpc.Client
+	ClimateReports     chan dieu.ClimateReport
+	AlarmReports       chan dieu.AlarmEvent
+	StateReports       chan dieu.StateReport
+	log                *log.Logger
+	ReconnectionWindow time.Duration
+	MaxAttempts        int
 }
 
 func (r *RPCReporter) ReportChannel() chan<- dieu.ClimateReport {
@@ -66,8 +68,6 @@ func (r *RPCReporter) reconnect() error {
 	return herr.ToError()
 }
 
-const maxAttempt = 10000
-
 func (r *RPCReporter) Report(wg *sync.WaitGroup) {
 	defer wg.Done()
 	var rerr error
@@ -76,12 +76,12 @@ func (r *RPCReporter) Report(wg *sync.WaitGroup) {
 	var resetTimer *time.Timer = nil
 	for {
 		if rerr != nil && resetConnection == nil {
-			if trials < maxAttempt {
-				r.log.Printf("Will reconnect in 5s previous trials: %d, max:%d", trials, maxAttempt)
-				resetTimer = time.NewTimer(5 * time.Second)
+			if trials < r.MaxAttempts {
+				r.log.Printf("Will reconnect in %s previous trials: %d, max:%d", r.ReconnectionWindow, trials, r.MaxAttempts)
+				resetTimer = time.NewTimer(r.ReconnectionWindow)
 				resetConnection = resetTimer.C
 			} else {
-				log.Printf("Disabling connection after %d attemps", maxAttempt)
+				log.Printf("Disabling connection after %d attemps", r.MaxAttempts)
 				rerr = nil
 			}
 		}
@@ -102,7 +102,7 @@ func (r *RPCReporter) Report(wg *sync.WaitGroup) {
 				r.ClimateReports = nil
 			} else {
 				ncr := dieu.NamedClimateReport{cr, r.Registration.Fullname()}
-				if rerr == nil && trials <= maxAttempt && resetConnection == nil {
+				if rerr == nil && trials <= r.MaxAttempts && resetConnection == nil {
 					rerr = r.Conn.Call("Hermes.ReportClimate", ncr, &herr)
 					if rerr != nil {
 						r.log.Printf("Could not transmit climate report: %s", rerr)
@@ -116,7 +116,7 @@ func (r *RPCReporter) Report(wg *sync.WaitGroup) {
 			if ok == false {
 				r.AlarmReports = nil
 			} else {
-				if rerr == nil && trials <= maxAttempt && resetConnection == nil {
+				if rerr == nil && trials <= r.MaxAttempts && resetConnection == nil {
 					rerr = r.Conn.Call("Hermes.ReportAlarm", ae, &herr)
 					if rerr != nil {
 						r.log.Printf("Could not transmit alarm event: %s", rerr)
@@ -130,7 +130,7 @@ func (r *RPCReporter) Report(wg *sync.WaitGroup) {
 			if ok == false {
 				r.StateReports = nil
 			} else {
-				if rerr == nil && trials <= maxAttempt && resetConnection == nil {
+				if rerr == nil && trials <= r.MaxAttempts && resetConnection == nil {
 					rerr = r.Conn.Call("Hermes.ReportState", sr, &herr)
 					if rerr != nil {
 						r.log.Printf("Could not transmit state report: %s", rerr)
@@ -218,12 +218,14 @@ func NewRPCReporter(name, address string, zone dieu.Zone, logs io.Writer) (*RPCR
 	}
 
 	return &RPCReporter{
-		Registration:   reg,
-		Conn:           conn,
-		Addr:           address,
-		ClimateReports: make(chan dieu.ClimateReport, 20),
-		AlarmReports:   make(chan dieu.AlarmEvent, 20),
-		StateReports:   make(chan dieu.StateReport, 20),
-		log:            logger,
+		Registration:       reg,
+		Conn:               conn,
+		Addr:               address,
+		ClimateReports:     make(chan dieu.ClimateReport, 20),
+		AlarmReports:       make(chan dieu.AlarmEvent, 20),
+		StateReports:       make(chan dieu.StateReport, 20),
+		log:                logger,
+		ReconnectionWindow: 5 * time.Second,
+		MaxAttempts:        1000,
 	}, nil
 }

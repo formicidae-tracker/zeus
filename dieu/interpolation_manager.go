@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"log"
 	"math"
 	"os"
@@ -17,6 +18,7 @@ type InterpolationManager struct {
 	capabilities []capability
 	reports      chan<- dieu.StateReport
 	log          *log.Logger
+	period       time.Duration
 }
 
 func (i *InterpolationManager) SendState(s dieu.State) {
@@ -79,7 +81,7 @@ func (i *InterpolationManager) Interpolate(wg *sync.WaitGroup, init, quit <-chan
 		i.reports <- report
 	}
 
-	timer := time.NewTicker(10 * time.Second)
+	timer := time.NewTicker(i.period)
 	defer timer.Stop()
 	for {
 		select {
@@ -108,12 +110,13 @@ func NewInterpolationManager(name string,
 	states []dieu.State,
 	transitions []dieu.Transition,
 	caps []capability,
-	reports chan<- dieu.StateReport) (*InterpolationManager, error) {
+	reports chan<- dieu.StateReport,
+	logs io.Writer) (*InterpolationManager, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, err
 	}
-	logger := log.New(os.Stderr, "[zone/"+name+"/climate]: ", log.LstdFlags)
+	logger := log.New(logs, "[zone/"+name+"/climate]: ", log.LstdFlags)
 	logger.Printf("Computing climate interpolation")
 	i, err := NewClimateInterpoler(states, transitions, time.Now().UTC())
 	if err != nil {
@@ -126,6 +129,7 @@ func NewInterpolationManager(name string,
 		capabilities: caps,
 		log:          logger,
 		reports:      reports,
+		period:       5 * time.Second,
 	}, nil
 
 }
