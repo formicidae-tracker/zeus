@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"git.tuleu.science/fort/libarke/src-go/arke"
 	socketcan "github.com/atuleu/golang-socketcan"
@@ -49,6 +48,7 @@ func Execute() error {
 					}
 				}
 				log.Printf("Could not receive CAN frame on: %s", err)
+			} else {
 				frames <- f
 			}
 		}
@@ -61,12 +61,13 @@ func Execute() error {
 		intf.Close()
 	}()
 
+	out := log.New(os.Stdout, "", log.LstdFlags)
 	for f := range frames {
 		m, ID, err := arke.ParseMessage(&f)
 		if err != nil {
-			fmt.Fprintf(os.Stdout, "%s ID:%d %+v", time.Now(), ID, m)
-		} else {
 			log.Printf("Could not parse CAN Frame: %s", err)
+		} else {
+			out.Printf("ID:%d %+v", ID, m)
 		}
 	}
 
