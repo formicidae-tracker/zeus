@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"path"
 	"time"
@@ -28,7 +29,11 @@ func (m *alarmMonitor) Name() string {
 func wakeupAfter(wakeup chan<- string, quit <-chan struct{}, reason string, after time.Duration) {
 	time.Sleep(after)
 	//we allow sending on closed wakeup channel even if we really try not to.
-	defer recover()
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Recovered: %s", r)
+		}
+	}()
 	select {
 	case <-quit:
 		return
