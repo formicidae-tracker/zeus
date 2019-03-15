@@ -58,7 +58,7 @@ func (t *Transition) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 func (t Transition) String() string {
 	if t.Day == 0 {
-		return fmt.Sprintf("RecurringTransition{From:%s,To:%s,Start:%s,Duration:%s}", t.From, t.To, t.Start.Format("15:04"), t.Duration)
+		return fmt.Sprintf("RecurringTransition{From: %s, To: %s, Start: %s, Duration: %s}", t.From, t.To, t.Start.Format("15:04"), t.Duration)
 	}
-	return fmt.Sprintf("Transition{From:%s,To:%s,Start:%s,OnDay:%d,Duration:%s}", t.From, t.To, t.Start.Format("15:04"), t.Day, t.Duration)
+	return fmt.Sprintf("Transition{From: %s, To: %s, Start: %s, OnDay: %d, Duration: %s}", t.From, t.To, t.Start.Format("15:04"), t.Day, t.Duration)
 }

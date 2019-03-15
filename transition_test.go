@@ -105,3 +105,36 @@ start-time-delta: 3m`,
 		}
 	}
 }
+
+func (s *TransitionSuite) TestFormatting(c *C) {
+	testdata := []struct {
+		Transition Transition
+		Expected   string
+	}{
+		{
+			Transition: Transition{
+				From:     "a",
+				To:       "b",
+				Day:      0,
+				Start:    time.Date(0, 1, 1, 12, 30, 0, 0, time.UTC),
+				Duration: 30 * time.Minute,
+			},
+			Expected: "RecurringTransition{From: a, To: b, Start: 12:30, Duration: 30m0s}",
+		},
+		{
+			Transition: Transition{
+				From:     "a",
+				To:       "b",
+				Day:      2,
+				Start:    time.Date(0, 1, 1, 10, 30, 0, 0, time.UTC),
+				Duration: 30 * time.Minute,
+			},
+			Expected: "Transition{From: a, To: b, Start: 10:30, OnDay: 2, Duration: 30m0s}",
+		},
+	}
+
+	for _, d := range testdata {
+		c.Check(d.Transition.String(), Equals, d.Expected)
+	}
+
+}

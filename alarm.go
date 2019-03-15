@@ -38,13 +38,13 @@ func (a AlarmString) RepeatPeriod() time.Duration {
 }
 
 var WaterLevelWarning = AlarmString{Warning, "Celaeno water level is low"}
-var WaterLevelCritical = AlarmString{Emergency, "Celaeno water level is empty"}
+var WaterLevelCritical = AlarmString{Emergency, "Celaeno is empty"}
 var WaterLevelUnreadable = AlarmString{Emergency, "Celaeno water level is unreadable"}
 var HumidityUnreachable = AlarmString{Warning, "Cannot reach desired humidity"}
-var TemperatureUnreachable = AlarmString{Warning, "Cannot reach desired humidity"}
+var TemperatureUnreachable = AlarmString{Warning, "Cannot reach desired temperature"}
 var HumidityOutOfBound = AlarmString{Emergency, "Humidity is outside of boundaries"}
 var TemperatureOutOfBound = AlarmString{Emergency, "Temperature is outside of boundaries"}
-var SensorReadoutIssue = AlarmString{Emergency, "Sensors cannot be read"}
+var SensorReadoutIssue = AlarmString{Emergency, "Cannot read sensors"}
 
 type MissingDeviceAlarm struct {
 	canInterface string
@@ -57,7 +57,7 @@ func (a MissingDeviceAlarm) Priority() Priority {
 }
 
 func (a MissingDeviceAlarm) Reason() string {
-	return fmt.Sprintf("Device '%s', with ID %d is missing on bus '%s'", arke.ClassName(a.class), a.id, a.canInterface)
+	return fmt.Sprintf("Device %s.%s.%d is missing", a.canInterface, arke.ClassName(a.class), a.id)
 }
 
 func (a MissingDeviceAlarm) RepeatPeriod() time.Duration {
@@ -69,6 +69,11 @@ func (a MissingDeviceAlarm) Device() (string, arke.NodeClass, arke.NodeID) {
 }
 
 func NewMissingDeviceAlarm(intf string, c arke.NodeClass, id arke.NodeID) MissingDeviceAlarm {
+	if id < 1 {
+		id = 1
+	} else if id > 7 {
+		id = 7
+	}
 	return MissingDeviceAlarm{intf, c, id}
 }
 
@@ -106,6 +111,9 @@ func (a FanAlarm) Status() arke.FanStatus {
 }
 
 func NewFanAlarm(fan string, s arke.FanStatus) FanAlarm {
+	if s == arke.FanOK {
+		s = arke.FanAging
+	}
 	return FanAlarm{fan, s}
 }
 

@@ -27,12 +27,16 @@ type StateReport struct {
 	NextTime *time.Time
 }
 
+func ZoneIdentifier(host, name string) string {
+	return path.Join(host, "zone", name)
+}
+
 func (zr ZoneUnregistration) Fullname() string {
-	return path.Join(zr.Host, "zone", zr.Name)
+	return ZoneIdentifier(zr.Host, zr.Name)
 }
 
 func (zr ZoneRegistration) Fullname() string {
-	return path.Join(zr.Host, "zone", zr.Name)
+	return ZoneIdentifier(zr.Host, zr.Name)
 }
 
 type HermesError string
