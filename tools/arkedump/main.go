@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"git.tuleu.science/fort/libarke/src-go/arke"
 	socketcan "github.com/atuleu/golang-socketcan"
@@ -34,20 +35,22 @@ func Execute() error {
 		return err
 	}
 
-	frames := make(chan socketcan.CanFrame, 10)
+	frames := make(chan socketcan.CanFrame, 1)
 
 	go func() {
 		defer close(frames)
-		f, err := intf.Receive()
-		if err != nil {
-			if errno, ok := err.(syscall.Errno); ok == true {
-				if errno == syscall.EBADF || errno == syscall.ENETDOWN || errno == syscall.ENODEV {
-					log.Printf("Closed CAN Interface: %s", err)
-					return
+		for {
+			f, err := intf.Receive()
+			if err != nil {
+				if errno, ok := err.(syscall.Errno); ok == true {
+					if errno == syscall.EBADF || errno == syscall.ENETDOWN || errno == syscall.ENODEV {
+						log.Printf("Closed CAN Interface: %s", err)
+						return
+					}
 				}
+				log.Printf("Could not receive CAN frame on: %s", err)
+				frames <- f
 			}
-			log.Printf("Could not receive CAN frame on: %s", err)
-			frames <- f
 		}
 	}()
 
@@ -58,11 +61,10 @@ func Execute() error {
 		intf.Close()
 	}()
 
-	out := log.New(os.Stdout, "", log.LstdFlags)
 	for f := range frames {
 		m, ID, err := arke.ParseMessage(&f)
 		if err != nil {
-			out.Printf("ID:%d %+v", ID, m)
+			fmt.Fprintf(os.Stdout, "%s ID:%d %+v", time.Now(), ID, m)
 		} else {
 			log.Printf("Could not parse CAN Frame: %s", err)
 		}
