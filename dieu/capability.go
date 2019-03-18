@@ -131,6 +131,8 @@ func (c *ClimateControllable) Callbacks() map[arke.MessageClass]callback {
 				if err := c.zeus.SendMessage(c.lastSetPoint); err != nil {
 					return err
 				}
+			} else {
+				alarms <- dieu.ClimateStateUndefined
 			}
 		}
 
