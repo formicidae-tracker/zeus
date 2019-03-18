@@ -150,23 +150,7 @@ func (c *ClimateControllable) Callbacks() map[arke.MessageClass]callback {
 
 		for i, f := range m.Fans {
 			if f.Status() != arke.FanOK {
-				if time.Now().After(c.zeusResetGuard) {
-					c.zeusResetGuard = time.Now().Add(FanResetWindow)
-					if err := c.zeus.SendResetRequest(); err != nil {
-						return err
-					}
-					//give time for the device to reset
-					time.Sleep(100 * time.Millisecond)
-					if err := c.zeus.SendHeartbeatRequest(); err != nil {
-						return err
-					}
-
-					if c.lastSetPoint != nil {
-						return c.zeus.SendMessage(c.lastSetPoint)
-					}
-				} else {
-					alarms <- dieu.NewFanAlarm(zeusFanNames[i], f.Status())
-				}
+				alarms <- dieu.NewFanAlarm(zeusFanNames[i], f.Status())
 			}
 		}
 
