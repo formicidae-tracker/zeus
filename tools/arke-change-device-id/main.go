@@ -9,7 +9,7 @@ import (
 
 	"git.tuleu.science/fort/libarke/src-go/arke"
 
-	"github.com/atuleu/golang-socketcan"
+	socketcan "github.com/atuleu/golang-socketcan"
 	"github.com/jessevdk/go-flags"
 )
 

@@ -102,16 +102,24 @@ func (b *busManager) Listen() {
 				b.log.Printf("ended listening loop")
 				return
 			}
-			if m.M.MessageClassID() == arke.HeartBeatMessage {
+			switch m.M.MessageClassID() {
+			case arke.HeartBeatMessage:
 				def := deviceDefinition{ID: m.ID, Class: m.M.(*arke.HeartBeatData).Class}
 				receivedHeartbeat[def] = true
-			} else {
+			case arke.ErrorReportMessage:
+				if alarms, ok := b.alarms[m.ID]; ok == true {
+					casted := m.M.(*arke.ErrorReportData)
+					alarms <- dieu.NewDeviceInternalError(b.name, casted.Class, casted.ID, casted.ErrorCode)
+				}
+			default:
 				mDef := messageDefinition{MessageID: m.M.MessageClassID(), ID: m.ID}
 				if callbacks, ok := b.callbacks[mDef]; ok == true {
 					b.callbackWaitGroup.Add(1)
 					go func(m *StampedMessage, alarms chan<- dieu.Alarm) {
 						for _, callback := range callbacks {
-							callback(alarms, m)
+							if err := callback(alarms, m); err != nil {
+								b.log.Printf("callback error on %s: %s", m.M, err)
+							}
 						}
 						b.callbackWaitGroup.Done()
 					}(m, b.alarms[m.ID])

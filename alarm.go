@@ -117,6 +117,37 @@ func NewFanAlarm(fan string, s arke.FanStatus) FanAlarm {
 	return FanAlarm{fan, s}
 }
 
+type DeviceInternalError struct {
+	intfName  string
+	class     arke.NodeClass
+	id        arke.NodeID
+	errorCode uint16
+}
+
+func NewDeviceInternalError(intfName string, c arke.NodeClass, id arke.NodeID, e uint16) DeviceInternalError {
+	return DeviceInternalError{intfName: intfName, class: c, id: id, errorCode: e}
+}
+
+func (e DeviceInternalError) Priority() Priority {
+	return Warning
+}
+
+func (e DeviceInternalError) RepeatPeriod() time.Duration {
+	return 500 * time.Millisecond
+}
+
+func (e DeviceInternalError) Reason() string {
+	return fmt.Sprintf("Device %s.%s.%d internal error 0x%04x", e.intfName, e.class, e.id, e.errorCode)
+}
+
+func (e DeviceInternalError) Device() (string, arke.NodeClass, arke.NodeID) {
+	return e.intfName, e.class, e.id
+}
+
+func (e DeviceInternalError) ErrorCode() uint16 {
+	return e.errorCode
+}
+
 type AlarmStatus int
 
 const (
