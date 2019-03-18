@@ -197,26 +197,37 @@ export class ClimateChartComponent implements AfterViewInit,OnInit,OnDestroy {
 				break;
 		}
 
+
 		this.climateReport.getReport(this.hostName,this.zoneName,window).subscribe((cr) => {
 			this.chart.data.datasets[0].data = [];
 			this.chart.data.datasets[1].data = [];
 			this.chart.data.datasets[2].data = [];
 			this.chart.data.datasets[3].data = [];
 			this.chart.data.datasets[4].data = [];
+			let timeDiv = 3600.0;
+			let roundDiv = 10000.0;
+			if (this.timeWindow == TimeWindow.Hour ) {
+				timeDiv = 60.0;
+				roundDiv = 1000.0;
+				this.chart.options.scales.xAxes[0].scaleLabel.labelString = 'Time (m)';
+			} else {
+				this.chart.options.scales.xAxes[0].scaleLabel.labelString = 'Time (h)';
+			}
+
 			for (let h of cr.Humidity) {
-				this.chart.data.datasets[0].data.push({x:h.X,y:h.Y});
+				this.chart.data.datasets[0].data.push({x:Math.round(roundDiv*h.X/timeDiv)/roundDiv,y:Math.round(100*h.Y)/100});
 			}
 			for (let t of cr.TemperatureAnt) {
-				this.chart.data.datasets[1].data.push({x:t.X,y:t.Y});
+				this.chart.data.datasets[1].data.push({x:Math.round(roundDiv*t.X/timeDiv)/roundDiv,y:Math.round(100*t.Y)/100});
 			}
 			for (let t of cr.TemperatureAux1) {
-				this.chart.data.datasets[2].data.push({x:t.X,y:t.Y});
+				this.chart.data.datasets[2].data.push({x:Math.round(roundDiv*t.X/timeDiv)/roundDiv,y:Math.round(100*t.Y)/100});
 			}
 			for (let t of cr.TemperatureAux2) {
-				this.chart.data.datasets[3].data.push({x:t.X,y:t.Y});
+				this.chart.data.datasets[3].data.push({x:Math.round(roundDiv*t.X/timeDiv)/roundDiv,y:Math.round(100*t.Y)/100});
 			}
 			for (let t of cr.TemperatureAux3) {
-				this.chart.data.datasets[4].data.push({x:t.X,y:t.Y});
+				this.chart.data.datasets[4].data.push({x:Math.round(roundDiv*t.X/timeDiv)/roundDiv,y:Math.round(100*t.Y)/100});
 			}
 			this.chart.update();
 			console.timeEnd('updateChart');
