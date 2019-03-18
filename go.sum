@@ -1,7 +1,13 @@
+git.tuleu.science/fort/libarke v1.0.0 h1:e/uc0pVu8I5G14QtMIYtTzAbn0tEma8S1THovcXLYOU=
+git.tuleu.science/fort/libarke v1.0.0/go.mod h1:cxNPBryoFDdA8skkYP9K9S/QhQPIKY8+DNufGkbk/9s=
+git.tuleu.science/fort/libarke v1.1.0 h1:367cy/aoCE+tjphNH+buq0k7hkW9ChSFXxQPxjMFTYU=
+git.tuleu.science/fort/libarke v1.1.0/go.mod h1:cxNPBryoFDdA8skkYP9K9S/QhQPIKY8+DNufGkbk/9s=
 git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190307132332-0d5e6ddd35af h1:zq6fFVeR69LMSAFRgg4HgQIpDXiNoItJXuGUI1/XwP0=
 git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190307132332-0d5e6ddd35af/go.mod h1:iUgrLx0mFxulxRZTQcH/+Rx46TsPAT/4Xy2ici9Z0uU=
 git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190315160845-74f6866405ad h1:UjPyanQ3aa57k79n0hapt00ci+OmzpatpjfIXqLV1bU=
 git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190315160845-74f6866405ad/go.mod h1:iUgrLx0mFxulxRZTQcH/+Rx46TsPAT/4Xy2ici9Z0uU=
+git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190318123021-cd40ef3acf4a h1:le0tc1QroTCA0RLPNAH69hFUibehMbKU8h7nod+hTuI=
+git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190318123021-cd40ef3acf4a/go.mod h1:iUgrLx0mFxulxRZTQcH/+Rx46TsPAT/4Xy2ici9Z0uU=
 github.com/atuleu/golang-socketcan v0.1.3 h1:yf+pdK5yeUATgkgbBTB8qOjjZXA3TrnejRUXwSlVW3A=
 github.com/atuleu/golang-socketcan v0.1.3/go.mod h1:K0cVB6d80dD70kgvSKVtS3Ue887mEkiUI5KPwkh8RKw=
 github.com/cenkalti/backoff v2.1.1+incompatible h1:tKJnvO2kl0zmb/jA5UKAt4VoEVw1qxKWjE/Bpp46npY=
@@ -36,6 +42,8 @@ golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a h1:1BGLXjeY4akVXGgbC9HugT3Jv
 golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20190312061237-fead79001313 h1:pczuHS43Cp2ktBEEmLwScxgjWsBSzdaQiKzUyf3DTTc=
 golang.org/x/sys v0.0.0-20190312061237-fead79001313/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/sys v0.0.0-20190316082340-a2f829d7f35f h1:yCrMx/EeIue0+Qca57bWZS7VX6ymEoypmhWyPhz0NHM=
+golang.org/x/sys v0.0.0-20190316082340-a2f829d7f35f/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 h1:qIbj1fsPNlZgppZ+VLlY7N33q108Sa+fhmuc+sWQYwY=
