@@ -45,6 +45,7 @@ var TemperatureUnreachable = AlarmString{Warning, "Cannot reach desired temperat
 var HumidityOutOfBound = AlarmString{Emergency, "Humidity is outside of boundaries"}
 var TemperatureOutOfBound = AlarmString{Emergency, "Temperature is outside of boundaries"}
 var SensorReadoutIssue = AlarmString{Emergency, "Cannot read sensors"}
+var ClimateStateUndefined = AlarmString{Emergency, "Climate State Undefined"}
 
 type MissingDeviceAlarm struct {
 	canInterface string

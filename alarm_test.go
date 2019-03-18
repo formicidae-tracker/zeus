@@ -19,6 +19,7 @@ func (s *AlarmSuite) TestRepeatPeriod(c *C) {
 		{AlarmString{}, 500 * time.Millisecond},
 		{NewFanAlarm("foo", arke.FanAging), 500 * time.Millisecond},
 		{NewMissingDeviceAlarm("foo", arke.ZeusClass, 1), HeartBeatPeriod},
+		{NewDeviceInternalError("foo", arke.ZeusClass, 1, 43), 500 * time.Millisecond},
 	}
 
 	for _, d := range testdata {
@@ -45,6 +46,7 @@ func (s *AlarmSuite) TestData(c *C) {
 		{NewFanAlarm("bar", arke.FanAging), "Fan bar is aging", Warning},
 		{NewFanAlarm("baz", arke.FanOK), "Fan baz is aging", Warning},
 		{NewMissingDeviceAlarm("vcan0", arke.ZeusClass, 1), "Device vcan0.Zeus.1 is missing", Emergency},
+		{NewDeviceInternalError("vcan0", arke.ZeusClass, 1, 0x42), "Device vcan0.Zeus.1 internal error 0x0042", Warning},
 	}
 
 	for _, d := range testdata {
@@ -104,5 +106,25 @@ func (s *AlarmSuite) TestLevelMapping(c *C) {
 
 	for _, d := range testdata {
 		c.Check(MapPriority(d.Priority), Equals, d.Level)
+	}
+}
+
+func (s *AlarmSuite) TestDeviceInternalError(c *C) {
+	testdata := []struct {
+		Alarm             DeviceInternalError
+		ExpectedInterface string
+		ExpectedClass     arke.NodeClass
+		ExpectedID        arke.NodeID
+		ExpectedError     uint16
+	}{
+		{NewDeviceInternalError("vcan0", arke.CelaenoClass, 1, 0x42), "vcan0", arke.CelaenoClass, 1, 0x42},
+	}
+
+	for _, d := range testdata {
+		intf, class, ID := d.Alarm.Device()
+		c.Check(intf, Equals, d.ExpectedInterface)
+		c.Check(class, Equals, d.ExpectedClass)
+		c.Check(ID, Equals, d.ExpectedID)
+		c.Check(d.Alarm.ErrorCode(), Equals, d.ExpectedError)
 	}
 }
