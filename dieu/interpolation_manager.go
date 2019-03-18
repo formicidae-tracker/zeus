@@ -91,14 +91,14 @@ func (i *InterpolationManager) Interpolate(wg *sync.WaitGroup, init, quit <-chan
 		case <-quit:
 			i.log.Printf("Closing climate interpolation")
 			return
-		case <-timer.C:
-			now := time.Now()
+		case now := <-timer.C:
 			new := i.interpoler.CurrentInterpolation(now)
 			_, newIsTransition := new.(*interpolation)
 
 			if isTransition != newIsTransition {
 				i.log.Printf("New interpolation %s", new)
 			} else if isTransition == false {
+				i.SendState(cur.State(now))
 				continue
 			}
 			cur = new
