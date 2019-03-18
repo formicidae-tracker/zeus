@@ -16,6 +16,7 @@ type RPCReporter struct {
 	Registration       dieu.ZoneRegistration
 	Addr               string
 	Conn               *rpc.Client
+	LastStateReport    *dieu.StateReport
 	ClimateReports     chan dieu.ClimateReport
 	AlarmReports       chan dieu.AlarmEvent
 	StateReports       chan dieu.StateReport
@@ -61,6 +62,15 @@ func (r *RPCReporter) reconnect() error {
 	herr := dieu.HermesError("")
 
 	err = r.Conn.Call("Hermes.RegisterZone", r.Registration, &herr)
+	if err != nil {
+		return err
+	}
+
+	if r.LastStateReport == nil || herr.ToError() != nil {
+		return herr.ToError()
+	}
+
+	err = r.Conn.Call("Hermes.ReportState", r.LastStateReport, &herr)
 	if err != nil {
 		return err
 	}
@@ -130,6 +140,7 @@ func (r *RPCReporter) Report(wg *sync.WaitGroup) {
 			if ok == false {
 				r.StateReports = nil
 			} else {
+				r.LastStateReport = &sr
 				if rerr == nil && trials <= r.MaxAttempts && resetConnection == nil {
 					rerr = r.Conn.Call("Hermes.ReportState", sr, &herr)
 					if rerr != nil {
