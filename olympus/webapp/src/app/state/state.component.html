@@ -15,7 +15,14 @@
         <td>{{state.Humidity <= -1000.0?'n.a.':(state.Humidity | number:'2.2-2')}}</td>
         <td>{{state.Wind <= -1000.0?'n.a.':(state.Wind | number:'1.1-1')}}</td>
         <td>{{state.VisibleLight <= -1000.0?'n.a.':(state.VisibleLight | number:'1.1-1')}}</td>
-        <td>{{state.UVLight <= -1000.0?'n.a.':(state.UVLight | number:'1.1-1')}}</td>
+		<td>{{state.UVLight <= -1000.0?'n.a.':(state.UVLight | number:'1.1-1')}}</td>
+	  </tr>
+	  <tr *ngIf="displayCurrent == true" >
+		<td>{{currentTemperature | number:'2.2-2'}}</td>
+		<td>{{currentHumidity | number:'2.2-2'}}</td>
+		<td> n.a. </td>
+		<td> n.a. </td>
+		<td> n.a. </td>
 	  </tr>
 	</tbody>
   </table>

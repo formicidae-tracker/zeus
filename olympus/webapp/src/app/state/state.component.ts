@@ -9,9 +9,14 @@ import { State }  from '../core/state.model';
 })
 export class StateComponent implements OnInit {
     @Input() state: State;
+	@Input() currentTemperature: number;
+	@Input() currentHumidity: number;
+	@Input() displayCurrent: boolean;
 
 
-    constructor() { }
+    constructor() {
+		this.displayCurrent = false;
+	}
 
     ngOnInit() {
     }
