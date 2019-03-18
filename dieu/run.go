@@ -90,7 +90,8 @@ func (cmd *RunCommand) Execute(args []string) error {
 				return err
 			}
 
-			managers[z.CANInterface] = NewBusManager(z.CANInterface, intf, dieu.HeartBeatPeriod)
+			m = NewBusManager(z.CANInterface, intf, dieu.HeartBeatPeriod)
+			managers[z.CANInterface] = m
 		}
 
 		var stateReports chan<- dieu.StateReport = nil

@@ -76,6 +76,8 @@ func (i *InterpolationManager) Interpolate(wg *sync.WaitGroup, init, quit <-chan
 
 	i.SendState(cur.State(now))
 
+	_, isTransition := cur.(*interpolation)
+
 	if i.reports != nil {
 		report := i.StateReport(cur.State(now), now)
 		i.reports <- report
@@ -83,6 +85,7 @@ func (i *InterpolationManager) Interpolate(wg *sync.WaitGroup, init, quit <-chan
 
 	timer := time.NewTicker(i.period)
 	defer timer.Stop()
+
 	for {
 		select {
 		case <-quit:
@@ -91,12 +94,16 @@ func (i *InterpolationManager) Interpolate(wg *sync.WaitGroup, init, quit <-chan
 		case <-timer.C:
 			now := time.Now()
 			new := i.interpoler.CurrentInterpolation(now)
-			if cur == new {
+			_, newIsTransition := new.(*interpolation)
+
+			if isTransition != newIsTransition {
+				i.log.Printf("New interpolation %s", new)
+			} else if isTransition == false {
 				continue
 			}
 			cur = new
+			isTransition = newIsTransition
 			s := cur.State(now)
-			i.log.Printf("New interpolation %s", new)
 			i.SendState(s)
 			if i.reports != nil {
 				report := i.StateReport(s, now)
