@@ -180,12 +180,11 @@ func (h *Hermes) ReportState(sr *dieu.StateReport, err *dieu.HermesError) error 
 		return nil
 	}
 
-	h.log.Printf("New state %+v", sr)
 	if z.zone.Current == nil {
 		z.zone.Current = &dieu.State{}
 	}
 	*z.zone.Current = sr.Current
-	z.zone.CurrentEnd = z.zone.CurrentEnd
+	z.zone.CurrentEnd = sr.CurrentEnd
 	if sr.Next != nil && sr.NextTime != nil {
 		z.zone.Next = sr.Next
 		z.zone.NextTime = sr.NextTime
