@@ -68,7 +68,7 @@ func (i *InterpolationManager) StateReport(int Interpolation, t time.Time) dieu.
 		*report.Next = sanitizeState(nextInt.State(nextT))
 		if inter, ok := nextInt.(*interpolation); ok == true {
 			report.NextEnd = &dieu.State{}
-			*report.NextEnd = sanitizeState(inter.State(t.Add(inter.duration)))
+			*report.NextEnd = sanitizeState(inter.State(nextT.Add(inter.duration)))
 		}
 
 	}
