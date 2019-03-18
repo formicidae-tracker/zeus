@@ -68,7 +68,7 @@ func (c *ClimateControllable) Close() error {
 
 var zeusFanNames = []string{"Zeus Wind", "Zeus Extrcation Left", "Zeus Extraction Right"}
 
-func (c ClimateControllable) Action(s dieu.State) error {
+func (c *ClimateControllable) Action(s dieu.State) error {
 	if c.withCelaeno == true {
 		c.lastSetPoint = &arke.ZeusSetPoint{
 			Temperature: float32(dieu.Clamp(s.Temperature)),
