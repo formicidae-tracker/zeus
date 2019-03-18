@@ -127,6 +127,10 @@ func (c *ClimateControllable) Callbacks() map[arke.MessageClass]callback {
 		if m.Status&arke.ZeusClimateNotControlledWatchDog != 0 {
 			if m.Status&arke.ZeusActive != 0 {
 				alarms <- dieu.SensorReadoutIssue
+				if time.Now().After(c.zeusResetGuard) {
+					c.zeusResetGuard = time.Now().Add(FanResetWindow)
+					c.zeus.SendResetRequest()
+				}
 			} else if c.lastSetPoint != nil {
 				if err := c.zeus.SendMessage(c.lastSetPoint); err != nil {
 					return err
