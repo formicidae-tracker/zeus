@@ -35,7 +35,9 @@ export class Zone {
 				public HumidityBounds: Bounds,
 				public Alarms: Alarm[],
 				public Current: State,
+				public CurrentEnd: State,
 				public Next: State,
+				public NextEnd: State,
 				public NextTime: Date) {}
 
     temperatureStatus() {
@@ -110,14 +112,24 @@ export class ZoneAdapter implements Adapter<Zone> {
 			}
 		}
 		let current: State = null;
+		let currentEnd: State = null;
 		let next: State = null;
+		let nextEnd: State = null;
 		let nextTime: Date = null;
 		if (item.Current != null) {
 			current = this.stateAdapter.adapt(item.Current);
 		}
+		if (item.CurrentEnd != null ) {
+			currentEnd = this.stateAdapter.adapt(item.CurrentEnd);
+		}
+
 		if ( item.Next != null && item.NextTime != null ) {
 			next = this.stateAdapter.adapt(item.Next);
 			nextTime = new Date(item.NextTime);
+		}
+
+		if ( item.NextEnd != null ) {
+			nextEnd = this.stateAdapter.adapt(item.NextEnd);
 		}
 
 		return new Zone(
@@ -129,7 +141,9 @@ export class ZoneAdapter implements Adapter<Zone> {
 			this.boundsAdapter.adapt(item.HumidityBounds),
 			alarms,
 			current,
+			currentEnd,
 			next,
+			nextEnd,
 			nextTime
 		);
 	}

@@ -21,10 +21,12 @@ type ZoneRegistration struct {
 }
 
 type StateReport struct {
-	Zone     string
-	Current  State
-	Next     *State
-	NextTime *time.Time
+	Zone       string
+	Current    State
+	CurrentEnd *State
+	Next       *State
+	NextEnd    *State
+	NextTime   *time.Time
 }
 
 func ZoneIdentifier(host, name string) string {

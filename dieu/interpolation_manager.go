@@ -45,18 +45,32 @@ func sanitizeState(s dieu.State) dieu.State {
 	}
 }
 
-func (i *InterpolationManager) StateReport(s dieu.State, t time.Time) dieu.StateReport {
+func (i *InterpolationManager) StateReport(int Interpolation, t time.Time) dieu.StateReport {
 	report := dieu.StateReport{
-		Zone:     i.name,
-		Current:  sanitizeState(s),
+		Zone:       i.name,
+		Current:    sanitizeState(int.State(t)),
+		CurrentEnd: nil,
+
 		NextTime: nil,
 		Next:     nil,
+		NextEnd:  nil,
 	}
+	if inter, ok := int.(*interpolation); ok == true {
+		report.CurrentEnd = &dieu.State{}
+		*report.CurrentEnd = sanitizeState(inter.State(t.Add(inter.duration)))
+	}
+
 	if nextT, ok := i.interpoler.NextInterpolationTime(t); ok == true {
 		report.NextTime = &time.Time{}
 		*report.NextTime = nextT
 		report.Next = &dieu.State{}
-		*report.Next = sanitizeState(i.interpoler.CurrentInterpolation(nextT.Add(1 * time.Second)).State(nextT))
+		nextInt := i.interpoler.CurrentInterpolation(nextT.Add(1 * time.Second))
+		*report.Next = sanitizeState(nextInt.State(nextT))
+		if inter, ok := nextInt.(*interpolation); ok == true {
+			report.NextEnd = &dieu.State{}
+			*report.NextEnd = sanitizeState(inter.State(t.Add(inter.duration)))
+		}
+
 	}
 	return report
 }
@@ -79,7 +93,7 @@ func (i *InterpolationManager) Interpolate(wg *sync.WaitGroup, init, quit <-chan
 	_, isTransition := cur.(*interpolation)
 
 	if i.reports != nil {
-		report := i.StateReport(cur.State(now), now)
+		report := i.StateReport(cur, now)
 		i.reports <- report
 	}
 
@@ -106,7 +120,7 @@ func (i *InterpolationManager) Interpolate(wg *sync.WaitGroup, init, quit <-chan
 			s := cur.State(now)
 			i.SendState(s)
 			if i.reports != nil {
-				report := i.StateReport(s, now)
+				report := i.StateReport(cur, now)
 				i.reports <- report
 			}
 		}

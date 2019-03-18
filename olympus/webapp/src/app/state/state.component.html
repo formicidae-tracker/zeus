@@ -2,6 +2,7 @@
   <table class="table table-stripped table-sm">
 	<thead>
 	  <tr>
+		<th></th>
 		<th>Temperature</th>
 		<th>Humidity</th>
 		<th>Wind</th>
@@ -11,13 +12,15 @@
 	</thead>
 	<tbody>
 	  <tr>
-		<td>{{state.Temperature <= -1000.0?'n.a.':(state.Temperature | number:'2.2-2')}}</td>
-        <td>{{state.Humidity <= -1000.0?'n.a.':(state.Humidity | number:'2.2-2')}}</td>
-        <td>{{state.Wind <= -1000.0?'n.a.':(state.Wind | number:'1.1-1')}}</td>
-        <td>{{state.VisibleLight <= -1000.0?'n.a.':(state.VisibleLight | number:'1.1-1')}}</td>
-		<td>{{state.UVLight <= -1000.0?'n.a.':(state.UVLight | number:'1.1-1')}}</td>
+		<th>Target</th>
+		<td>{{stateB==null?displayValue(stateA.Temperature):(displayValue(stateA.Temperature)+'->'+displayValue(stateB.Temperature))}}</td>
+		<td>{{stateB==null?displayValue(stateA.Humidity):(displayValue(stateA.Humidity)+'->'+displayValue(stateB.Humidity))}}</td>
+		<td>{{stateB==null?displayValue(stateA.Wind):(displayValue(stateA.Wind)+'->'+displayValue(stateB.Wind))}}</td>
+		<td>{{stateB==null?displayValue(stateA.VisibleLight):(displayValue(stateA.VisibleLight)+'->'+displayValue(stateB.VisibleLight))}}</td>
+		<td>{{stateB==null?displayValue(stateA.UVLight):(displayValue(stateA.UVLight)+'->'+displayValue(stateB.UVLight))}}</td>
 	  </tr>
 	  <tr *ngIf="displayCurrent == true" >
+		<th>Current</th>
 		<td>{{currentTemperature | number:'2.2-2'}}</td>
 		<td>{{currentHumidity | number:'2.2-2'}}</td>
 		<td> n.a. </td>

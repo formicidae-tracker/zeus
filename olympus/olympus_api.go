@@ -29,7 +29,9 @@ type RegisteredZone struct {
 	HumidityBounds    Bounds
 	Alarms            []RegisteredAlarm
 	Current           *dieu.State
+	CurrentEnd        *dieu.State
 	Next              *dieu.State
+	NextEnd           *dieu.State
 	NextTime          *time.Time
 }
 

@@ -185,11 +185,14 @@ func (h *Hermes) ReportState(sr *dieu.StateReport, err *dieu.HermesError) error 
 		z.zone.Current = &dieu.State{}
 	}
 	*z.zone.Current = sr.Current
+	z.zone.CurrentEnd = z.zone.CurrentEnd
 	if sr.Next != nil && sr.NextTime != nil {
 		z.zone.Next = sr.Next
 		z.zone.NextTime = sr.NextTime
+		z.zone.NextEnd = sr.NextEnd
 	} else {
 		z.zone.Next = nil
+		z.zone.NextEnd = nil
 		z.zone.NextTime = nil
 	}
 
