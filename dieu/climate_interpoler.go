@@ -282,13 +282,7 @@ func NewClimateInterpoler(states []dieu.State, transitions []dieu.Transition, re
 		}
 		for i, trA := range cs.transitionForward {
 			for _, trB := range cs.transitionForward[i:] {
-				if trA.Day == 0 {
-					if trA.Start.Before(trB.Start) {
-						return nil, fmt.Errorf("%s is shadowed by %s", trB, trA)
-					} else if trB.Day == 0 && trB.Start.Before(trA.Start) {
-						return nil, fmt.Errorf("%s is shadowed by %s", trA, trB)
-					}
-				} else if trB.Day == trA.Day {
+				if trA.Day != 0 && trB.Day == trA.Day {
 					if trA.Start.Before(trB.Start) {
 						return nil, fmt.Errorf("%s is shadowed by %s", trB, trA)
 					} else if trB.Start.Before(trA.Start) {

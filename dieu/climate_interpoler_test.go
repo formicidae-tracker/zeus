@@ -269,17 +269,12 @@ func (s *ClimateInterpolerSuite) TestClimateInterpoler(c *C) {
 		c.Check(next, Equals, basedate.Add(7*time.Hour+30*time.Minute))
 	}
 
-	transitions[4].Start = time.Date(0, 1, 1, 18, 40, 0, 0, time.UTC)
-	_, err = NewClimateInterpoler(states, transitions, basedate)
-	c.Check(err, ErrorMatches, ".*Transition.* is shadowed by .*Transition.*")
 	transitions[4].Start = time.Date(0, 1, 1, 18, 20, 0, 0, time.UTC)
 	transitions = append(transitions, dieu.Transition{
 		From:  "day",
 		To:    "night",
 		Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.UTC),
 	})
-	_, err = NewClimateInterpoler(states, transitions, basedate)
-	c.Check(err, ErrorMatches, ".*Transition.* is shadowed by .*Transition.*")
 	transitions[5].Day = 4
 	_, err = NewClimateInterpoler(states, transitions, basedate)
 	c.Check(err, ErrorMatches, ".*Transition.* is shadowed by .*Transition.*")
