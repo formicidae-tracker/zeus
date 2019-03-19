@@ -135,6 +135,7 @@ func (b *busManager) Listen() {
 					}
 					askforHeartBeat[d.Class] = true
 				}
+				receivedHeartbeat[d] = false
 			}
 			for c, _ := range askforHeartBeat {
 				arke.SendHeartBeatRequest(b.intf, c, b.heartbeat)
