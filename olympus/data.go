@@ -197,8 +197,8 @@ func (m *climateReportManager) LastWeek() ClimateReportTimeSerie {
 }
 
 const (
-	hourSamples = 600
-	daySamples  = 480
+	hourSamples = 500
+	daySamples  = 500
 	weekSamples = 500
 )
 

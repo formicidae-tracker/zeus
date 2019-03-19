@@ -34,7 +34,7 @@ export class ClimateChartComponent implements AfterViewInit,OnInit,OnDestroy {
 	@Input() zoneName: string;
 
 	constructor(private climateReport: ClimateReportService) {
-		this.timeWindow = TimeWindow.Hour;
+		this.timeWindow = TimeWindow.Day;
 	}
 
 	ngOnInit() {
@@ -162,7 +162,7 @@ export class ClimateChartComponent implements AfterViewInit,OnInit,OnDestroy {
 							id: 'y-humidity',
 							gridLines: { drawOnChartArea: false},
 							scaleLabel:{display: true,labelString: 'Humidity (%)'},
-							ticks: {min: 20.0,max:85.0}
+							ticks: {min: 30.0}
 						},
 						{
 							type: 'linear',
@@ -170,7 +170,7 @@ export class ClimateChartComponent implements AfterViewInit,OnInit,OnDestroy {
 							position: 'left',
 							id: 'y-temperature',
 							scaleLabel:{display: true,labelString: 'Temperature (°C)'},
-							ticks: {min: 15.0,max:35.0}
+//							ticks: {min: 22.0}
 						}
 					]
 				}
