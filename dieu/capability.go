@@ -66,7 +66,7 @@ func (c *ClimateControllable) Close() error {
 	return nil
 }
 
-var zeusFanNames = []string{"Zeus Wind", "Zeus Extrcation Left", "Zeus Extraction Right"}
+var zeusFanNames = []string{"Zeus Wind", "Zeus Extraction Right", "Zeus Extraction Left"}
 
 func (c *ClimateControllable) Action(s dieu.State) error {
 	if c.withCelaeno == true {
