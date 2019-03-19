@@ -73,7 +73,6 @@ func (b *busManager) receiveAndStampMessage(frames chan<- *StampedMessage) {
 func (b *busManager) Listen() {
 	allClasses := map[arke.NodeClass]bool{}
 	receivedHeartbeat := map[deviceDefinition]bool{}
-	askforHeartBeat := map[arke.NodeClass]bool{}
 
 	for d, _ := range b.devices {
 		allClasses[d.Class] = true
@@ -127,18 +126,18 @@ func (b *busManager) Listen() {
 				}
 			}
 		case <-heartbeatTimeout.C:
-			for c, send := range askforHeartBeat {
-				if send == true {
-					arke.SendHeartBeatRequest(b.intf, c, b.heartbeat)
-				}
-				askforHeartBeat[c] = false
-			}
+			var askforHeartBeat map[arke.NodeClass]bool = nil
 			for d, ok := range receivedHeartbeat {
 				if ok == false {
 					b.alarms[d.ID] <- dieu.NewMissingDeviceAlarm(b.name, d.Class, d.ID)
+					if askforHeartBeat == nil {
+						askforHeartBeat = make(map[arke.NodeClass]bool)
+					}
 					askforHeartBeat[d.Class] = true
 				}
-				receivedHeartbeat[d] = false
+			}
+			for c, _ := range askforHeartBeat {
+				arke.SendHeartBeatRequest(b.intf, c, b.heartbeat)
 			}
 		}
 	}

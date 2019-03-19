@@ -94,7 +94,7 @@ func TestBusManagerClose(t *testing.T) {
 
 	closedInterface := make(chan struct{})
 
-	s.intf.EXPECT().Send(socketcan.CanFrame{455, 2, []byte{5, 0}, false, false})
+	s.intf.EXPECT().Send(socketcan.CanFrame{455, 2, []byte{5, 0}, false, false}).AnyTimes()
 	s.intf.EXPECT().Close().AnyTimes().DoAndReturn(func() error {
 		close(closedInterface)
 		return nil
