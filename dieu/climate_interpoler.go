@@ -24,7 +24,7 @@ func (s *staticState) String() string {
 	return fmt.Sprintf("static state: %+v", dieu.State(*s))
 }
 
-type interpolation struct {
+type transition struct {
 	start    time.Time
 	from, to dieu.State
 	duration time.Duration
@@ -54,7 +54,7 @@ func interpolateState(from, to dieu.State, completion float64) dieu.State {
 
 }
 
-func (i *interpolation) State(t time.Time) dieu.State {
+func (i *transition) State(t time.Time) dieu.State {
 	ellapsed := t.Sub(i.start)
 	if ellapsed < 0 {
 		ellapsed = 0
@@ -65,13 +65,12 @@ func (i *interpolation) State(t time.Time) dieu.State {
 	return interpolateState(i.from, i.to, completion)
 }
 
-func (i *interpolation) String() string {
-	return fmt.Sprintf("interpolation from '%s' to '%s' in %s", i.from.Name, i.to.Name, i.duration)
+func (i *transition) String() string {
+	return fmt.Sprintf("transition from '%s' to '%s' in %s at %s", i.from.Name, i.to.Name, i.duration, i.start)
 }
 
 type ClimateInterpoler interface {
-	CurrentInterpolation(t time.Time) Interpolation
-	NextInterpolationTime(t time.Time) (time.Time, bool)
+	CurrentInterpolation(t time.Time) (Interpolation, time.Time, Interpolation)
 }
 
 type computedState struct {
@@ -205,31 +204,32 @@ func (i *climateInterpolation) walkTo(t time.Time) (prev, next computedTransitio
 	}
 }
 
-func (i *climateInterpolation) CurrentInterpolation(t time.Time) Interpolation {
-	prev, _, prevOK, _ := i.walkTo(t)
-	if prevOK == false || t.After(prev.time.Add(prev.transition.Duration)) {
-		return (*staticState)(&(i.current.State))
-	}
-	return &interpolation{
-		start:    prev.time,
-		from:     i.states[prev.transition.From].State,
-		to:       i.current.State,
-		duration: prev.transition.Duration,
-	}
-}
-
-func (i *climateInterpolation) NextInterpolationTime(t time.Time) (time.Time, bool) {
-	prev, next, prevOK, nextOK := i.walkTo(t)
-	if prevOK == true {
-		endTransition := prev.time.Add(prev.transition.Duration)
-		if t.Before(endTransition) {
-			return endTransition, true
+func (i *climateInterpolation) CurrentInterpolation(t time.Time) (Interpolation, time.Time, Interpolation) {
+	prevT, nextT, prevOK, nextOK := i.walkTo(t)
+	var currentI, nextI Interpolation
+	var nextTime time.Time
+	if prevOK == false || t.After(prevT.time.Add(prevT.transition.Duration)) {
+		currentI = (*staticState)(&(i.current.State))
+		if nextOK == true {
+			nextI = &transition{
+				start:    nextT.time,
+				from:     i.current.State,
+				to:       i.states[nextT.transition.To].State,
+				duration: nextT.transition.Duration,
+			}
+			nextTime = nextT.time
 		}
+	} else {
+		currentI = &transition{
+			start:    prevT.time,
+			from:     i.states[prevT.transition.From].State,
+			to:       i.current.State,
+			duration: prevT.transition.Duration,
+		}
+		nextI = (*staticState)(&(i.current.State))
+		nextTime = prevT.time.Add(prevT.transition.Duration)
 	}
-	if nextOK == false {
-		return time.Time{}, false
-	}
-	return next.time, true
+	return currentI, nextTime, nextI
 }
 
 func NewClimateInterpoler(states []dieu.State, transitions []dieu.Transition, reference time.Time) (ClimateInterpoler, error) {

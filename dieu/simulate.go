@@ -41,10 +41,9 @@ func (s *SimulateCommand) Execute(args []string) error {
 		var t time.Time
 		for t = start; t.Before(start.AddDate(0, 0, s.Duration)); {
 			toTest := t.Add(1 * time.Second)
-			inter := i.CurrentInterpolation(toTest)
+			inter, next, nextInterpolation := i.CurrentInterpolation(toTest)
 			fmt.Printf("%s state is %s\n", t.Local().Format("Mon Jan 02 15:04:05 -0700 MST 2006"), inter)
-			next, ok := i.NextInterpolationTime(toTest)
-			if ok == false {
+			if nextInterpolation == nil {
 				fmt.Printf("No more transition\n")
 				t = start.AddDate(0, 0, s.Duration)
 				continue

@@ -1,6 +1,7 @@
 package main
 
 import (
+	reflect "reflect"
 	"time"
 
 	"git.tuleu.science/fort/dieu"
@@ -28,12 +29,13 @@ func (s *ClimateInterpolerSuite) TestInterpolationFormat(c *C) {
 			"static state: {Name: Temperature:-Inf Humidity:-Inf Wind:-Inf VisibleLight:-Inf UVLight:-Inf}",
 		},
 		{
-			&interpolation{
+			&transition{
 				from:     dieu.State{Name: "day"},
 				to:       dieu.State{Name: "night"},
 				duration: 30 * time.Minute,
+				start:    time.Date(2019, 1, 1, 10, 00, 0, 0, time.UTC),
 			},
-			"interpolation from 'day' to 'night' in 30m0s",
+			"transition from 'day' to 'night' in 30m0s at 2019-01-01 10:00:00 +0000 UTC",
 		},
 	}
 
@@ -60,7 +62,7 @@ func (s *ClimateInterpolerSuite) TestStaticState(c *C) {
 
 func (s *ClimateInterpolerSuite) TestInterpolation(c *C) {
 
-	i := interpolation{
+	i := transition{
 		from: dieu.State{
 			Name:         "a",
 			Wind:         0,
@@ -187,7 +189,7 @@ func (s *ClimateInterpolerSuite) TestClimateInterpoler(c *C) {
 		{
 			basedate.Add(18*time.Hour + 45*time.Minute),
 			basedate.Add(19 * time.Hour),
-			&interpolation{
+			&transition{
 				from:     computedDay,
 				to:       computedNight,
 				start:    basedate.Add(18*time.Hour + 30*time.Minute),
@@ -204,7 +206,7 @@ func (s *ClimateInterpolerSuite) TestClimateInterpoler(c *C) {
 		{
 			basedate.AddDate(0, 0, 1).Add(7*time.Hour + 40*time.Minute),
 			basedate.AddDate(0, 0, 1).Add(8 * time.Hour),
-			&interpolation{
+			&transition{
 				from:     computedNight,
 				to:       computedDay,
 				start:    basedate.AddDate(0, 0, 1).Add(7*time.Hour + 30*time.Minute),
@@ -215,7 +217,7 @@ func (s *ClimateInterpolerSuite) TestClimateInterpoler(c *C) {
 		{
 			basedate.AddDate(0, 0, 3).Add(18*time.Hour + 35*time.Minute),
 			basedate.AddDate(0, 0, 3).Add(18*time.Hour + 50*time.Minute),
-			&interpolation{
+			&transition{
 				from:     computedDay,
 				to:       computedNight2,
 				start:    basedate.AddDate(0, 0, 3).Add(18*time.Hour + 30*time.Minute),
@@ -226,7 +228,7 @@ func (s *ClimateInterpolerSuite) TestClimateInterpoler(c *C) {
 		{
 			basedate.AddDate(0, 0, 4).Add(7*time.Hour + 50*time.Minute),
 			basedate.AddDate(0, 0, 4).Add(8*time.Hour + 10*time.Minute),
-			&interpolation{
+			&transition{
 				from:     computedNight2,
 				to:       computedDay2,
 				start:    basedate.AddDate(0, 0, 4).Add(7*time.Hour + 40*time.Minute),
@@ -237,7 +239,7 @@ func (s *ClimateInterpolerSuite) TestClimateInterpoler(c *C) {
 		{
 			basedate.AddDate(0, 0, 4).Add(18*time.Hour + 40*time.Minute),
 			basedate.AddDate(0, 0, 4).Add(18*time.Hour + 50*time.Minute),
-			&interpolation{
+			&transition{
 				from:     computedDay2,
 				to:       computedNight2,
 				start:    basedate.AddDate(0, 0, 4).Add(18*time.Hour + 20*time.Minute),
@@ -251,21 +253,19 @@ func (s *ClimateInterpolerSuite) TestClimateInterpoler(c *C) {
 	c.Assert(err, IsNil)
 
 	for _, d := range testdata {
-		next, ok := i.NextInterpolationTime(d.time)
-		if c.Check(ok, Equals, true, Commentf("Testing at %s", d.time)) == true {
+		interpolation, next, nextInterpolation := i.CurrentInterpolation(d.time)
+		if c.Check(nextInterpolation, Not(IsNil), Commentf("Testing at %s", d.time)) == true {
 			c.Check(next, Equals, d.nextInterpolationStart, Commentf("Testing at %s", d.time))
 		}
-		interpolation := i.CurrentInterpolation(d.time)
 		c.Check(interpolation, DeepEquals, d.interpolation, Commentf("Testing %s", d.time))
 		c.Check(interpolation.State(d.time), DeepEquals, d.state, Commentf("Testing at %s", d.time))
 	}
 
 	i, err = NewClimateInterpoler(states, transitions, basedate.Add(-2*time.Hour))
 	c.Assert(err, IsNil)
-	next, ok := i.NextInterpolationTime(basedate.Add(-1 * time.Hour))
-	interpolation := i.CurrentInterpolation(basedate.Add(-1 * time.Hour))
+	interpolation, next, nextInterpolation := i.CurrentInterpolation(basedate.Add(-1 * time.Hour))
 	c.Check(interpolation, DeepEquals, (*staticState)(&computedNight))
-	if c.Check(ok, Equals, true) == true {
+	if c.Check(nextInterpolation, Not(IsNil)) == true {
 		c.Check(next, Equals, basedate.Add(7*time.Hour+30*time.Minute))
 	}
 
@@ -298,5 +298,107 @@ func (s *ClimateInterpolerSuite) TestClimateInterpoler(c *C) {
 	states[3].Name = "day"
 	_, err = NewClimateInterpoler(states, transitions, basedate)
 	c.Check(err, ErrorMatches, "Cannot redefine state 'day'")
+
+}
+
+func (s *ClimateInterpolerSuite) TestBackAndForthWalk(c *C) {
+	states := []dieu.State{
+		dieu.State{Name: "a"},
+		dieu.State{Name: "b"},
+	}
+
+	stdDuration := 30 * time.Minute
+	transitions := []dieu.Transition{
+		dieu.Transition{
+			From:     "a",
+			To:       "b",
+			Start:    time.Date(0, 1, 1, 23, 45, 0, 0, time.UTC),
+			Duration: stdDuration,
+		},
+		dieu.Transition{
+			From:     "b",
+			To:       "a",
+			Start:    time.Date(0, 1, 1, 5, 45, 0, 0, time.UTC),
+			Duration: stdDuration,
+		},
+		dieu.Transition{
+			From:     "a",
+			To:       "b",
+			Start:    time.Date(0, 1, 1, 11, 45, 0, 0, time.UTC),
+			Duration: stdDuration,
+		},
+		dieu.Transition{
+			From:     "b",
+			To:       "a",
+			Start:    time.Date(0, 1, 1, 17, 45, 0, 0, time.UTC),
+			Duration: stdDuration,
+		},
+	}
+
+	dater := func(day, hour, minute int) time.Time {
+		return time.Date(2019, 6, 15+day, hour, minute, 0, 0, time.UTC)
+	}
+
+	interpoler, err := NewClimateInterpoler(states, transitions, dater(0, 17, 0))
+	c.Assert(err, IsNil)
+
+	expected := []Interpolation{
+		&staticState{Name: states[1].Name},
+		&transition{start: dater(0, 17, 45), from: states[1], to: states[0], duration: stdDuration},
+		&staticState{Name: states[0].Name},
+		&transition{start: dater(0, 23, 45), from: states[0], to: states[1], duration: stdDuration},
+		&staticState{Name: states[1].Name},
+		&transition{start: dater(1, 5, 45), from: states[1], to: states[0], duration: stdDuration},
+		&staticState{Name: states[0].Name},
+		&transition{start: dater(1, 11, 45), from: states[0], to: states[1], duration: stdDuration},
+		&staticState{Name: states[1].Name},
+		&transition{start: dater(1, 17, 45), from: states[1], to: states[0], duration: stdDuration},
+		&staticState{Name: states[0].Name},
+		&transition{start: dater(1, 23, 45), from: states[0], to: states[1], duration: stdDuration},
+		&staticState{Name: states[1].Name},
+		&transition{start: dater(2, 5, 45), from: states[1], to: states[0], duration: stdDuration},
+		&staticState{Name: states[0].Name},
+		&transition{start: dater(2, 11, 45), from: states[0], to: states[1], duration: stdDuration},
+	}
+
+	expectedTimes := []time.Time{
+		dater(0, 17, 45),
+		dater(0, 18, 15),
+		dater(0, 23, 45),
+		dater(1, 00, 15),
+		dater(1, 05, 45),
+		dater(1, 06, 15),
+		dater(1, 11, 45),
+		dater(1, 12, 15),
+		dater(1, 17, 45),
+		dater(1, 18, 15),
+		dater(1, 23, 45),
+		dater(2, 00, 15),
+		dater(2, 05, 45),
+		dater(2, 06, 15),
+		dater(2, 11, 45),
+		dater(2, 12, 15),
+	}
+	c.Assert(len(expected), Equals, len(expectedTimes))
+
+	maxDate := dater(2, 17, 00)
+	currentDate := dater(0, 16, 1)
+	currentInterpolation, _, _ := interpoler.CurrentInterpolation(currentDate)
+	for i, e := range expected {
+
+		for t := currentDate; t.Before(maxDate); t = t.Add(1 * time.Minute) {
+			res, nextT, nextInterpolation := interpoler.CurrentInterpolation(t)
+			c.Assert(nextInterpolation, Not(IsNil))
+
+			if reflect.DeepEqual(currentInterpolation, res) == true {
+				c.Check(res, DeepEquals, e)
+				c.Check(nextT, Equals, expectedTimes[i], Commentf("%d %s %s", i, currentInterpolation, t))
+			} else {
+				currentDate = t
+				currentInterpolation = res
+				break
+			}
+		}
+	}
 
 }
