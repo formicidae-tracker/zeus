@@ -246,6 +246,8 @@ func (h *Hermes) getClimateReport(host, name, window string) (ClimateReportTimeS
 		return z.climate.LastDay(), nil
 	case "week":
 		return z.climate.LastWeek(), nil
+	case "ten-minutes":
+		return z.climate.LastTenMinutes(), nil
 	default:
 		return z.climate.LastHour(), nil
 	}

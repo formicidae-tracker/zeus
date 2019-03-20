@@ -21,6 +21,7 @@ type ClimateReportTimeSerie struct {
 type ClimateReportManager interface {
 	Sample()
 	Inbound() chan<- dieu.ClimateReport
+	LastTenMinutes() ClimateReportTimeSerie
 	LastHour() ClimateReportTimeSerie
 	LastDay() ClimateReportTimeSerie
 	LastWeek() ClimateReportTimeSerie
@@ -29,9 +30,11 @@ type ClimateReportManager interface {
 type window int
 
 const (
-	hour window = iota
+	tenMinutes window = iota
+	hour
 	day
 	week
+	NbWindow
 )
 
 type request struct {
@@ -90,7 +93,7 @@ func (m *climateReportManager) addReportUnsafe(r *dieu.ClimateReport) {
 		*m.start = r.Time
 	}
 	ellapsed := r.Time.Sub(*m.start).Seconds()
-	for i := 0; i < 3; i++ {
+	for i := 0; i < int(NbWindow); i++ {
 		m.downsamplers[5*i].add(lttb.Point{X: ellapsed, Y: float64(r.Humidity)})
 		for j := 0; j < 4; j++ {
 			m.downsamplers[5*i+j+1].add(lttb.Point{X: ellapsed, Y: float64(r.Temperatures[j])})
@@ -99,7 +102,12 @@ func (m *climateReportManager) addReportUnsafe(r *dieu.ClimateReport) {
 }
 
 const (
-	humidityHourIdx = iota
+	humidityTenMinutesIdx = iota
+	temperatureAntTenMinutesIdx
+	temperatureAux1TenMinutesIdx
+	temperatureAux2TenMinutesIdx
+	temperatureAux3TenMinutesIdx
+	humidityHourIdx
 	temperatureAntHourIdx
 	temperatureAux1HourIdx
 	temperatureAux2HourIdx
@@ -126,6 +134,14 @@ func (m *climateReportManager) Sample() {
 		select {
 		case r := <-m.requests:
 			switch r.w {
+			case tenMinutes:
+				r.result <- ClimateReportTimeSerie{
+					Humidity:        m.downsamplers[humidityTenMinutesIdx].getPoints(),
+					TemperatureAnt:  m.downsamplers[temperatureAntTenMinutesIdx].getPoints(),
+					TemperatureAux1: m.downsamplers[temperatureAux1TenMinutesIdx].getPoints(),
+					TemperatureAux2: m.downsamplers[temperatureAux2TenMinutesIdx].getPoints(),
+					TemperatureAux3: m.downsamplers[temperatureAux3TenMinutesIdx].getPoints(),
+				}
 			case hour:
 				r.result <- ClimateReportTimeSerie{
 					Humidity:        m.downsamplers[humidityHourIdx].getPoints(),
@@ -184,6 +200,10 @@ func (m *climateReportManager) lastReport(w window) ClimateReportTimeSerie {
 	}
 }
 
+func (m *climateReportManager) LastTenMinutes() ClimateReportTimeSerie {
+	return m.lastReport(tenMinutes)
+}
+
 func (m *climateReportManager) LastHour() ClimateReportTimeSerie {
 	return m.lastReport(hour)
 }
@@ -197,9 +217,10 @@ func (m *climateReportManager) LastWeek() ClimateReportTimeSerie {
 }
 
 const (
-	hourSamples = 500
-	daySamples  = 500
-	weekSamples = 500
+	tenMinutesSamples = 500
+	hourSamples       = 500
+	daySamples        = 500
+	weekSamples       = 500
 )
 
 func NewClimateReportManager() ClimateReportManager {
@@ -207,6 +228,11 @@ func NewClimateReportManager() ClimateReportManager {
 		inbound:  make(chan dieu.ClimateReport),
 		requests: make(chan request),
 		downsamplers: []rollingDownsampler{
+			newRollingDownsampler(10*time.Minute.Seconds(), tenMinutesSamples),
+			newRollingDownsampler(10*time.Minute.Seconds(), tenMinutesSamples),
+			newRollingDownsampler(10*time.Minute.Seconds(), tenMinutesSamples),
+			newRollingDownsampler(10*time.Minute.Seconds(), tenMinutesSamples),
+			newRollingDownsampler(10*time.Minute.Seconds(), tenMinutesSamples),
 			newRollingDownsampler(time.Hour.Seconds(), hourSamples),
 			newRollingDownsampler(time.Hour.Seconds(), hourSamples),
 			newRollingDownsampler(time.Hour.Seconds(), hourSamples),

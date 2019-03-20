@@ -7,7 +7,8 @@ import { Subscription, timer } from 'rxjs';
 export enum TimeWindow {
 	Week = 1,
 	Day,
-	Hour
+	Hour,
+	TenMinutes,
 }
 
 @Component({
@@ -192,6 +193,9 @@ export class ClimateChartComponent implements AfterViewInit,OnInit,OnDestroy {
 			case TimeWindow.Day:
 				window = 'day';
 				break;
+			case TimeWindow.TenMinutes:
+				window = 'ten-minutes';
+				break;
 			default:
 				window = 'hour';
 				break;
@@ -206,7 +210,7 @@ export class ClimateChartComponent implements AfterViewInit,OnInit,OnDestroy {
 			this.chart.data.datasets[4].data = [];
 			let timeDiv = 3600.0;
 			let roundDiv = 10000.0;
-			if (this.timeWindow == TimeWindow.Hour ) {
+			if (this.timeWindow == TimeWindow.Hour || this.timeWindow == TimeWindow.TenMinutes ) {
 				timeDiv = 60.0;
 				roundDiv = 1000.0;
 				this.chart.options.scales.xAxes[0].scaleLabel.labelString = 'Time (m)';
