@@ -4,6 +4,8 @@ git.tuleu.science/fort/libarke v1.1.0 h1:367cy/aoCE+tjphNH+buq0k7hkW9ChSFXxQPxjM
 git.tuleu.science/fort/libarke v1.1.0/go.mod h1:cxNPBryoFDdA8skkYP9K9S/QhQPIKY8+DNufGkbk/9s=
 git.tuleu.science/fort/libarke v1.1.1 h1:FrqzUaprNDa0tibasEfKLYJXyFrQ2/EJoDswQ1nu5Fs=
 git.tuleu.science/fort/libarke v1.1.1/go.mod h1:cxNPBryoFDdA8skkYP9K9S/QhQPIKY8+DNufGkbk/9s=
+git.tuleu.science/fort/libarke v1.1.3 h1:gpixHdp42vTpRt3V0tMr5h/Y6XD8fwGdfJBpl4yOXwU=
+git.tuleu.science/fort/libarke v1.1.3/go.mod h1:cxNPBryoFDdA8skkYP9K9S/QhQPIKY8+DNufGkbk/9s=
 git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190307132332-0d5e6ddd35af h1:zq6fFVeR69LMSAFRgg4HgQIpDXiNoItJXuGUI1/XwP0=
 git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190307132332-0d5e6ddd35af/go.mod h1:iUgrLx0mFxulxRZTQcH/+Rx46TsPAT/4Xy2ici9Z0uU=
 git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190315160845-74f6866405ad h1:UjPyanQ3aa57k79n0hapt00ci+OmzpatpjfIXqLV1bU=
@@ -12,8 +14,12 @@ git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190318123021-cd40ef3acf4a h1
 git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190318123021-cd40ef3acf4a/go.mod h1:iUgrLx0mFxulxRZTQcH/+Rx46TsPAT/4Xy2ici9Z0uU=
 git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190318140715-bf77bcd31d04 h1:TI0flnDvz4+xiLTgaqxovK4vAJ+DHz6OyOi3FTPD8NA=
 git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190318140715-bf77bcd31d04/go.mod h1:iUgrLx0mFxulxRZTQcH/+Rx46TsPAT/4Xy2ici9Z0uU=
+git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190320163047-163bfb9e844d h1:jfKNkZ0c1N1SkpTAkweb0ABFXiouHUbBVqnuaFEKQIE=
+git.tuleu.science/fort/libarke/src-go/arke v0.0.0-20190320163047-163bfb9e844d/go.mod h1:QOTGFd0/s9s4CDL6AkYO8VGK4kyeSKaMR5q1/YNGrmU=
 github.com/atuleu/golang-socketcan v0.1.3 h1:yf+pdK5yeUATgkgbBTB8qOjjZXA3TrnejRUXwSlVW3A=
 github.com/atuleu/golang-socketcan v0.1.3/go.mod h1:K0cVB6d80dD70kgvSKVtS3Ue887mEkiUI5KPwkh8RKw=
+github.com/atuleu/golang-socketcan v0.2.0 h1:ryO4xDJnQCCQAszVWiF9uhSmaU/TbcVlVJKsW6J7/VE=
+github.com/atuleu/golang-socketcan v0.2.0/go.mod h1:K0cVB6d80dD70kgvSKVtS3Ue887mEkiUI5KPwkh8RKw=
 github.com/cenkalti/backoff v2.1.1+incompatible h1:tKJnvO2kl0zmb/jA5UKAt4VoEVw1qxKWjE/Bpp46npY=
 github.com/cenkalti/backoff v2.1.1+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=
 github.com/dgryski/go-lttb v0.0.0-20180810165845-318fcdf10a77 h1:iRnqZBF0a1hoOOjOdPKf+IxqlJZOas7A48j77RAc7Yg=
@@ -49,6 +55,8 @@ golang.org/x/sys v0.0.0-20190312061237-fead79001313 h1:pczuHS43Cp2ktBEEmLwScxgjW
 golang.org/x/sys v0.0.0-20190312061237-fead79001313/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20190316082340-a2f829d7f35f h1:yCrMx/EeIue0+Qca57bWZS7VX6ymEoypmhWyPhz0NHM=
 golang.org/x/sys v0.0.0-20190316082340-a2f829d7f35f/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/sys v0.0.0-20190318195719-6c81ef8f67ca h1:o2TLx1bGN3W+Ei0EMU5fShLupLmTOU95KvJJmfYhAzM=
+golang.org/x/sys v0.0.0-20190318195719-6c81ef8f67ca/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 h1:qIbj1fsPNlZgppZ+VLlY7N33q108Sa+fhmuc+sWQYwY=
