@@ -312,7 +312,7 @@ func (s *ClimateInterpolerSuite) TestBackAndForthWalk(c *C) {
 		dieu.Transition{
 			From:     "a",
 			To:       "b",
-			Start:    time.Date(0, 1, 1, 23, 45, 0, 0, time.UTC),
+			Start:    time.Date(0, 1, 1, 23, 59, 0, 0, time.UTC),
 			Duration: stdDuration,
 		},
 		dieu.Transition{
@@ -346,7 +346,7 @@ func (s *ClimateInterpolerSuite) TestBackAndForthWalk(c *C) {
 		&staticState{Name: states[1].Name},
 		&transition{start: dater(0, 17, 45), from: states[1], to: states[0], duration: stdDuration},
 		&staticState{Name: states[0].Name},
-		&transition{start: dater(0, 23, 45), from: states[0], to: states[1], duration: stdDuration},
+		&transition{start: dater(0, 23, 59), from: states[0], to: states[1], duration: stdDuration},
 		&staticState{Name: states[1].Name},
 		&transition{start: dater(1, 5, 45), from: states[1], to: states[0], duration: stdDuration},
 		&staticState{Name: states[0].Name},
@@ -354,7 +354,7 @@ func (s *ClimateInterpolerSuite) TestBackAndForthWalk(c *C) {
 		&staticState{Name: states[1].Name},
 		&transition{start: dater(1, 17, 45), from: states[1], to: states[0], duration: stdDuration},
 		&staticState{Name: states[0].Name},
-		&transition{start: dater(1, 23, 45), from: states[0], to: states[1], duration: stdDuration},
+		&transition{start: dater(1, 23, 59), from: states[0], to: states[1], duration: stdDuration},
 		&staticState{Name: states[1].Name},
 		&transition{start: dater(2, 5, 45), from: states[1], to: states[0], duration: stdDuration},
 		&staticState{Name: states[0].Name},
@@ -364,16 +364,16 @@ func (s *ClimateInterpolerSuite) TestBackAndForthWalk(c *C) {
 	expectedTimes := []time.Time{
 		dater(0, 17, 45),
 		dater(0, 18, 15),
-		dater(0, 23, 45),
-		dater(1, 00, 15),
+		dater(0, 23, 59),
+		dater(1, 00, 29),
 		dater(1, 05, 45),
 		dater(1, 06, 15),
 		dater(1, 11, 45),
 		dater(1, 12, 15),
 		dater(1, 17, 45),
 		dater(1, 18, 15),
-		dater(1, 23, 45),
-		dater(2, 00, 15),
+		dater(1, 23, 59),
+		dater(2, 00, 29),
 		dater(2, 05, 45),
 		dater(2, 06, 15),
 		dater(2, 11, 45),
@@ -382,7 +382,7 @@ func (s *ClimateInterpolerSuite) TestBackAndForthWalk(c *C) {
 	c.Assert(len(expected), Equals, len(expectedTimes))
 
 	maxDate := dater(2, 17, 00)
-	currentDate := dater(0, 16, 1)
+	currentDate := dater(0, 17, 1).Local()
 	currentInterpolation, _, _ := interpoler.CurrentInterpolation(currentDate)
 	for i, e := range expected {
 

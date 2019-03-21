@@ -205,7 +205,7 @@ func (i *climateInterpolation) walkTo(t time.Time) (prev, next computedTransitio
 }
 
 func (i *climateInterpolation) CurrentInterpolation(t time.Time) (Interpolation, time.Time, Interpolation) {
-	prevT, nextT, prevOK, nextOK := i.walkTo(t)
+	prevT, nextT, prevOK, nextOK := i.walkTo(t.UTC())
 	var currentI, nextI Interpolation
 	var nextTime time.Time
 	if prevOK == false || t.After(prevT.time.Add(prevT.transition.Duration)) {
