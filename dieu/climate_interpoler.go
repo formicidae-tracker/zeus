@@ -6,7 +6,7 @@ import (
 	"sort"
 	"time"
 
-	"git.tuleu.science/fort/dieu"
+	"github.com/formicidae-tracker/dieu"
 )
 
 type Interpolation interface {

@@ -1,6 +1,6 @@
 package main
 
-import "git.tuleu.science/fort/dieu"
+import "github.com/formicidae-tracker/dieu"
 
 func ComputeZoneRequirements(z *dieu.Zone, reporters []ClimateReporter) ([]capability, error) {
 	res := []capability{}

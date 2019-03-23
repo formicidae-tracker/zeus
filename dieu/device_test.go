@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.tuleu.science/fort/libarke/src-go/arke"
+	"github.com/formicidae-tracker/libarke/src-go/arke"
 	. "gopkg.in/check.v1"
 
 	socketcan "github.com/atuleu/golang-socketcan"

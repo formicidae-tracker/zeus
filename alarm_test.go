@@ -3,7 +3,7 @@ package dieu
 import (
 	"time"
 
-	"git.tuleu.science/fort/libarke/src-go/arke"
+	"github.com/formicidae-tracker/libarke/src-go/arke"
 	. "gopkg.in/check.v1"
 )
 

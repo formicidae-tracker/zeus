@@ -30,8 +30,8 @@ installation](https://golang.org/doc/install#testing)
 ### Installing
 
 ``` bash
-go get -u git.tuleu.science/fort/dieu/dieu
-go install git.tuleu.science/fort/dieu/dieu
+go get -u github.com/formicidae-tracker/dieu/dieu
+go install github.com/formicidae-tracker/dieu/dieu
 ```
 
 You should now be able to run the `dieu` command.

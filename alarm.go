@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"git.tuleu.science/fort/libarke/src-go/arke"
+	"github.com/formicidae-tracker/libarke/src-go/arke"
 )
 
 type Priority int

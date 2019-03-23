@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"git.tuleu.science/fort/dieu"
+	"github.com/formicidae-tracker/dieu"
 )
 
 type ZoneNotFoundError string

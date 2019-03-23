@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"git.tuleu.science/fort/dieu"
+	"github.com/formicidae-tracker/dieu"
 	"github.com/dgryski/go-lttb"
 )
 

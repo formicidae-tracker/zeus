@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"git.tuleu.science/fort/dieu"
-	"git.tuleu.science/fort/libarke/src-go/arke"
+	"github.com/formicidae-tracker/dieu"
+	"github.com/formicidae-tracker/libarke/src-go/arke"
 	socketcan "github.com/atuleu/golang-socketcan"
 )
 

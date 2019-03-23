@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"git.tuleu.science/fort/dieu"
+	"github.com/formicidae-tracker/dieu"
 	. "gopkg.in/check.v1"
 )
 

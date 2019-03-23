@@ -1,6 +1,6 @@
 package main
 
-import "git.tuleu.science/fort/dieu"
+import "github.com/formicidae-tracker/dieu"
 
 type AlarmNotifier interface {
 	Notify(e dieu.AlarmEvent) error
