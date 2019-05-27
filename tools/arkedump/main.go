@@ -7,12 +7,29 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/formicidae-tracker/libarke/src-go/arke"
 	socketcan "github.com/atuleu/golang-socketcan"
+	"github.com/formicidae-tracker/libarke/src-go/arke"
 	"github.com/jessevdk/go-flags"
 )
 
 type Options struct {
+}
+
+func WroteHelp(err error) bool {
+	if err == nil { // No error
+		return false
+	}
+
+	flagError, ok := err.(*flags.Error)
+	if ok == false { // Not a go-flag error
+		return false
+	}
+
+	if flagError.Type != flags.ErrHelp { // Did not print the help message
+		return false
+	}
+
+	return true
 }
 
 func Execute() error {
@@ -76,7 +93,7 @@ func Execute() error {
 
 func main() {
 	if err := Execute(); err != nil {
-		if flags.WroteHelp(err) == true {
+		if WroteHelp(err) == true {
 			os.Exit(0)
 		}
 		log.Fatalf("Unhandled error: %s", err)
