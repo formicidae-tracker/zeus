@@ -5,20 +5,20 @@ import (
 	"os"
 	"time"
 
-	"github.com/formicidae-tracker/dieu"
+	"github.com/formicidae-tracker/zeus"
 )
 
 type ClimateReporter interface {
-	ReportChannel() chan<- dieu.ClimateReport
+	ReportChannel() chan<- zeus.ClimateReport
 }
 
 type FileClimateReporter struct {
 	File  *os.File
 	Start time.Time
-	Chan  chan dieu.ClimateReport
+	Chan  chan zeus.ClimateReport
 }
 
-func (n *FileClimateReporter) ReportChannel() chan<- dieu.ClimateReport {
+func (n *FileClimateReporter) ReportChannel() chan<- zeus.ClimateReport {
 	return n.Chan
 }
 
@@ -38,13 +38,13 @@ func (n *FileClimateReporter) Report() {
 
 func NewFileClimateReporter(filename string) (*FileClimateReporter, string, error) {
 	res := &FileClimateReporter{
-		Chan:  make(chan dieu.ClimateReport, 10),
+		Chan:  make(chan zeus.ClimateReport, 10),
 		Start: time.Now(),
 	}
 
 	var err error
 	var fname string
-	res.File, fname, err = dieu.CreateFileWithoutOverwrite(filename)
+	res.File, fname, err = zeus.CreateFileWithoutOverwrite(filename)
 	if err != nil {
 		return nil, "", err
 	}

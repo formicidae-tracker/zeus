@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/formicidae-tracker/dieu"
+	"github.com/formicidae-tracker/zeus"
 	. "gopkg.in/check.v1"
 )
 
@@ -33,8 +33,8 @@ func (a testAlarm) Reason() string {
 	return string(a)
 }
 
-func (a testAlarm) Priority() dieu.Priority {
-	return dieu.Warning
+func (a testAlarm) Priority() zeus.Priority {
+	return zeus.Warning
 }
 
 func (a testAlarm) RepeatPeriod() time.Duration {
@@ -94,7 +94,7 @@ func (s *AlarmMonitorSuite) TestMonitor(c *C) {
 	c.Check(ok, Equals, true)
 	c.Check(e.Reason, Equals, alarms[1].Reason())
 	c.Check(e.Priority, Equals, alarms[1].Priority())
-	c.Check(e.Status, Equals, dieu.AlarmOn)
+	c.Check(e.Status, Equals, zeus.AlarmOn)
 
 	start := time.Now()
 	repeat := 10
@@ -113,14 +113,14 @@ func (s *AlarmMonitorSuite) TestMonitor(c *C) {
 	c.Check(ok, Equals, true)
 	c.Check(e.Reason, Equals, alarms[0].Reason())
 	c.Check(e.Priority, Equals, alarms[0].Priority())
-	c.Check(e.Status, Equals, dieu.AlarmOn)
+	c.Check(e.Status, Equals, zeus.AlarmOn)
 
 	e, ok = <-m.Outbound()
 	end := time.Now()
 	c.Check(ok, Equals, true)
 	c.Check(e.Reason, Equals, alarms[0].Reason())
 	c.Check(e.Priority, Equals, alarms[0].Priority())
-	c.Check(e.Status, Equals, dieu.AlarmOff)
+	c.Check(e.Status, Equals, zeus.AlarmOff)
 
 	lasted := end.Sub(start)
 	expected := time.Duration(3+repeat-1) * alarms[0].RepeatPeriod()

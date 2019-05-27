@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/formicidae-tracker/dieu"
+	"github.com/formicidae-tracker/zeus"
 	. "gopkg.in/check.v1"
 )
 
@@ -18,44 +18,44 @@ type Hermes struct {
 	C        chan *C
 }
 
-func (h *Hermes) UnregisterZone(zu *dieu.ZoneUnregistration, err *dieu.HermesError) error {
+func (h *Hermes) UnregisterZone(zu *zeus.ZoneUnregistration, err *zeus.HermesError) error {
 	c := <-h.C
 	c.Check(zu.Host, Equals, h.hostname)
 	c.Check(zu.Name, Equals, "test-zone")
-	*err = dieu.HermesError("")
+	*err = zeus.HermesError("")
 	return nil
 }
 
-func (h *Hermes) RegisterZone(zr *dieu.ZoneRegistration, err *dieu.HermesError) error {
+func (h *Hermes) RegisterZone(zr *zeus.ZoneRegistration, err *zeus.HermesError) error {
 	c := <-h.C
 	c.Check(zr.Host, Equals, h.hostname)
 	c.Check(zr.Name, Equals, "test-zone")
-	*err = dieu.HermesError("")
+	*err = zeus.HermesError("")
 	return nil
 }
 
-func (h *Hermes) ReportClimate(cr *dieu.NamedClimateReport, err *dieu.HermesError) error {
+func (h *Hermes) ReportClimate(cr *zeus.NamedClimateReport, err *zeus.HermesError) error {
 	c := <-h.C
-	c.Check(cr.ZoneIdentifier, Equals, dieu.ZoneIdentifier(h.hostname, "test-zone"))
-	c.Check(cr.Humidity, Equals, dieu.Humidity(50.0))
+	c.Check(cr.ZoneIdentifier, Equals, zeus.ZoneIdentifier(h.hostname, "test-zone"))
+	c.Check(cr.Humidity, Equals, zeus.Humidity(50.0))
 	for i := 0; i < 4; i++ {
-		c.Check(cr.Temperatures[i], Equals, dieu.Temperature(21))
+		c.Check(cr.Temperatures[i], Equals, zeus.Temperature(21))
 	}
-	*err = dieu.HermesError("")
+	*err = zeus.HermesError("")
 	return nil
 }
 
-func (h *Hermes) ReportAlarm(ae *dieu.AlarmEvent, err *dieu.HermesError) error {
+func (h *Hermes) ReportAlarm(ae *zeus.AlarmEvent, err *zeus.HermesError) error {
 	c := <-h.C
-	c.Check(ae.Zone, Equals, dieu.ZoneIdentifier(h.hostname, "test-zone"))
-	*err = dieu.HermesError("")
+	c.Check(ae.Zone, Equals, zeus.ZoneIdentifier(h.hostname, "test-zone"))
+	*err = zeus.HermesError("")
 	return nil
 }
 
-func (h *Hermes) ReportState(ae *dieu.StateReport, err *dieu.HermesError) error {
+func (h *Hermes) ReportState(ae *zeus.StateReport, err *zeus.HermesError) error {
 	c := <-h.C
-	c.Check(ae.Zone, Equals, dieu.ZoneIdentifier(h.hostname, "test-zone"))
-	*err = dieu.HermesError("")
+	c.Check(ae.Zone, Equals, zeus.ZoneIdentifier(h.hostname, "test-zone"))
+	*err = zeus.HermesError("")
 	return nil
 }
 
@@ -103,7 +103,7 @@ func (s *RPCClimateReporterSuite) TearDownSuite(c *C) {
 
 func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 	go func() { s.H.C <- c }()
-	zone := dieu.Zone{}
+	zone := zeus.Zone{}
 
 	n, err := NewRPCReporter("test-zone", testAddress, zone, bytes.NewBuffer(nil))
 	n.MaxAttempts = 2
@@ -121,18 +121,18 @@ func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 		s.H.C <- c
 		wg.Done()
 	}()
-	n.ReportChannel() <- dieu.ClimateReport{Humidity: 50, Temperatures: [4]dieu.Temperature{21, 21, 21, 21}}
+	n.ReportChannel() <- zeus.ClimateReport{Humidity: 50, Temperatures: [4]zeus.Temperature{21, 21, 21, 21}}
 
 	wg.Add(1)
 	go func() {
 		s.H.C <- c
 		wg.Done()
 	}()
-	n.AlarmChannel() <- dieu.AlarmEvent{
-		Zone:     dieu.ZoneIdentifier(s.H.hostname, "test-zone"),
+	n.AlarmChannel() <- zeus.AlarmEvent{
+		Zone:     zeus.ZoneIdentifier(s.H.hostname, "test-zone"),
 		Reason:   "foo",
-		Priority: dieu.Warning,
-		Status:   dieu.AlarmOn,
+		Priority: zeus.Warning,
+		Status:   zeus.AlarmOn,
 		Time:     time.Now(),
 	}
 
@@ -141,8 +141,8 @@ func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 		s.H.C <- c
 		wg.Done()
 	}()
-	n.StateChannel() <- dieu.StateReport{
-		Zone: dieu.ZoneIdentifier(s.H.hostname, "test-zone"),
+	n.StateChannel() <- zeus.StateReport{
+		Zone: zeus.ZoneIdentifier(s.H.hostname, "test-zone"),
 	}
 
 	s.Http.Shutdown(context.Background())
@@ -155,8 +155,8 @@ func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 		s.H.C <- c
 		wg.Done()
 	}()
-	n.StateChannel() <- dieu.StateReport{
-		Zone: dieu.ZoneIdentifier(s.H.hostname, "test-zone"),
+	n.StateChannel() <- zeus.StateReport{
+		Zone: zeus.ZoneIdentifier(s.H.hostname, "test-zone"),
 	}
 
 	time.Sleep(time.Duration(n.MaxAttempts+100) * n.ReconnectionWindow)

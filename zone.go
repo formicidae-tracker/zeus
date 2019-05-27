@@ -1,4 +1,4 @@
-package dieu
+package zeus
 
 type Zone struct {
 	CANInterface       string      `yaml:"can-interface"`

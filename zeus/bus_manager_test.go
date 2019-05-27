@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/formicidae-tracker/dieu"
+	"github.com/formicidae-tracker/zeus"
 	"github.com/formicidae-tracker/libarke/src-go/arke"
 	socketcan "github.com/atuleu/golang-socketcan"
 	"github.com/golang/mock/gomock"
@@ -41,7 +41,7 @@ func (c *stubCapability) SetDevices(devices map[arke.NodeClass]*Device) {
 	c.zeus = devices[arke.ZeusClass]
 }
 
-func (c *stubCapability) Action(s dieu.State) error {
+func (c *stubCapability) Action(s zeus.State) error {
 	return c.zeus.SendMessage(&arke.ZeusSetPoint{
 		Temperature: 24.0,
 		Humidity:    50.0,
@@ -51,7 +51,7 @@ func (c *stubCapability) Action(s dieu.State) error {
 
 func (c *stubCapability) Callbacks() map[arke.MessageClass]callback {
 	return map[arke.MessageClass]callback{
-		arke.ZeusStatusMessage: func(alarms chan<- dieu.Alarm, m *StampedMessage) error {
+		arke.ZeusStatusMessage: func(alarms chan<- zeus.Alarm, m *StampedMessage) error {
 			close(c.ready)
 			<-c.release
 			return nil
@@ -81,7 +81,7 @@ func TestBusManagerClose(t *testing.T) {
 		release: make(chan struct{}),
 	}
 
-	alarms := make(chan dieu.Alarm, 10)
+	alarms := make(chan zeus.Alarm, 10)
 	err := manager.AssignCapabilitiesForID(1, []capability{cap}, alarms)
 	if err != nil {
 		t.Error(err)
@@ -135,7 +135,7 @@ func TestBusManagerClose(t *testing.T) {
 
 	a, ok := <-alarms
 	if ok == true {
-		if _, ok := a.(dieu.MissingDeviceAlarm); ok == false {
+		if _, ok := a.(zeus.MissingDeviceAlarm); ok == false {
 			t.Error("Should have received a missing device alarm")
 		}
 	}

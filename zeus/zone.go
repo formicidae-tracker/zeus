@@ -1,15 +1,15 @@
 package main
 
-import "github.com/formicidae-tracker/dieu"
+import "github.com/formicidae-tracker/zeus"
 
-func ComputeZoneRequirements(z *dieu.Zone, reporters []ClimateReporter) ([]capability, error) {
+func ComputeZoneRequirements(z *zeus.Zone, reporters []ClimateReporter) ([]capability, error) {
 	res := []capability{}
 
 	needClimateReport := false
-	if dieu.IsUndefined(z.MinimalTemperature) == false || dieu.IsUndefined(z.MaximalTemperature) == false {
+	if zeus.IsUndefined(z.MinimalTemperature) == false || zeus.IsUndefined(z.MaximalTemperature) == false {
 		needClimateReport = true
 	}
-	if dieu.IsUndefined(z.MinimalHumidity) == false || dieu.IsUndefined(z.MaximalHumidity) == false {
+	if zeus.IsUndefined(z.MinimalHumidity) == false || zeus.IsUndefined(z.MaximalHumidity) == false {
 		needClimateReport = true
 	}
 	if len(z.ClimateReportFile) != 0 {
@@ -23,7 +23,7 @@ func ComputeZoneRequirements(z *dieu.Zone, reporters []ClimateReporter) ([]capab
 
 	if needClimateReport == true || len(reporters) != 0 {
 
-		chans := []chan<- dieu.ClimateReport{}
+		chans := []chan<- zeus.ClimateReport{}
 		for _, n := range reporters {
 			chans = append(chans, n.ReportChannel())
 		}
@@ -40,16 +40,16 @@ func ComputeZoneRequirements(z *dieu.Zone, reporters []ClimateReporter) ([]capab
 	controlHumidity := false
 	controlWind := false
 	for _, s := range z.States {
-		if dieu.IsUndefined(s.Humidity) == false {
+		if zeus.IsUndefined(s.Humidity) == false {
 			controlHumidity = true
 		}
-		if dieu.IsUndefined(s.Temperature) == false {
+		if zeus.IsUndefined(s.Temperature) == false {
 			controlTemperature = true
 		}
-		if dieu.IsUndefined(s.Wind) == false {
+		if zeus.IsUndefined(s.Wind) == false {
 			controlWind = true
 		}
-		if dieu.IsUndefined(s.VisibleLight) == false || dieu.IsUndefined(s.UVLight) == false {
+		if zeus.IsUndefined(s.VisibleLight) == false || zeus.IsUndefined(s.UVLight) == false {
 			controlLight = true
 		}
 	}

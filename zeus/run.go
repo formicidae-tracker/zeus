@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/formicidae-tracker/dieu"
+	"github.com/formicidae-tracker/zeus"
 	"github.com/formicidae-tracker/libarke/src-go/arke"
 	socketcan "github.com/atuleu/golang-socketcan"
 	"github.com/grandcat/zeroconf"
@@ -90,11 +90,11 @@ func (cmd *RunCommand) Execute(args []string) error {
 				return err
 			}
 
-			m = NewBusManager(z.CANInterface, intf, dieu.HeartBeatPeriod)
+			m = NewBusManager(z.CANInterface, intf, zeus.HeartBeatPeriod)
 			managers[z.CANInterface] = m
 		}
 
-		var stateReports chan<- dieu.StateReport = nil
+		var stateReports chan<- zeus.StateReport = nil
 
 		reporters := []ClimateReporter{}
 		if cmd.NoAvahi == false {

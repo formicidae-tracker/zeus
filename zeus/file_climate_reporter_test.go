@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/formicidae-tracker/dieu"
+	"github.com/formicidae-tracker/zeus"
 	. "gopkg.in/check.v1"
 )
 
@@ -42,9 +42,9 @@ func (s *FileClimateReporterSuite) TestFileNameWriting(c *C) {
 	fn, fname, err := NewFileClimateReporter(filepath.Join(s.TmpDir, "test.txt"))
 	c.Assert(err, IsNil)
 
-	cr := dieu.ClimateReport{
+	cr := zeus.ClimateReport{
 		Humidity:     50,
-		Temperatures: [4]dieu.Temperature{21, 21, 21, 21},
+		Temperatures: [4]zeus.Temperature{21, 21, 21, 21},
 	}
 	wg := sync.WaitGroup{}
 	wg.Add(1)

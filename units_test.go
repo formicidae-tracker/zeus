@@ -1,4 +1,4 @@
-package dieu
+package zeus
 
 import (
 	. "gopkg.in/check.v1"

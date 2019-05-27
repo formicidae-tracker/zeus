@@ -1,4 +1,4 @@
-package dieu
+package zeus
 
 import (
 	"io/ioutil"

@@ -1,9 +1,9 @@
 package main
 
-import "github.com/formicidae-tracker/dieu"
+import "github.com/formicidae-tracker/zeus"
 
 type AlarmNotifier interface {
-	Notify(e dieu.AlarmEvent) error
+	Notify(e zeus.AlarmEvent) error
 }
 
 type slackAlarmNotifier struct{}

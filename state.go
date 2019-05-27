@@ -1,4 +1,4 @@
-package dieu
+package zeus
 
 type State struct {
 	Name         string

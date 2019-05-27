@@ -9,44 +9,44 @@ import (
 	"sync"
 	"time"
 
-	"github.com/formicidae-tracker/dieu"
+	"github.com/formicidae-tracker/zeus"
 )
 
 type InterpolationManager struct {
 	name         string
 	interpoler   ClimateInterpoler
 	capabilities []capability
-	reports      chan<- dieu.StateReport
+	reports      chan<- zeus.StateReport
 	log          *log.Logger
 	period       time.Duration
 }
 
-func (i *InterpolationManager) SendState(s dieu.State) {
+func (i *InterpolationManager) SendState(s zeus.State) {
 	for _, c := range i.capabilities {
 		c.Action(s)
 	}
 }
 
-func sanitizeUnit(u dieu.BoundedUnit) float64 {
-	if dieu.IsUndefined(u) || math.IsNaN(u.Value()) {
+func sanitizeUnit(u zeus.BoundedUnit) float64 {
+	if zeus.IsUndefined(u) || math.IsNaN(u.Value()) {
 		return -1000.0
 	}
 	return u.Value()
 }
 
-func sanitizeState(s dieu.State) dieu.State {
-	return dieu.State{
+func sanitizeState(s zeus.State) zeus.State {
+	return zeus.State{
 		Name:         s.Name,
-		Temperature:  dieu.Temperature(sanitizeUnit(s.Temperature)),
-		Humidity:     dieu.Humidity(sanitizeUnit(s.Humidity)),
-		Wind:         dieu.Wind(sanitizeUnit(s.Wind)),
-		VisibleLight: dieu.Light(sanitizeUnit(s.VisibleLight)),
-		UVLight:      dieu.Light(sanitizeUnit(s.UVLight)),
+		Temperature:  zeus.Temperature(sanitizeUnit(s.Temperature)),
+		Humidity:     zeus.Humidity(sanitizeUnit(s.Humidity)),
+		Wind:         zeus.Wind(sanitizeUnit(s.Wind)),
+		VisibleLight: zeus.Light(sanitizeUnit(s.VisibleLight)),
+		UVLight:      zeus.Light(sanitizeUnit(s.UVLight)),
 	}
 }
 
-func (i *InterpolationManager) StateReport(current, next Interpolation, now time.Time, nextTime time.Time) dieu.StateReport {
-	report := dieu.StateReport{
+func (i *InterpolationManager) StateReport(current, next Interpolation, now time.Time, nextTime time.Time) zeus.StateReport {
+	report := zeus.StateReport{
 		Zone:       i.name,
 		Current:    sanitizeState(current.State(now)),
 		CurrentEnd: nil,
@@ -56,17 +56,17 @@ func (i *InterpolationManager) StateReport(current, next Interpolation, now time
 		NextEnd:  nil,
 	}
 	if inter, ok := current.(*transition); ok == true {
-		report.CurrentEnd = &dieu.State{}
+		report.CurrentEnd = &zeus.State{}
 		*report.CurrentEnd = sanitizeState(inter.State(now.Add(inter.duration)))
 	}
 
 	if next != nil {
 		report.NextTime = &time.Time{}
 		*report.NextTime = nextTime
-		report.Next = &dieu.State{}
+		report.Next = &zeus.State{}
 		*report.Next = sanitizeState(next.State(nextTime))
 		if inter, ok := next.(*transition); ok == true {
-			report.NextEnd = &dieu.State{}
+			report.NextEnd = &zeus.State{}
 			*report.NextEnd = sanitizeState(inter.State(nextTime.Add(inter.duration)))
 		}
 
@@ -127,10 +127,10 @@ func (i *InterpolationManager) Interpolate(wg *sync.WaitGroup, init, quit <-chan
 }
 
 func NewInterpolationManager(name string,
-	states []dieu.State,
-	transitions []dieu.Transition,
+	states []zeus.State,
+	transitions []zeus.Transition,
 	caps []capability,
-	reports chan<- dieu.StateReport,
+	reports chan<- zeus.StateReport,
 	logs io.Writer) (*InterpolationManager, error) {
 	hostname, err := os.Hostname()
 	if err != nil {

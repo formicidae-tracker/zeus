@@ -1,4 +1,4 @@
-module github.com/formicidae-tracker/dieu
+module github.com/formicidae-tracker/zeus
 
 require (
 	github.com/atuleu/golang-socketcan v0.2.0
@@ -9,9 +9,8 @@ require (
 	github.com/gorilla/mux v1.7.0
 	github.com/grandcat/zeroconf v0.0.0-20190118114326-c2d1b4121200
 	github.com/jessevdk/go-flags v1.4.0
-	github.com/miekg/dns v1.1.6 // indirect
-	golang.org/x/net v0.0.0-20190322120337-addf6b3196f6 // indirect
-	golang.org/x/sync v0.0.0-20190227155943-e225da77a7e6 // indirect
+	github.com/miekg/dns v1.1.12 // indirect
+	golang.org/x/net v0.0.0-20190522155817-f3200d17e092 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127
 	gopkg.in/yaml.v2 v2.2.2
 )

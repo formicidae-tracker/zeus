@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/formicidae-tracker/dieu"
+	"github.com/formicidae-tracker/zeus"
 	"github.com/formicidae-tracker/libarke/src-go/arke"
 	socketcan "github.com/atuleu/golang-socketcan"
 )
@@ -24,7 +24,7 @@ func (d *Device) SendResetRequest() error {
 }
 
 func (d *Device) SendHeartbeatRequest() error {
-	return arke.SendHeartBeatRequest(d.intf, d.Class, dieu.HeartBeatPeriod)
+	return arke.SendHeartBeatRequest(d.intf, d.Class, zeus.HeartBeatPeriod)
 }
 
 var nameToNodeClass = map[string]arke.NodeClass{

@@ -6,19 +6,19 @@ import (
 	"path"
 	"time"
 
-	"github.com/formicidae-tracker/dieu"
+	"github.com/formicidae-tracker/zeus"
 )
 
 type AlarmMonitor interface {
 	Name() string
 	Monitor()
-	Inbound() chan<- dieu.Alarm
-	Outbound() <-chan dieu.AlarmEvent
+	Inbound() chan<- zeus.Alarm
+	Outbound() <-chan zeus.AlarmEvent
 }
 
 type alarmMonitor struct {
-	inbound  chan dieu.Alarm
-	outbound chan dieu.AlarmEvent
+	inbound  chan zeus.Alarm
+	outbound chan zeus.AlarmEvent
 	name     string
 }
 
@@ -45,7 +45,7 @@ func wakeupAfter(wakeup chan<- string, quit <-chan struct{}, reason string, afte
 
 func (m *alarmMonitor) Monitor() {
 	trigged := make(map[string]int)
-	alarms := make(map[string]dieu.Alarm)
+	alarms := make(map[string]zeus.Alarm)
 	clearWakeup := make(chan string)
 
 	defer func() {
@@ -64,10 +64,10 @@ func (m *alarmMonitor) Monitor() {
 			}
 			if t, ok := trigged[a.Reason()]; ok == false || t <= 0 {
 				go func() {
-					m.outbound <- dieu.AlarmEvent{
+					m.outbound <- zeus.AlarmEvent{
 						Reason:   a.Reason(),
 						Priority: a.Priority(),
-						Status:   dieu.AlarmOn,
+						Status:   zeus.AlarmOn,
 						Time:     time.Now(),
 						Zone:     m.name,
 					}
@@ -87,10 +87,10 @@ func (m *alarmMonitor) Monitor() {
 
 			if t == 1 {
 				go func() {
-					m.outbound <- dieu.AlarmEvent{
+					m.outbound <- zeus.AlarmEvent{
 						Reason:   alarms[r].Reason(),
 						Priority: alarms[r].Priority(),
-						Status:   dieu.AlarmOff,
+						Status:   zeus.AlarmOff,
 						Time:     time.Now(),
 						Zone:     m.name,
 					}
@@ -103,11 +103,11 @@ func (m *alarmMonitor) Monitor() {
 	}
 }
 
-func (m *alarmMonitor) Inbound() chan<- dieu.Alarm {
+func (m *alarmMonitor) Inbound() chan<- zeus.Alarm {
 	return m.inbound
 }
 
-func (m *alarmMonitor) Outbound() <-chan dieu.AlarmEvent {
+func (m *alarmMonitor) Outbound() <-chan zeus.AlarmEvent {
 	return m.outbound
 }
 
@@ -118,8 +118,8 @@ func NewAlarmMonitor(zoneName string) (AlarmMonitor, error) {
 	}
 
 	return &alarmMonitor{
-		inbound:  make(chan dieu.Alarm, 30),
-		outbound: make(chan dieu.AlarmEvent, 60),
+		inbound:  make(chan zeus.Alarm, 30),
+		outbound: make(chan zeus.AlarmEvent, 60),
 		name:     path.Join(hostname, "zone", zoneName),
 	}, nil
 }

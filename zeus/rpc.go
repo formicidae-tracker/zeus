@@ -9,31 +9,31 @@ import (
 	"sync"
 	"time"
 
-	"github.com/formicidae-tracker/dieu"
+	"github.com/formicidae-tracker/zeus"
 )
 
 type RPCReporter struct {
-	Registration       dieu.ZoneRegistration
+	Registration       zeus.ZoneRegistration
 	Addr               string
 	Conn               *rpc.Client
-	LastStateReport    *dieu.StateReport
-	ClimateReports     chan dieu.ClimateReport
-	AlarmReports       chan dieu.AlarmEvent
-	StateReports       chan dieu.StateReport
+	LastStateReport    *zeus.StateReport
+	ClimateReports     chan zeus.ClimateReport
+	AlarmReports       chan zeus.AlarmEvent
+	StateReports       chan zeus.StateReport
 	log                *log.Logger
 	ReconnectionWindow time.Duration
 	MaxAttempts        int
 }
 
-func (r *RPCReporter) ReportChannel() chan<- dieu.ClimateReport {
+func (r *RPCReporter) ReportChannel() chan<- zeus.ClimateReport {
 	return r.ClimateReports
 }
 
-func (r *RPCReporter) AlarmChannel() chan<- dieu.AlarmEvent {
+func (r *RPCReporter) AlarmChannel() chan<- zeus.AlarmEvent {
 	return r.AlarmReports
 }
 
-func (r *RPCReporter) StateChannel() chan<- dieu.StateReport {
+func (r *RPCReporter) StateChannel() chan<- zeus.StateReport {
 	return r.StateReports
 }
 
@@ -47,7 +47,7 @@ func (r *RPCReporter) reconnect() error {
 
 	registered := false
 
-	toSend := dieu.ZoneUnregistration{
+	toSend := zeus.ZoneUnregistration{
 		Host: r.Registration.Host,
 		Name: r.Registration.Name,
 	}
@@ -59,7 +59,7 @@ func (r *RPCReporter) reconnect() error {
 	if registered == true {
 		return nil
 	}
-	herr := dieu.HermesError("")
+	herr := zeus.HermesError("")
 
 	err = r.Conn.Call("Hermes.RegisterZone", r.Registration, &herr)
 	if err != nil {
@@ -95,7 +95,7 @@ func (r *RPCReporter) Report(wg *sync.WaitGroup) {
 				rerr = nil
 			}
 		}
-		var herr dieu.HermesError
+		var herr zeus.HermesError
 		select {
 		case <-resetConnection:
 			trials += 1
@@ -111,7 +111,7 @@ func (r *RPCReporter) Report(wg *sync.WaitGroup) {
 			if ok == false {
 				r.ClimateReports = nil
 			} else {
-				ncr := dieu.NamedClimateReport{cr, r.Registration.Fullname()}
+				ncr := zeus.NamedClimateReport{cr, r.Registration.Fullname()}
 				if rerr == nil && trials <= r.MaxAttempts && resetConnection == nil {
 					rerr = r.Conn.Call("Hermes.ReportClimate", ncr, &herr)
 					if rerr != nil {
@@ -169,8 +169,8 @@ func (r *RPCReporter) Report(wg *sync.WaitGroup) {
 
 	r.log.Printf("Unregistering zone")
 
-	herr := dieu.HermesError("")
-	rerr = r.Conn.Call("Hermes.UnregisterZone", &dieu.ZoneUnregistration{
+	herr := zeus.HermesError("")
+	rerr = r.Conn.Call("Hermes.UnregisterZone", &zeus.ZoneUnregistration{
 		Name: r.Registration.Name,
 		Host: r.Registration.Host,
 	}, &herr)
@@ -183,7 +183,7 @@ func (r *RPCReporter) Report(wg *sync.WaitGroup) {
 	r.Conn.Close()
 }
 
-func NewRPCReporter(name, address string, zone dieu.Zone, logs io.Writer) (*RPCReporter, error) {
+func NewRPCReporter(name, address string, zone zeus.Zone, logs io.Writer) (*RPCReporter, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, err
@@ -197,14 +197,14 @@ func NewRPCReporter(name, address string, zone dieu.Zone, logs io.Writer) (*RPCR
 		return nil, fmt.Errorf("rpc: conn: %s", err)
 	}
 
-	herr := dieu.HermesError("")
-	reg := dieu.ZoneRegistration{
+	herr := zeus.HermesError("")
+	reg := zeus.ZoneRegistration{
 		Host: hostname,
 		Name: name,
 	}
 
-	cast := func(from dieu.BoundedUnit) *float64 {
-		if dieu.IsUndefined(from) == true {
+	cast := func(from zeus.BoundedUnit) *float64 {
+		if zeus.IsUndefined(from) == true {
 			return nil
 		} else {
 			res := new(float64)
@@ -232,9 +232,9 @@ func NewRPCReporter(name, address string, zone dieu.Zone, logs io.Writer) (*RPCR
 		Registration:       reg,
 		Conn:               conn,
 		Addr:               address,
-		ClimateReports:     make(chan dieu.ClimateReport, 20),
-		AlarmReports:       make(chan dieu.AlarmEvent, 20),
-		StateReports:       make(chan dieu.StateReport, 20),
+		ClimateReports:     make(chan zeus.ClimateReport, 20),
+		AlarmReports:       make(chan zeus.AlarmEvent, 20),
+		StateReports:       make(chan zeus.StateReport, 20),
 		log:                logger,
 		ReconnectionWindow: 5 * time.Second,
 		MaxAttempts:        1000,

@@ -4,7 +4,7 @@ import (
 	reflect "reflect"
 	"time"
 
-	"github.com/formicidae-tracker/dieu"
+	"github.com/formicidae-tracker/zeus"
 	. "gopkg.in/check.v1"
 )
 
@@ -20,18 +20,18 @@ func (s *ClimateInterpolerSuite) TestInterpolationFormat(c *C) {
 	}{
 		{
 			&staticState{
-				Temperature:  dieu.UndefinedTemperature,
-				Humidity:     dieu.UndefinedHumidity,
-				Wind:         dieu.UndefinedWind,
-				VisibleLight: dieu.UndefinedLight,
-				UVLight:      dieu.UndefinedLight,
+				Temperature:  zeus.UndefinedTemperature,
+				Humidity:     zeus.UndefinedHumidity,
+				Wind:         zeus.UndefinedWind,
+				VisibleLight: zeus.UndefinedLight,
+				UVLight:      zeus.UndefinedLight,
 			},
 			"static state: {Name: Temperature:-Inf Humidity:-Inf Wind:-Inf VisibleLight:-Inf UVLight:-Inf}",
 		},
 		{
 			&transition{
-				from:     dieu.State{Name: "day"},
-				to:       dieu.State{Name: "night"},
+				from:     zeus.State{Name: "day"},
+				to:       zeus.State{Name: "night"},
 				duration: 30 * time.Minute,
 				start:    time.Date(2019, 1, 1, 10, 00, 0, 0, time.UTC),
 			},
@@ -45,12 +45,12 @@ func (s *ClimateInterpolerSuite) TestInterpolationFormat(c *C) {
 }
 
 func (s *ClimateInterpolerSuite) TestStaticState(c *C) {
-	testdata := []dieu.State{
+	testdata := []zeus.State{
 		{
-			Temperature:  dieu.UndefinedTemperature,
+			Temperature:  zeus.UndefinedTemperature,
 			Humidity:     30,
 			Wind:         20,
-			VisibleLight: dieu.UndefinedLight,
+			VisibleLight: zeus.UndefinedLight,
 			UVLight:      45,
 		},
 	}
@@ -63,32 +63,32 @@ func (s *ClimateInterpolerSuite) TestStaticState(c *C) {
 func (s *ClimateInterpolerSuite) TestInterpolation(c *C) {
 
 	i := transition{
-		from: dieu.State{
+		from: zeus.State{
 			Name:         "a",
 			Wind:         0,
-			Temperature:  dieu.UndefinedTemperature,
-			Humidity:     dieu.UndefinedHumidity,
+			Temperature:  zeus.UndefinedTemperature,
+			Humidity:     zeus.UndefinedHumidity,
 			VisibleLight: 10,
 		},
-		to: dieu.State{
+		to: zeus.State{
 			Name:         "b",
 			Wind:         20,
-			Temperature:  dieu.UndefinedTemperature,
+			Temperature:  zeus.UndefinedTemperature,
 			Humidity:     40,
-			VisibleLight: dieu.UndefinedLight,
+			VisibleLight: zeus.UndefinedLight,
 		},
 		duration: 30 * time.Minute,
 	}
 
 	testdata := []struct {
 		d time.Duration
-		s dieu.State
+		s zeus.State
 	}{
-		{0, dieu.State{Wind: 0, Temperature: dieu.UndefinedTemperature, Humidity: 40, VisibleLight: 10}},
-		{15 * time.Minute, dieu.State{Wind: 10, Temperature: dieu.UndefinedTemperature, Humidity: 40, VisibleLight: 10}},
-		{30 * time.Minute, dieu.State{Wind: 20, Temperature: dieu.UndefinedTemperature, Humidity: 40, VisibleLight: 10}},
-		{40 * time.Minute, dieu.State{Wind: 20, Temperature: dieu.UndefinedTemperature, Humidity: 40, VisibleLight: 10}},
-		{-1 * time.Minute, dieu.State{Wind: 0, Temperature: dieu.UndefinedTemperature, Humidity: 40, VisibleLight: 10}},
+		{0, zeus.State{Wind: 0, Temperature: zeus.UndefinedTemperature, Humidity: 40, VisibleLight: 10}},
+		{15 * time.Minute, zeus.State{Wind: 10, Temperature: zeus.UndefinedTemperature, Humidity: 40, VisibleLight: 10}},
+		{30 * time.Minute, zeus.State{Wind: 20, Temperature: zeus.UndefinedTemperature, Humidity: 40, VisibleLight: 10}},
+		{40 * time.Minute, zeus.State{Wind: 20, Temperature: zeus.UndefinedTemperature, Humidity: 40, VisibleLight: 10}},
+		{-1 * time.Minute, zeus.State{Wind: 0, Temperature: zeus.UndefinedTemperature, Humidity: 40, VisibleLight: 10}},
 	}
 
 	for _, d := range testdata {
@@ -102,19 +102,19 @@ func (s *ClimateInterpolerSuite) TestInterpolation(c *C) {
 
 func (s *ClimateInterpolerSuite) TestClimateInterpoler(c *C) {
 
-	definedDay := dieu.State{
+	definedDay := zeus.State{
 		Name:         "day",
 		Temperature:  26,
-		Humidity:     dieu.UndefinedHumidity,
+		Humidity:     zeus.UndefinedHumidity,
 		Wind:         100,
 		VisibleLight: 30,
 		UVLight:      100,
 	}
-	definedNight := dieu.State{
+	definedNight := zeus.State{
 		Name:         "night",
 		Temperature:  22,
 		Humidity:     60,
-		Wind:         dieu.UndefinedWind,
+		Wind:         zeus.UndefinedWind,
 		VisibleLight: 0,
 		UVLight:      0,
 	}
@@ -123,7 +123,7 @@ func (s *ClimateInterpolerSuite) TestClimateInterpoler(c *C) {
 	definedDay2.Humidity = 70
 	definedNight2 := definedNight
 	definedNight2.Name = "night2"
-	definedNight2.Humidity = dieu.UndefinedHumidity
+	definedNight2.Humidity = zeus.UndefinedHumidity
 
 	computedDay := definedDay
 	computedDay.Humidity = definedNight.Humidity
@@ -136,34 +136,34 @@ func (s *ClimateInterpolerSuite) TestClimateInterpoler(c *C) {
 	computedNight2.Name = "night2"
 	computedNight2.Humidity = computedDay2.Humidity
 
-	states := []dieu.State{definedDay, definedNight, definedDay2, definedNight2}
+	states := []zeus.State{definedDay, definedNight, definedDay2, definedNight2}
 
-	transitions := []dieu.Transition{
-		dieu.Transition{
+	transitions := []zeus.Transition{
+		zeus.Transition{
 			From:     "night",
 			To:       "day",
 			Start:    time.Date(0, 1, 1, 07, 30, 0, 0, time.UTC),
 			Duration: 30 * time.Minute,
 		},
-		dieu.Transition{
+		zeus.Transition{
 			From:     "day",
 			To:       "night",
 			Start:    time.Date(0, 1, 1, 18, 30, 0, 0, time.UTC),
 			Duration: 30 * time.Minute,
 		},
-		dieu.Transition{
+		zeus.Transition{
 			From:     "night2",
 			To:       "day2",
 			Start:    time.Date(0, 1, 1, 07, 40, 0, 0, time.UTC),
 			Duration: 30 * time.Minute,
 		},
-		dieu.Transition{
+		zeus.Transition{
 			From:     "day2",
 			To:       "night2",
 			Start:    time.Date(0, 1, 1, 18, 20, 0, 0, time.UTC),
 			Duration: 30 * time.Minute,
 		},
-		dieu.Transition{
+		zeus.Transition{
 			From:     "day",
 			To:       "night2",
 			Start:    time.Date(0, 1, 1, 18, 30, 0, 0, time.UTC),
@@ -178,7 +178,7 @@ func (s *ClimateInterpolerSuite) TestClimateInterpoler(c *C) {
 		time                   time.Time
 		nextInterpolationStart time.Time
 		interpolation          Interpolation
-		state                  dieu.State
+		state                  zeus.State
 	}{
 		{
 			basedate.Add(11 * time.Hour),
@@ -270,7 +270,7 @@ func (s *ClimateInterpolerSuite) TestClimateInterpoler(c *C) {
 	}
 
 	transitions[4].Start = time.Date(0, 1, 1, 18, 20, 0, 0, time.UTC)
-	transitions = append(transitions, dieu.Transition{
+	transitions = append(transitions, zeus.Transition{
 		From:  "day",
 		To:    "night",
 		Start: time.Date(0, 1, 1, 9, 0, 0, 0, time.UTC),
@@ -302,32 +302,32 @@ func (s *ClimateInterpolerSuite) TestClimateInterpoler(c *C) {
 }
 
 func (s *ClimateInterpolerSuite) TestBackAndForthWalk(c *C) {
-	states := []dieu.State{
-		dieu.State{Name: "a"},
-		dieu.State{Name: "b"},
+	states := []zeus.State{
+		zeus.State{Name: "a"},
+		zeus.State{Name: "b"},
 	}
 
 	stdDuration := 30 * time.Minute
-	transitions := []dieu.Transition{
-		dieu.Transition{
+	transitions := []zeus.Transition{
+		zeus.Transition{
 			From:     "a",
 			To:       "b",
 			Start:    time.Date(0, 1, 1, 23, 59, 0, 0, time.UTC),
 			Duration: stdDuration,
 		},
-		dieu.Transition{
+		zeus.Transition{
 			From:     "b",
 			To:       "a",
 			Start:    time.Date(0, 1, 1, 5, 45, 0, 0, time.UTC),
 			Duration: stdDuration,
 		},
-		dieu.Transition{
+		zeus.Transition{
 			From:     "a",
 			To:       "b",
 			Start:    time.Date(0, 1, 1, 11, 45, 0, 0, time.UTC),
 			Duration: stdDuration,
 		},
-		dieu.Transition{
+		zeus.Transition{
 			From:     "b",
 			To:       "a",
 			Start:    time.Date(0, 1, 1, 17, 45, 0, 0, time.UTC),
