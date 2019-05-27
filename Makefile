@@ -1,6 +1,9 @@
-all: zeus arke-change-device-id arkedump arke-zeus-config zeus-calibrator
+all: lib zeus/zeus arke-change-device-id arkedump arke-zeus-config zeus-calibrator
 
-zeus:
+lib:
+	go test
+
+zeus/zeus:
 	cd zeus && go build && go test
 
 arke-change-device-id:
