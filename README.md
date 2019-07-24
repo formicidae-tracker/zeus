@@ -54,7 +54,7 @@ with the `-s` flags.
 
 
 You can find more information in
-[examples](/fort/dieu/src/master/examples/list.md).
+[examples](/examples/list.md).
 
 
 ## Authors
