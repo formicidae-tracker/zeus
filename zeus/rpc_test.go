@@ -18,44 +18,44 @@ type Hermes struct {
 	C        chan *C
 }
 
-func (h *Hermes) UnregisterZone(zu *zeus.ZoneUnregistration, err *zeus.HermesError) error {
+func (h *Hermes) UnregisterZone(zu *zeus.ZoneUnregistration, err *zeus.ZeusError) error {
 	c := <-h.C
 	c.Check(zu.Host, Equals, h.hostname)
 	c.Check(zu.Name, Equals, "test-zone")
-	*err = zeus.HermesError("")
+	*err = zeus.ZeusError("")
 	return nil
 }
 
-func (h *Hermes) RegisterZone(zr *zeus.ZoneRegistration, err *zeus.HermesError) error {
+func (h *Hermes) RegisterZone(zr *zeus.ZoneRegistration, err *zeus.ZeusError) error {
 	c := <-h.C
 	c.Check(zr.Host, Equals, h.hostname)
 	c.Check(zr.Name, Equals, "test-zone")
-	*err = zeus.HermesError("")
+	*err = zeus.ZeusError("")
 	return nil
 }
 
-func (h *Hermes) ReportClimate(cr *zeus.NamedClimateReport, err *zeus.HermesError) error {
+func (h *Hermes) ReportClimate(cr *zeus.NamedClimateReport, err *zeus.ZeusError) error {
 	c := <-h.C
 	c.Check(cr.ZoneIdentifier, Equals, zeus.ZoneIdentifier(h.hostname, "test-zone"))
 	c.Check(cr.Humidity, Equals, zeus.Humidity(50.0))
 	for i := 0; i < 4; i++ {
 		c.Check(cr.Temperatures[i], Equals, zeus.Temperature(21))
 	}
-	*err = zeus.HermesError("")
+	*err = zeus.ZeusError("")
 	return nil
 }
 
-func (h *Hermes) ReportAlarm(ae *zeus.AlarmEvent, err *zeus.HermesError) error {
+func (h *Hermes) ReportAlarm(ae *zeus.AlarmEvent, err *zeus.ZeusError) error {
 	c := <-h.C
 	c.Check(ae.Zone, Equals, zeus.ZoneIdentifier(h.hostname, "test-zone"))
-	*err = zeus.HermesError("")
+	*err = zeus.ZeusError("")
 	return nil
 }
 
-func (h *Hermes) ReportState(ae *zeus.StateReport, err *zeus.HermesError) error {
+func (h *Hermes) ReportState(ae *zeus.StateReport, err *zeus.ZeusError) error {
 	c := <-h.C
 	c.Check(ae.Zone, Equals, zeus.ZoneIdentifier(h.hostname, "test-zone"))
-	*err = zeus.HermesError("")
+	*err = zeus.ZeusError("")
 	return nil
 }
 

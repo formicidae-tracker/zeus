@@ -59,7 +59,7 @@ func (r *RPCReporter) reconnect() error {
 	if registered == true {
 		return nil
 	}
-	herr := zeus.HermesError("")
+	herr := zeus.ZeusError("")
 
 	err = r.Conn.Call("Hermes.RegisterZone", r.Registration, &herr)
 	if err != nil {
@@ -95,7 +95,7 @@ func (r *RPCReporter) Report(wg *sync.WaitGroup) {
 				rerr = nil
 			}
 		}
-		var herr zeus.HermesError
+		var herr zeus.ZeusError
 		select {
 		case <-resetConnection:
 			trials += 1
@@ -169,7 +169,7 @@ func (r *RPCReporter) Report(wg *sync.WaitGroup) {
 
 	r.log.Printf("Unregistering zone")
 
-	herr := zeus.HermesError("")
+	herr := zeus.ZeusError("")
 	rerr = r.Conn.Call("Hermes.UnregisterZone", &zeus.ZoneUnregistration{
 		Name: r.Registration.Name,
 		Host: r.Registration.Host,
@@ -197,7 +197,7 @@ func NewRPCReporter(name, address string, zone zeus.Zone, logs io.Writer) (*RPCR
 		return nil, fmt.Errorf("rpc: conn: %s", err)
 	}
 
-	herr := zeus.HermesError("")
+	herr := zeus.ZeusError("")
 	reg := zeus.ZoneRegistration{
 		Host: hostname,
 		Name: name,

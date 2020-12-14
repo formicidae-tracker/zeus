@@ -6,11 +6,11 @@ import (
 	. "gopkg.in/check.v1"
 )
 
-type HermesRPCSuite struct{}
+type ZeusRPCSuite struct{}
 
-var _ = Suite(&HermesRPCSuite{})
+var _ = Suite(&ZeusRPCSuite{})
 
-func (s *HermesRPCSuite) TestZoneIdentifier(c *C) {
+func (s *ZeusRPCSuite) TestZoneIdentifier(c *C) {
 	testdata := []struct {
 		Host, Name, Expected string
 	}{
@@ -24,8 +24,8 @@ func (s *HermesRPCSuite) TestZoneIdentifier(c *C) {
 	}
 }
 
-func (s *HermesRPCSuite) TestHermesError(c *C) {
-	c.Check(HermesError("").ToError(), Equals, nil)
+func (s *ZeusRPCSuite) TestHermesError(c *C) {
+	c.Check(ZeusError("").ToError(), Equals, nil)
 	err := errors.New("some error")
-	c.Check(HermesError(err.Error()).ToError(), ErrorMatches, err.Error())
+	c.Check(ZeusError(err.Error()).ToError(), ErrorMatches, err.Error())
 }

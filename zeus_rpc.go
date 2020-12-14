@@ -41,12 +41,11 @@ func (zr ZoneRegistration) Fullname() string {
 	return ZoneIdentifier(zr.Host, zr.Name)
 }
 
-type HermesError string
+type ZeusError string
 
-func (e HermesError) ToError() error {
+func (e ZeusError) ToError() error {
 	if len(e) == 0 {
 		return nil
 	}
 	return errors.New(string(e))
-
 }
