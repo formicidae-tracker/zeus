@@ -1,32 +1,53 @@
-package main
+package zeus
 
 import (
 	"fmt"
 	"math"
 	"sort"
 	"time"
-
-	"github.com/formicidae-tracker/zeus"
 )
 
+func SanitizeUnit(u BoundedUnit) float64 {
+	if IsUndefined(u) || math.IsNaN(u.Value()) {
+		return -1000.0
+	}
+	return u.Value()
+}
+
+func SanitizeState(s State) State {
+	return State{
+		Name:         s.Name,
+		Temperature:  Temperature(SanitizeUnit(s.Temperature)),
+		Humidity:     Humidity(SanitizeUnit(s.Humidity)),
+		Wind:         Wind(SanitizeUnit(s.Wind)),
+		VisibleLight: Light(SanitizeUnit(s.VisibleLight)),
+		UVLight:      Light(SanitizeUnit(s.UVLight)),
+	}
+}
+
 type Interpolation interface {
-	State(t time.Time) zeus.State
+	State(t time.Time) State
 	String() string
+	End() *State
 }
 
-type staticState zeus.State
+type staticClimate State
 
-func (s *staticState) State(time.Time) zeus.State {
-	return zeus.State(*s)
+func (s *staticClimate) State(time.Time) State {
+	return State(*s)
 }
 
-func (s *staticState) String() string {
-	return fmt.Sprintf("static state: %+v", zeus.State(*s))
+func (s *staticClimate) String() string {
+	return fmt.Sprintf("static state: %+v", State(*s))
 }
 
-type transition struct {
+func (s *staticClimate) End() *State {
+	return nil
+}
+
+type climateTransition struct {
 	start    time.Time
-	from, to zeus.State
+	from, to State
 	duration time.Duration
 }
 
@@ -42,19 +63,19 @@ func interpolate(from, to, completion float64) float64 {
 	return from + (to-from)*completion
 }
 
-func interpolateState(from, to zeus.State, completion float64) zeus.State {
-	return zeus.State{
+func interpolateState(from, to State, completion float64) State {
+	return State{
 		Name:         fmt.Sprintf("%s to %s", from.Name, to.Name),
-		Temperature:  zeus.Temperature(interpolate(from.Temperature.Value(), to.Temperature.Value(), completion)),
-		Humidity:     zeus.Humidity(interpolate(from.Humidity.Value(), to.Humidity.Value(), completion)),
-		Wind:         zeus.Wind(interpolate(from.Wind.Value(), to.Wind.Value(), completion)),
-		VisibleLight: zeus.Light(interpolate(from.VisibleLight.Value(), to.VisibleLight.Value(), completion)),
-		UVLight:      zeus.Light(interpolate(from.UVLight.Value(), to.UVLight.Value(), completion)),
+		Temperature:  Temperature(interpolate(from.Temperature.Value(), to.Temperature.Value(), completion)),
+		Humidity:     Humidity(interpolate(from.Humidity.Value(), to.Humidity.Value(), completion)),
+		Wind:         Wind(interpolate(from.Wind.Value(), to.Wind.Value(), completion)),
+		VisibleLight: Light(interpolate(from.VisibleLight.Value(), to.VisibleLight.Value(), completion)),
+		UVLight:      Light(interpolate(from.UVLight.Value(), to.UVLight.Value(), completion)),
 	}
 
 }
 
-func (i *transition) State(t time.Time) zeus.State {
+func (i *climateTransition) State(t time.Time) State {
 	ellapsed := t.Sub(i.start)
 	if ellapsed < 0 {
 		ellapsed = 0
@@ -65,8 +86,13 @@ func (i *transition) State(t time.Time) zeus.State {
 	return interpolateState(i.from, i.to, completion)
 }
 
-func (i *transition) String() string {
+func (i *climateTransition) String() string {
 	return fmt.Sprintf("transition from '%s' to '%s' in %s at %s", i.from.Name, i.to.Name, i.duration, i.start)
+}
+
+func (t *climateTransition) End() *State {
+	state := SanitizeState(t.to)
+	return &state
 }
 
 type ClimateInterpoler interface {
@@ -74,9 +100,9 @@ type ClimateInterpoler interface {
 }
 
 type computedState struct {
-	zeus.State
-	transitionForward  []zeus.Transition
-	transitionBackward []zeus.Transition
+	State
+	transitionForward  []Transition
+	transitionBackward []Transition
 }
 
 type climateInterpolation struct {
@@ -89,7 +115,7 @@ type climateInterpolation struct {
 
 type computedTransition struct {
 	time       time.Time
-	transition zeus.Transition
+	transition Transition
 }
 
 type computedTransitionList []computedTransition
@@ -111,7 +137,7 @@ func (i *climateInterpolation) computeTransitions(t time.Time, forward bool) []c
 	y, m, d := t.Date()
 
 	res := map[time.Time][]computedTransition{}
-	var transitions []zeus.Transition
+	var transitions []Transition
 	if forward == true {
 		transitions = i.current.transitionForward
 	} else {
@@ -209,9 +235,9 @@ func (i *climateInterpolation) CurrentInterpolation(t time.Time) (Interpolation,
 	var currentI, nextI Interpolation
 	var nextTime time.Time
 	if prevOK == false || t.After(prevT.time.Add(prevT.transition.Duration)) {
-		currentI = (*staticState)(&(i.current.State))
+		currentI = (*staticClimate)(&(i.current.State))
 		if nextOK == true {
-			nextI = &transition{
+			nextI = &climateTransition{
 				start:    nextT.time,
 				from:     i.current.State,
 				to:       i.states[nextT.transition.To].State,
@@ -220,19 +246,19 @@ func (i *climateInterpolation) CurrentInterpolation(t time.Time) (Interpolation,
 			nextTime = nextT.time
 		}
 	} else {
-		currentI = &transition{
+		currentI = &climateTransition{
 			start:    prevT.time,
 			from:     i.states[prevT.transition.From].State,
 			to:       i.current.State,
 			duration: prevT.transition.Duration,
 		}
-		nextI = (*staticState)(&(i.current.State))
+		nextI = (*staticClimate)(&(i.current.State))
 		nextTime = prevT.time.Add(prevT.transition.Duration)
 	}
 	return currentI, nextTime, nextI
 }
 
-func NewClimateInterpoler(states []zeus.State, transitions []zeus.Transition, reference time.Time) (ClimateInterpoler, error) {
+func NewClimateInterpoler(states []State, transitions []Transition, reference time.Time) (ClimateInterpoler, error) {
 	y, m, d := reference.Date()
 	res := &climateInterpolation{
 		states:      make(map[string]*computedState),
@@ -247,8 +273,8 @@ func NewClimateInterpoler(states []zeus.State, transitions []zeus.Transition, re
 		}
 		res.states[s.Name] = &computedState{
 			State:              s,
-			transitionBackward: make([]zeus.Transition, 0, len(transitions)),
-			transitionForward:  make([]zeus.Transition, 0, len(transitions)),
+			transitionBackward: make([]Transition, 0, len(transitions)),
+			transitionForward:  make([]Transition, 0, len(transitions)),
 		}
 
 		if res.current == nil {

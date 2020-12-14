@@ -3,7 +3,6 @@ package main
 import (
 	"io"
 	"log"
-	"math"
 	"os"
 	"path"
 	"sync"
@@ -14,7 +13,7 @@ import (
 
 type InterpolationManager struct {
 	name         string
-	interpoler   ClimateInterpoler
+	interpoler   zeus.ClimateInterpoler
 	capabilities []capability
 	reports      chan<- zeus.StateReport
 	log          *log.Logger
@@ -27,49 +26,24 @@ func (i *InterpolationManager) SendState(s zeus.State) {
 	}
 }
 
-func sanitizeUnit(u zeus.BoundedUnit) float64 {
-	if zeus.IsUndefined(u) || math.IsNaN(u.Value()) {
-		return -1000.0
-	}
-	return u.Value()
-}
-
-func sanitizeState(s zeus.State) zeus.State {
-	return zeus.State{
-		Name:         s.Name,
-		Temperature:  zeus.Temperature(sanitizeUnit(s.Temperature)),
-		Humidity:     zeus.Humidity(sanitizeUnit(s.Humidity)),
-		Wind:         zeus.Wind(sanitizeUnit(s.Wind)),
-		VisibleLight: zeus.Light(sanitizeUnit(s.VisibleLight)),
-		UVLight:      zeus.Light(sanitizeUnit(s.UVLight)),
-	}
-}
-
-func (i *InterpolationManager) StateReport(current, next Interpolation, now time.Time, nextTime time.Time) zeus.StateReport {
+func (i *InterpolationManager) StateReport(current, next zeus.Interpolation, now time.Time, nextTime time.Time) zeus.StateReport {
 	report := zeus.StateReport{
 		Zone:       i.name,
-		Current:    sanitizeState(current.State(now)),
+		Current:    zeus.SanitizeState(current.State(now)),
 		CurrentEnd: nil,
 
 		NextTime: nil,
 		Next:     nil,
 		NextEnd:  nil,
 	}
-	if inter, ok := current.(*transition); ok == true {
-		report.CurrentEnd = &zeus.State{}
-		*report.CurrentEnd = sanitizeState(inter.State(now.Add(inter.duration)))
-	}
+	report.CurrentEnd = current.End()
 
 	if next != nil {
 		report.NextTime = &time.Time{}
 		*report.NextTime = nextTime
 		report.Next = &zeus.State{}
-		*report.Next = sanitizeState(next.State(nextTime))
-		if inter, ok := next.(*transition); ok == true {
-			report.NextEnd = &zeus.State{}
-			*report.NextEnd = sanitizeState(inter.State(nextTime.Add(inter.duration)))
-		}
-
+		*report.Next = zeus.SanitizeState(next.State(nextTime))
+		report.NextEnd = next.End()
 	}
 	return report
 }
@@ -89,7 +63,7 @@ func (i *InterpolationManager) Interpolate(wg *sync.WaitGroup, init, quit <-chan
 
 	i.SendState(cur.State(now))
 
-	_, isTransition := cur.(*transition)
+	isTransition := cur.End() != nil
 
 	if i.reports != nil {
 		report := i.StateReport(cur, next, now, nextTime)
@@ -106,7 +80,7 @@ func (i *InterpolationManager) Interpolate(wg *sync.WaitGroup, init, quit <-chan
 			return
 		case now := <-timer.C:
 			new, nextTime, next := i.interpoler.CurrentInterpolation(now)
-			_, newIsTransition := new.(*transition)
+			newIsTransition := new.End() != nil
 
 			if isTransition != newIsTransition {
 				i.log.Printf("New interpolation %s", new)
@@ -138,7 +112,7 @@ func NewInterpolationManager(name string,
 	}
 	logger := log.New(logs, "[zone/"+name+"/climate]: ", log.LstdFlags)
 	logger.Printf("Computing climate interpolation")
-	i, err := NewClimateInterpoler(states, transitions, time.Now().UTC())
+	i, err := zeus.NewClimateInterpoler(states, transitions, time.Now().UTC())
 	if err != nil {
 		return nil, err
 	}

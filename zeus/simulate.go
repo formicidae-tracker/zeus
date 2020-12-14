@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"time"
+
+	"github.com/formicidae-tracker/zeus"
 )
 
 type SimulateCommand struct {
@@ -34,7 +36,7 @@ func (s *SimulateCommand) Execute(args []string) error {
 	for n, z := range c.Zones {
 		fmt.Printf("=== Simulating zone '%s' for %d day from %s ===\n", n, s.Duration, start.Format("Mon Jan 02 15:04:05 -0700 MST 2006"))
 
-		i, err := NewClimateInterpoler(z.States, z.Transitions, start.UTC())
+		i, err := zeus.NewClimateInterpoler(z.States, z.Transitions, start.UTC())
 		if err != nil {
 			return err
 		}
