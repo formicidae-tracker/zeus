@@ -132,7 +132,7 @@ func (s *ConfigSuite) TestErrorChecking(c *C) {
 					DevicesID:    1,
 				},
 			},
-		}: "Invalid zone definition 'box2': devices ID 1 on interface 'slcan0' are used by zone 'box'",
+		}: "Invalid zone definition 'box.*': devices ID 1 on interface 'slcan0' are used by zone 'box.*'",
 	}
 
 	for config, expectedError := range testdata {

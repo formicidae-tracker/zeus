@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
 
 	"github.com/formicidae-tracker/zeus"
 	flags "github.com/jessevdk/go-flags"
@@ -26,7 +27,29 @@ func Execute() error {
 		os.Exit(0)
 	}
 
-	return fmt.Errorf("Not yet implemented")
+	configPath := "/etc/default/zeus"
+	if len(opts.Args.Config) != 0 {
+		configPath = string(opts.Args.Config)
+	}
+
+	config, err := OpenConfig(configPath)
+	if err != nil {
+		return err
+	}
+
+	z, err := OpenZeus(*config)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, os.Interrupt)
+		<-sigint
+		z.shutdown()
+	}()
+
+	return z.run()
 }
 
 func main() {

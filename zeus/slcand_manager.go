@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -9,35 +11,47 @@ import (
 	"time"
 )
 
-type slcandLogger log.Logger
-
-func (l *slcandLogger) Write(data []byte) (int, error) {
-	(*log.Logger)(l).Printf("[slcand] %s", string(data))
-	return len(data), nil
-}
-
 type SlcandManager struct {
 	ifname   string
 	devname  string
-	logger   *slcandLogger
+	logger   *log.Logger
 	cmd      *exec.Cmd
 	cmdError chan error
 }
 
 func (m *SlcandManager) open() (err error) {
 	m.cmd = exec.Command("slcand", "-ofs", "5", "-S", "115200", "-F", m.devname, m.ifname)
-	m.cmd.Stdout = m.logger
-	m.cmd.Stderr = m.logger
+	stdout, err := m.cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	stderr, err := m.cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+
+	scanner := bufio.NewScanner(io.MultiReader(stdout, stderr))
 
 	go func() {
-		m.cmdError <- m.cmd.Run()
+		err := m.cmd.Start()
+		if err != nil {
+			m.cmdError <- err
+			close(m.cmdError)
+			return
+		}
+
+		for scanner.Scan() {
+			m.logger.Printf("[slcand] %s", scanner.Text())
+		}
+
+		m.cmdError <- m.cmd.Wait()
 		close(m.cmdError)
 	}()
 
 	select {
 	case err := <-m.cmdError:
 		return fmt.Errorf("Could not open slcand: %s", err)
-	case <-time.After(1500 * time.Millisecond):
+	case <-time.After(500 * time.Millisecond):
 	}
 
 	ipCmd := exec.Command("ip", "link", "set", m.ifname, "up")
@@ -49,11 +63,11 @@ func (m *SlcandManager) open() (err error) {
 	return nil
 }
 
-func Open(ifname, devname string) (*SlcandManager, error) {
+func OpenSlcand(ifname, devname string) (*SlcandManager, error) {
 	m := &SlcandManager{
 		ifname:   ifname,
 		devname:  devname,
-		logger:   (*slcandLogger)(log.New(os.Stderr, fmt.Sprintf("[slcand/%s]", ifname), 0)),
+		logger:   (log.New(os.Stderr, fmt.Sprintf("[slcand/%s] ", ifname), 0)),
 		cmdError: make(chan error),
 	}
 	if err := m.open(); err != nil {
