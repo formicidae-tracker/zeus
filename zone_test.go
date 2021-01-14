@@ -18,8 +18,6 @@ func (s *ZoneSuite) TestParsing(c *C) {
 	}{
 		{
 			Text: `
-can-interface: "slcan0"
-devices-id: 1
 climate-report-file: /data/someuser/my-experiment.txt
 minimal-temperature: 24.0
 maximal-temperature: 31.0
@@ -47,8 +45,6 @@ transitions:
     duration: 1h03m1s
 `,
 			Zone: Zone{
-				CANInterface:       "slcan0",
-				DevicesID:          1,
 				MinimalTemperature: 24,
 				MaximalTemperature: 31,
 				MinimalHumidity:    40,

@@ -13,6 +13,10 @@ type ZoneDefinition struct {
 	DevicesID    uint   `yaml:"devices-id"`
 }
 
+func (d ZoneDefinition) ID() string {
+	return fmt.Sprintf("%s/%d", d.CANInterface, d.DevicesID)
+}
+
 type Config struct {
 	Interfaces map[string]string         `yaml:"interfaces"`
 	Zones      map[string]ZoneDefinition `yaml:"zones"`
@@ -42,7 +46,7 @@ func (c Config) checkZones() error {
 			return fmt.Errorf("Invalid zone definition '%s': invalid devices-id %d ( should be in [1,7])", name, definition.DevicesID)
 		}
 
-		def := fmt.Sprintf("%s/%d", definition.CANInterface, definition.DevicesID)
+		def := definition.ID()
 
 		if oName, ok := mapping[def]; ok == true {
 			return fmt.Errorf("Invalid zone definition '%s': devices ID %d on interface '%s' are used by zone '%s'", name, definition.DevicesID, definition.CANInterface, oName)
