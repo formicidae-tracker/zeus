@@ -1,7 +1,6 @@
 package zeus
 
 import (
-	"errors"
 	"path"
 	"time"
 )
@@ -39,13 +38,4 @@ func (zr ZoneUnregistration) Fullname() string {
 
 func (zr ZoneRegistration) Fullname() string {
 	return ZoneIdentifier(zr.Host, zr.Name)
-}
-
-type ZeusError string
-
-func (e ZeusError) ToError() error {
-	if len(e) == 0 {
-		return nil
-	}
-	return errors.New(string(e))
 }

@@ -13,49 +13,49 @@ import (
 	. "gopkg.in/check.v1"
 )
 
-type Hermes struct {
+type Olympus struct {
 	hostname string
 	C        chan *C
 }
 
-func (h *Hermes) UnregisterZone(zu *zeus.ZoneUnregistration, err *zeus.ZeusError) error {
+func (h *Olympus) UnregisterZone(zu *zeus.ZoneUnregistration, unused *int) error {
 	c := <-h.C
 	c.Check(zu.Host, Equals, h.hostname)
 	c.Check(zu.Name, Equals, "test-zone")
-	*err = zeus.ZeusError("")
+	*unused = 0
 	return nil
 }
 
-func (h *Hermes) RegisterZone(zr *zeus.ZoneRegistration, err *zeus.ZeusError) error {
+func (h *Olympus) RegisterZone(zr *zeus.ZoneRegistration, unused *int) error {
 	c := <-h.C
 	c.Check(zr.Host, Equals, h.hostname)
 	c.Check(zr.Name, Equals, "test-zone")
-	*err = zeus.ZeusError("")
+	*unused = 0
 	return nil
 }
 
-func (h *Hermes) ReportClimate(cr *zeus.NamedClimateReport, err *zeus.ZeusError) error {
+func (h *Olympus) ReportClimate(cr *zeus.NamedClimateReport, unused *int) error {
 	c := <-h.C
 	c.Check(cr.ZoneIdentifier, Equals, zeus.ZoneIdentifier(h.hostname, "test-zone"))
 	c.Check(cr.Humidity, Equals, zeus.Humidity(50.0))
 	for i := 0; i < 4; i++ {
 		c.Check(cr.Temperatures[i], Equals, zeus.Temperature(21))
 	}
-	*err = zeus.ZeusError("")
+	*unused = 0
 	return nil
 }
 
-func (h *Hermes) ReportAlarm(ae *zeus.AlarmEvent, err *zeus.ZeusError) error {
+func (h *Olympus) ReportAlarm(ae *zeus.AlarmEvent, unused *int) error {
 	c := <-h.C
 	c.Check(ae.Zone, Equals, zeus.ZoneIdentifier(h.hostname, "test-zone"))
-	*err = zeus.ZeusError("")
+	*unused = 0
 	return nil
 }
 
-func (h *Hermes) ReportState(ae *zeus.StateReport, err *zeus.ZeusError) error {
+func (h *Olympus) ReportState(ae *zeus.StateReport, unused *int) error {
 	c := <-h.C
 	c.Check(ae.Zone, Equals, zeus.ZoneIdentifier(h.hostname, "test-zone"))
-	*err = zeus.ZeusError("")
+	*unused = 0
 	return nil
 }
 
@@ -64,7 +64,7 @@ const testAddress = "localhost:12345"
 type RPCClimateReporterSuite struct {
 	Http   *http.Server
 	Rpc    *rpc.Server
-	H      *Hermes
+	H      *Olympus
 	Errors chan error
 }
 
@@ -87,7 +87,7 @@ func (s *RPCClimateReporterSuite) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	s.Http = &http.Server{Addr: testAddress}
 	s.Rpc = rpc.NewServer()
-	s.H = &Hermes{hostname: hostname, C: make(chan *C)}
+	s.H = &Olympus{hostname: hostname, C: make(chan *C)}
 	s.Rpc.Register(s.H)
 	s.Rpc.HandleHTTP(rpc.DefaultRPCPath, rpc.DefaultDebugPath)
 	s.Errors = make(chan error)
@@ -96,13 +96,12 @@ func (s *RPCClimateReporterSuite) SetUpSuite(c *C) {
 
 func (s *RPCClimateReporterSuite) TearDownSuite(c *C) {
 	s.Http.Shutdown(context.Background())
-	//	err, ok := <-s.Errors
-	//c.Check(ok, Equals, false)
-	//	c.Check(err, IsNil)
+	err, ok := <-s.Errors
+	c.Check(ok, Equals, false)
+	c.Check(err, IsNil)
 }
 
 func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
-	return
 	go func() { s.H.C <- c }()
 	zone := zeus.Zone{}
 

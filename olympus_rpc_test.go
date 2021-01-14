@@ -1,16 +1,14 @@
 package zeus
 
 import (
-	"errors"
-
 	. "gopkg.in/check.v1"
 )
 
-type ZeusRPCSuite struct{}
+type OlympusRPCSuite struct{}
 
-var _ = Suite(&ZeusRPCSuite{})
+var _ = Suite(&OlympusRPCSuite{})
 
-func (s *ZeusRPCSuite) TestZoneIdentifier(c *C) {
+func (s *OlympusRPCSuite) TestZoneIdentifier(c *C) {
 	testdata := []struct {
 		Host, Name, Expected string
 	}{
@@ -22,10 +20,4 @@ func (s *ZeusRPCSuite) TestZoneIdentifier(c *C) {
 		c.Check(ZoneRegistration{Host: d.Host, Name: d.Name}.Fullname(), Equals, d.Expected)
 		c.Check(ZoneUnregistration{Host: d.Host, Name: d.Name}.Fullname(), Equals, d.Expected)
 	}
-}
-
-func (s *ZeusRPCSuite) TestHermesError(c *C) {
-	c.Check(ZeusError("").ToError(), Equals, nil)
-	err := errors.New("some error")
-	c.Check(ZeusError(err.Error()).ToError(), ErrorMatches, err.Error())
 }

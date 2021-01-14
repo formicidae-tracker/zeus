@@ -51,7 +51,7 @@ func (r *RPCReporter) reconnect() error {
 		Host: r.Registration.Host,
 		Name: r.Registration.Name,
 	}
-	err = r.Conn.Call("Hermes.ZoneIsRegistered", toSend, &registered)
+	err = r.Conn.Call("Olympus.ZoneIsRegistered", toSend, &registered)
 	if err != nil {
 		return err
 	}
@@ -59,23 +59,18 @@ func (r *RPCReporter) reconnect() error {
 	if registered == true {
 		return nil
 	}
-	herr := zeus.ZeusError("")
+	unused := 0
 
-	err = r.Conn.Call("Hermes.RegisterZone", r.Registration, &herr)
+	err = r.Conn.Call("Olympus.RegisterZone", r.Registration, &unused)
 	if err != nil {
 		return err
 	}
 
-	if r.LastStateReport == nil || herr.ToError() != nil {
-		return herr.ToError()
+	if r.LastStateReport == nil {
+		return nil
 	}
 
-	err = r.Conn.Call("Hermes.ReportState", r.LastStateReport, &herr)
-	if err != nil {
-		return err
-	}
-
-	return herr.ToError()
+	return r.Conn.Call("Olympus.ReportState", r.LastStateReport, &unused)
 }
 
 func (r *RPCReporter) Report(wg *sync.WaitGroup) {
@@ -84,6 +79,7 @@ func (r *RPCReporter) Report(wg *sync.WaitGroup) {
 	trials := 0
 	var resetConnection <-chan time.Time = nil
 	var resetTimer *time.Timer = nil
+	unused := 0
 	for {
 		if rerr != nil && resetConnection == nil {
 			if trials < r.MaxAttempts {
@@ -95,7 +91,6 @@ func (r *RPCReporter) Report(wg *sync.WaitGroup) {
 				rerr = nil
 			}
 		}
-		var herr zeus.ZeusError
 		select {
 		case <-resetConnection:
 			trials += 1
@@ -113,12 +108,9 @@ func (r *RPCReporter) Report(wg *sync.WaitGroup) {
 			} else {
 				ncr := zeus.NamedClimateReport{cr, r.Registration.Fullname()}
 				if rerr == nil && trials <= r.MaxAttempts && resetConnection == nil {
-					rerr = r.Conn.Call("Hermes.ReportClimate", ncr, &herr)
+					rerr = r.Conn.Call("Olympus.ReportClimate", ncr, &unused)
 					if rerr != nil {
 						r.log.Printf("Could not transmit climate report: %s", rerr)
-					}
-					if herr.ToError() != nil {
-						r.log.Printf("Could not transmit climate report: %s", herr.ToError())
 					}
 				}
 			}
@@ -127,12 +119,9 @@ func (r *RPCReporter) Report(wg *sync.WaitGroup) {
 				r.AlarmReports = nil
 			} else {
 				if rerr == nil && trials <= r.MaxAttempts && resetConnection == nil {
-					rerr = r.Conn.Call("Hermes.ReportAlarm", ae, &herr)
+					rerr = r.Conn.Call("Olympus.ReportAlarm", ae, &unused)
 					if rerr != nil {
 						r.log.Printf("Could not transmit alarm event: %s", rerr)
-					}
-					if herr.ToError() != nil {
-						r.log.Printf("Could not transmit alarm event: %s", herr.ToError())
 					}
 				}
 			}
@@ -142,12 +131,9 @@ func (r *RPCReporter) Report(wg *sync.WaitGroup) {
 			} else {
 				r.LastStateReport = &sr
 				if rerr == nil && trials <= r.MaxAttempts && resetConnection == nil {
-					rerr = r.Conn.Call("Hermes.ReportState", sr, &herr)
+					rerr = r.Conn.Call("Olympus.ReportState", sr, &unused)
 					if rerr != nil {
 						r.log.Printf("Could not transmit state report: %s", rerr)
-					}
-					if herr.ToError() != nil {
-						r.log.Printf("Could not transmit state report: %s", herr.ToError())
 					}
 				}
 			}
@@ -168,17 +154,12 @@ func (r *RPCReporter) Report(wg *sync.WaitGroup) {
 	}
 
 	r.log.Printf("Unregistering zone")
-
-	herr := zeus.ZeusError("")
-	rerr = r.Conn.Call("Hermes.UnregisterZone", &zeus.ZoneUnregistration{
+	rerr = r.Conn.Call("Olympus.UnregisterZone", &zeus.ZoneUnregistration{
 		Name: r.Registration.Name,
 		Host: r.Registration.Host,
-	}, &herr)
+	}, &unused)
 	if rerr != nil {
 		r.log.Printf("Could not unregister zone: %s", rerr)
-	}
-	if herr.ToError() != nil {
-		r.log.Printf("Could not unregister zone: %s", herr.ToError())
 	}
 	r.Conn.Close()
 }
@@ -197,7 +178,7 @@ func NewRPCReporter(name, address string, zone zeus.Zone, logs io.Writer) (*RPCR
 		return nil, fmt.Errorf("rpc: conn: %s", err)
 	}
 
-	herr := zeus.ZeusError("")
+	unused := 0
 	reg := zeus.ZoneRegistration{
 		Host: hostname,
 		Name: name,
@@ -220,12 +201,9 @@ func NewRPCReporter(name, address string, zone zeus.Zone, logs io.Writer) (*RPCR
 	reg.MinTemperature = cast(zone.MinimalTemperature)
 	reg.MaxTemperature = cast(zone.MaximalTemperature)
 
-	rerr := conn.Call("Hermes.RegisterZone", reg, &herr)
+	rerr := conn.Call("Olympus.RegisterZone", reg, &unused)
 	if rerr != nil {
-		return nil, fmt.Errorf("rpc: call: %s", rerr)
-	}
-	if herr.ToError() != nil {
-		return nil, fmt.Errorf("rpc: Hermes.RegisterZone: %s", herr.ToError())
+		return nil, fmt.Errorf("rpc: Olympus.RegisterZone: %s", rerr)
 	}
 
 	return &RPCReporter{
