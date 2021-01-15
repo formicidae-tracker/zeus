@@ -23,6 +23,9 @@ func Execute() error {
 
 func main() {
 	if err := Execute(); err != nil {
+		if ferr, ok := err.(*flags.Error); ok == true && ferr.Type == flags.ErrHelp {
+			return
+		}
 		log.Fatalf("Got unexcepected error: %s", err)
 	}
 }

@@ -13,8 +13,8 @@ type SimulateCommand struct {
 	Duration  int    `long:"duration" short:"d" description:"length of the simulation in days" default:"7"`
 
 	Args struct {
-		SeasonFile flags.Filename `required:"true"`
-	} `positional-args:"yes"`
+		SeasonFile flags.Filename
+	} `positional-args:"yes" required:"true"`
 }
 
 var simulateCommand = &SimulateCommand{}
