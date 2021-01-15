@@ -110,7 +110,7 @@ func NewInterpolationManager(name string,
 	if err != nil {
 		return nil, err
 	}
-	logger := log.New(logs, "[zone/"+name+"/climate]: ", log.LstdFlags)
+	logger := log.New(logs, "[zone/"+name+"/climate]: ", 0)
 	logger.Printf("Computing climate interpolation")
 	i, err := zeus.NewClimateInterpoler(states, transitions, time.Now().UTC())
 	if err != nil {

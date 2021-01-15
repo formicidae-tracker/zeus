@@ -8,9 +8,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/formicidae-tracker/zeus"
-	"github.com/formicidae-tracker/libarke/src-go/arke"
 	socketcan "github.com/atuleu/golang-socketcan"
+	"github.com/formicidae-tracker/libarke/src-go/arke"
+	"github.com/formicidae-tracker/zeus"
 )
 
 type BusManager interface {
@@ -201,7 +201,7 @@ func (b *busManager) Close() error {
 }
 
 func NewBusManager(interfaceName string, intf socketcan.RawInterface, heartbeat time.Duration) BusManager {
-	logger := log.New(os.Stderr, "[CAN/"+interfaceName+"]: ", log.LstdFlags)
+	logger := log.New(os.Stderr, "[CAN/"+interfaceName+"]: ", 0)
 	return &busManager{
 		name:              interfaceName,
 		intf:              intf,
