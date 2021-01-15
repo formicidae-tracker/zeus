@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"net"
 	"net/http"
 	"net/rpc"
 	"os"
@@ -59,7 +60,7 @@ func (h *Olympus) ReportState(ae *zeus.StateReport, unused *int) error {
 	return nil
 }
 
-const testAddress = "localhost:12345"
+const testAddress = ":12345"
 
 type RPCClimateReporterSuite struct {
 	Http   *http.Server
@@ -70,8 +71,22 @@ type RPCClimateReporterSuite struct {
 
 var _ = Suite(&RPCClimateReporterSuite{})
 
-func (s *RPCClimateReporterSuite) listen(final bool) {
-	err := s.Http.ListenAndServe()
+func (s *RPCClimateReporterSuite) listenWithError(ready chan struct{}) error {
+	l, err := net.Listen("tcp", s.Http.Addr)
+	if err != nil {
+		return err
+	}
+
+	if ready != nil {
+		close(ready)
+	}
+
+	return s.Http.Serve(l)
+}
+
+func (s *RPCClimateReporterSuite) listen(final bool, ready chan struct{}) {
+	err := s.listenWithError(ready)
+
 	if err != http.ErrServerClosed {
 		s.Errors <- err
 	}
@@ -91,13 +106,17 @@ func (s *RPCClimateReporterSuite) SetUpSuite(c *C) {
 	s.Rpc.Register(s.H)
 	s.Rpc.HandleHTTP(rpc.DefaultRPCPath, rpc.DefaultDebugPath)
 	s.Errors = make(chan error)
-	go s.listen(false)
+	ready := make(chan struct{})
+	go func() {
+		s.listen(false, ready)
+	}()
+	<-ready
 }
 
 func (s *RPCClimateReporterSuite) TearDownSuite(c *C) {
 	s.Http.Shutdown(context.Background())
 	err, ok := <-s.Errors
-	c.Check(ok, Equals, false)
+	c.Check(ok, Equals, false, Commentf("Got server error: %s", err))
 	c.Check(err, IsNil)
 }
 
@@ -106,6 +125,7 @@ func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 	zone := zeus.Zone{}
 
 	n, err := NewRPCReporter("test-zone", testAddress, zone, bytes.NewBuffer(nil))
+	c.Assert(err, IsNil)
 	n.MaxAttempts = 2
 	n.ReconnectionWindow = 5 * time.Millisecond
 	c.Assert(err, IsNil)
@@ -160,8 +180,9 @@ func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 	}
 
 	time.Sleep(time.Duration(n.MaxAttempts+100) * n.ReconnectionWindow)
-	go s.listen(true)
-
+	ready := make(chan struct{})
+	go s.listen(true, ready)
+	<-ready
 	wg.Add(1)
 	go func() {
 		s.H.C <- c
