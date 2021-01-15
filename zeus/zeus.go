@@ -7,11 +7,20 @@ import (
 	"net/http"
 	"net/rpc"
 	"os"
+	"sync"
 
 	socketcan "github.com/atuleu/golang-socketcan"
+	"github.com/formicidae-tracker/libarke/src-go/arke"
 	"github.com/formicidae-tracker/zeus"
 	"github.com/grandcat/zeroconf"
 )
+
+type ZoneRunner struct {
+	interpoler   *InterpolationManager
+	reporter     *RPCReporter
+	capabilities []capability
+	alarmMonitor AlarmMonitor
+}
 
 type Zeus struct {
 	logger         *log.Logger
@@ -20,11 +29,13 @@ type Zeus struct {
 
 	zones map[string]ZoneDefinition
 
-	busManagers map[string]BusManager
-	interpolers map[string]*InterpolationManager
-	reporters   map[string]*RPCReporter
+	olympusHost string
+	runners     map[string]*ZoneRunner
+	managers    map[string]BusManager
 
-	stop chan struct{}
+	wgReporter, wgInterpolation, wgManager sync.WaitGroup
+
+	stop, init chan struct{}
 }
 
 func (z *Zeus) openSlcands(interfaces map[string]string) error {
@@ -52,11 +63,10 @@ func OpenZeus(c Config) (*Zeus, error) {
 		return nil, fmt.Errorf("Invalid config: %s", err)
 	}
 	z := &Zeus{
+		olympusHost:    c.Olympus,
 		slcandManagers: make(map[string]*SlcandManager),
 		zones:          c.Zones,
-		busManagers:    make(map[string]BusManager),
-		interpolers:    map[string]*InterpolationManager{},
-		reporters:      map[string]*RPCReporter{},
+		runners:        make(map[string]*ZoneRunner),
 		logger:         log.New(os.Stderr, "[zeus] ", 0),
 	}
 	if err := z.openSlcands(c.Interfaces); err != nil {
@@ -137,7 +147,7 @@ func (z *Zeus) managerForZone(zoneName string) (BusManager, error) {
 		return nil, fmt.Errorf("Unknown zone '%s'", zoneName)
 	}
 
-	m, ok := z.busManagers[def.CANInterface]
+	m, ok := z.managers[def.CANInterface]
 	if ok == true {
 		return m, nil
 	}
@@ -147,7 +157,7 @@ func (z *Zeus) managerForZone(zoneName string) (BusManager, error) {
 		return nil, err
 	}
 	b := NewBusManager(def.CANInterface, intf, zeus.HeartBeatPeriod)
-	z.busManagers[def.CANInterface] = b
+	z.managers[def.CANInterface] = b
 	return b, nil
 }
 
@@ -160,27 +170,149 @@ func (z *Zeus) checkSeason(season zeus.SeasonFile) error {
 	return nil
 }
 
-func (z *Zeus) setupZoneClimate(name string, zone zeus.Zone) error {
-	_, err := z.managerForZone(name)
+func (z *Zeus) setupZoneClimate(name string, zone zeus.Zone, devicesID arke.NodeID) (*ZoneRunner, error) {
+	runner := &ZoneRunner{}
+	manager, err := z.managerForZone(name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return fmt.Errorf("Not yet implemented")
+	reporters := []ClimateReporter{}
+
+	var stateReports chan<- zeus.StateReport = nil
+
+	if len(z.olympusHost) != 0 {
+		runner.reporter, err = NewRPCReporter(name, z.olympusHost, zone, os.Stderr)
+		if err != nil {
+			return nil, err
+		}
+		reporters = append(reporters, runner.reporter)
+		stateReports = runner.reporter.StateChannel()
+	}
+
+	runner.capabilities, err = ComputeZoneRequirements(&zone, reporters)
+	if err != nil {
+		return nil, err
+	}
+
+	runner.interpoler, err = NewInterpolationManager(name, zone.States, zone.Transitions, runner.capabilities, stateReports, os.Stderr)
+	if err != nil {
+		return nil, err
+	}
+
+	runner.alarmMonitor, err = NewAlarmMonitor(name)
+	if err != nil {
+		return nil, err
+	}
+
+	manager.AssignCapabilitiesForID(devicesID, runner.capabilities, runner.alarmMonitor.Inbound())
+	return runner, err
+}
+
+func (z *Zeus) spawnReporter(reporter *RPCReporter) {
+	if reporter == nil {
+		return
+	}
+	z.wgReporter.Add(1)
+	go reporter.Report(&z.wgReporter)
+}
+
+func spawnAlarmMonitor(name string, alarmMonitor AlarmMonitor, reporter *RPCReporter) {
+	go alarmMonitor.Monitor()
+	if reporter != nil {
+		go func() {
+			for event := range alarmMonitor.Outbound() {
+				reporter.AlarmChannel() <- event
+			}
+			close(reporter.AlarmChannel())
+		}()
+	} else {
+		go func() {
+			logger := log.New(os.Stderr, "[zone/"+name+"/alarm] ", 0)
+			for event := range alarmMonitor.Outbound() {
+				logger.Printf("%+v", event)
+			}
+		}()
+	}
+}
+
+func (z *Zeus) spawnInterpoler(interpoler *InterpolationManager) {
+	z.wgInterpolation.Add(1)
+	go interpoler.Interpolate(&z.wgInterpolation, z.init, z.quit)
+}
+
+func (z *Zeus) spawnManager(manager BusManager) {
+	z.wgManager.Add(1)
+	go func() {
+		manager.Listen()
+		z.wgManager.Done()
+	}()
+}
+
+func (z *Zeus) spawn(name string, runner *ZoneRunner) {
+	z.spawnReporter(runner.reporter)
+	spawnAlarmMonitor(name, runner.alarmMonitor, runner.reporter)
+
+	z.spawnInterpoler(runner.interpoler)
 }
 
 func (z *Zeus) startClimate(season zeus.SeasonFile) error {
+	if z.stop != nil {
+		return fmt.Errorf("Already started")
+	}
+
 	if err := z.checkSeason(season); err != nil {
 		return fmt.Errorf("invalid season file: %s", err)
 	}
 
 	for name, zone := range season.Zones {
-		if err := z.setupZoneClimate(name, zone); err != nil {
+		runner, err := z.setupZoneClimate(name, zone, arke.NodeID(z.zones[name].DevicesID))
+		if err != nil {
+
 			return fmt.Errorf("Could not setup zone '%s': %s", name, err)
 		}
+
+		z.runners[name] = runner
 	}
 
-	return fmt.Errorf("Not yet implemented")
+	z.stop = make(chan struct{})
+	z.init = make(chan struct{})
+
+	for name, runner := range z.runners {
+		z.logger.Printf("starting zone %s", name)
+		z.spawn(name, runner)
+	}
+
+	for _, manager := range z.managers {
+		z.spawnManager(manager)
+	}
+
+	close(z.init)
+	z.init = nil
+	return nil
+}
+
+func (z *Zeus) waitClimate() {
+	z.wgInterpolation.Wait()
+	for ifname, manager := range z.managers {
+		z.logger.Printf("closing interface %s", ifname)
+		manager.Close()
+	}
+	z.wgManager.Wait()
+	for _, runner := range z.runners {
+		for _, c := range runner.capabilities {
+			c.Close()
+		}
+	}
+	z.wgReporter.Wait()
+}
+
+func (z *Zeus) resetClimate() {
+	z.quit = nil
+	z.init = nil
+	z.runners = make(map[string]*ZoneRunner)
+	z.managers = make(map[string]BusManager)
+
 }
 
 func (z *Zeus) stopClimate() error {
@@ -189,12 +321,8 @@ func (z *Zeus) stopClimate() error {
 	}
 	close(z.stop)
 	z.waitClimate()
-	z.stop = nil
+	z.resetClimate()
 	return nil
-}
-
-func (z *Zeus) waitClimate() {
-	panic("NOT IMPLEMENTED")
 }
 
 func (z *Zeus) StartClimate(season zeus.SeasonFile, reply *error) error {

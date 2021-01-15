@@ -18,6 +18,7 @@ func (d ZoneDefinition) ID() string {
 }
 
 type Config struct {
+	Olympus    string                    `yaml:"olympus"`
 	Interfaces map[string]string         `yaml:"interfaces"`
 	Zones      map[string]ZoneDefinition `yaml:"zones"`
 }

@@ -13,6 +13,7 @@ type ConfigSuite struct {
 var _ = Suite(&ConfigSuite{})
 
 var complexConfig = &Config{
+	Olympus: "olympus.local",
 	Interfaces: map[string]string{
 		"slcan0": "/dev/ttyS0",
 		"slcan1": "/dev/ttyS1",
@@ -39,6 +40,7 @@ func (s *ConfigSuite) TestLoad(c *C) {
 	defer os.Remove(tmpfile.Name())
 
 	content := `---
+olympus: olympus.local
 interfaces:
   slcan0: /dev/ttyS0
   slcan1: /dev/ttyS1

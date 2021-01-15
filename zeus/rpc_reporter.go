@@ -169,7 +169,7 @@ func NewRPCReporter(name, address string, zone zeus.Zone, logs io.Writer) (*RPCR
 	if err != nil {
 		return nil, err
 	}
-	logger := log.New(logs, "[zone/"+name+"/rpc]:", log.LstdFlags)
+	logger := log.New(logs, "[zone/"+name+"/rpc] ", 0)
 
 	logger.Printf("Opening connection to '%s'", address)
 
