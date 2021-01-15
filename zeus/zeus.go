@@ -132,6 +132,11 @@ func (z *Zeus) shutdown() error {
 	if z.quit == nil {
 		return fmt.Errorf("zeus: not started")
 	}
+
+	if z.running() == true {
+		z.stopClimate()
+	}
+
 	close(z.quit)
 	return nil
 }
@@ -332,5 +337,14 @@ func (z *Zeus) StartClimate(season zeus.SeasonFile, reply *error) error {
 
 func (z *Zeus) StopClimate(ignored int, reply *error) error {
 	*reply = z.stopClimate()
+	return nil
+}
+
+func (z *Zeus) running() bool {
+	return z.stop != nil
+}
+
+func (z *Zeus) Running(ignored int, reply *bool) error {
+	*reply = z.running()
 	return nil
 }

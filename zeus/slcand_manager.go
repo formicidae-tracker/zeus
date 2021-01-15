@@ -21,6 +21,12 @@ type SlcandManager struct {
 
 func (m *SlcandManager) open() (err error) {
 	m.cmd = exec.Command("slcand", "-ofs", "5", "-S", "115200", "-F", m.devname, m.ifname)
+	//avoids the daemon to get the signal from terminal, we take care to do it ourselves
+	m.cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setpgid: true,
+		Pgid:    0,
+	}
+
 	stdout, err := m.cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -53,7 +59,7 @@ func (m *SlcandManager) open() (err error) {
 		return fmt.Errorf("Could not open slcand: %s", err)
 	case <-time.After(500 * time.Millisecond):
 	}
-
+	m.logger.Printf("set interface %s link up", m.ifname)
 	ipCmd := exec.Command("ip", "link", "set", m.ifname, "up")
 	out, err := ipCmd.CombinedOutput()
 	if err != nil {
@@ -77,6 +83,7 @@ func OpenSlcand(ifname, devname string) (*SlcandManager, error) {
 }
 
 func (m *SlcandManager) Close() error {
+	m.logger.Printf("set interface %s link down", m.ifname)
 	ipCmd := exec.Command("ip", "link", "set", m.ifname, "down")
 	out, err := ipCmd.CombinedOutput()
 	if err != nil {
