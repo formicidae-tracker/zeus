@@ -200,7 +200,15 @@ func (b *busManager) Close() error {
 	return err
 }
 
-func NewBusManager(interfaceName string, intf socketcan.RawInterface, heartbeat time.Duration) BusManager {
+func NewBusManager(interfaceName string, heartbeat time.Duration) (BusManager, error) {
+	intf, err := socketcan.NewRawInterface(interfaceName)
+	if err != nil {
+		return nil, err
+	}
+	return NewBusManagerFromInterface(interfaceName, intf, heartbeat), nil
+}
+
+func NewBusManagerFromInterface(interfaceName string, intf socketcan.RawInterface, heartbeat time.Duration) BusManager {
 	logger := log.New(os.Stderr, "[CAN/"+interfaceName+"]: ", 0)
 	return &busManager{
 		name:              interfaceName,

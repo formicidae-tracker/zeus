@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/formicidae-tracker/zeus"
 	"github.com/formicidae-tracker/libarke/src-go/arke"
+	"github.com/formicidae-tracker/zeus"
 )
 
 type StampedMessage struct {

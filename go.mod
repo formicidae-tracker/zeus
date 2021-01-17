@@ -1,8 +1,9 @@
 module github.com/formicidae-tracker/zeus
 
-go 1.15
+go 1.13
 
 require (
+	github.com/adrg/xdg v0.3.0
 	github.com/atuleu/golang-socketcan v0.2.0
 	github.com/cenkalti/backoff v2.1.1+incompatible // indirect
 	github.com/dgryski/go-lttb v0.0.0-20180810165845-318fcdf10a77

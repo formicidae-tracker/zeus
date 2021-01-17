@@ -72,7 +72,7 @@ func (i *InterpolationManager) Interpolate(wg *sync.WaitGroup, init, quit <-chan
 
 	timer := time.NewTicker(i.period)
 	defer timer.Stop()
-
+	log.Printf("%+v", quit)
 	for {
 		select {
 		case <-quit:

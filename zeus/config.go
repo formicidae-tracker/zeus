@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"regexp"
 
+	flags "github.com/jessevdk/go-flags"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -21,6 +22,16 @@ type Config struct {
 	Olympus    string                    `yaml:"olympus"`
 	Interfaces map[string]string         `yaml:"interfaces"`
 	Zones      map[string]ZoneDefinition `yaml:"zones"`
+}
+
+const DEFAULT_CONFIG_PATH = "/etc/default/zeus.yml"
+
+func OpenConfigFromArg(option flags.Filename) (*Config, error) {
+	configPath := DEFAULT_CONFIG_PATH
+	if len(option) > 0 {
+		configPath = string(option)
+	}
+	return OpenConfig(configPath)
 }
 
 func OpenConfig(filename string) (*Config, error) {

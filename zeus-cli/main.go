@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"os"
 
 	"github.com/jessevdk/go-flags"
 )
@@ -26,6 +26,6 @@ func main() {
 		if ferr, ok := err.(*flags.Error); ok == true && ferr.Type == flags.ErrHelp {
 			return
 		}
-		log.Fatalf("Got unexcepected error: %s", err)
+		os.Exit(1)
 	}
 }

@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/formicidae-tracker/zeus"
-	"github.com/formicidae-tracker/libarke/src-go/arke"
 	socketcan "github.com/atuleu/golang-socketcan"
+	"github.com/formicidae-tracker/libarke/src-go/arke"
+	"github.com/formicidae-tracker/zeus"
 	"github.com/golang/mock/gomock"
 	. "gopkg.in/check.v1"
 )
@@ -72,7 +72,7 @@ func TestBusManagerClose(t *testing.T) {
 	s.SetUpMock(t)
 	defer s.ctrl.Finish()
 
-	manager := NewBusManager("mock", s.intf, 5*time.Millisecond)
+	manager := NewBusManagerFromInterface("mock", s.intf, 5*time.Millisecond)
 	//removes all the nasty logs
 	manager.(*busManager).log.SetOutput(bytes.NewBuffer([]byte{}))
 
