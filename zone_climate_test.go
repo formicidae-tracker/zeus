@@ -7,18 +7,17 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-type ZoneSuite struct{}
+type ZoneClimateSuite struct{}
 
-var _ = Suite(&ZoneSuite{})
+var _ = Suite(&ZoneClimateSuite{})
 
-func (s *ZoneSuite) TestParsing(c *C) {
+func (s *ZoneClimateSuite) TestParsing(c *C) {
 	testdata := []struct {
 		Text string
-		Zone Zone
+		Zone ZoneClimate
 	}{
 		{
 			Text: `
-climate-report-file: /data/someuser/my-experiment.txt
 minimal-temperature: 24.0
 maximal-temperature: 31.0
 minimal-humidity: 40.0
@@ -44,12 +43,11 @@ transitions:
     start: 18:00
     duration: 1h03m1s
 `,
-			Zone: Zone{
+			Zone: ZoneClimate{
 				MinimalTemperature: 24,
 				MaximalTemperature: 31,
 				MinimalHumidity:    40,
 				MaximalHumidity:    80,
-				ClimateReportFile:  "/data/someuser/my-experiment.txt",
 				States: []State{
 					State{
 						Name:         "day",
@@ -87,7 +85,7 @@ transitions:
 	}
 
 	for _, d := range testdata {
-		res := Zone{}
+		res := ZoneClimate{}
 		err := yaml.Unmarshal([]byte(d.Text), &res)
 		if c.Check(err, IsNil) == false {
 			continue

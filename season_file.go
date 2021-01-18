@@ -7,7 +7,7 @@ import (
 )
 
 type SeasonFile struct {
-	Zones map[string]Zone
+	Zones map[string]ZoneClimate
 }
 
 func ReadSeasonFile(filename string) (*SeasonFile, error) {
