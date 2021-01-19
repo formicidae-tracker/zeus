@@ -20,6 +20,7 @@ type StampedMessage struct {
 type ArkeDispatcher interface {
 	Dispatch()
 	Register(devicesID arke.NodeID) <-chan *StampedMessage
+	Send(ID arke.NodeID, m arke.SendableMessage) error
 	Close() error
 }
 
@@ -42,7 +43,6 @@ func (d *arkeDispatcher) closeChannels() {
 		}
 	}
 	d.channels = nil
-	close(d.done)
 }
 
 func (d *arkeDispatcher) nonBlockingSend(m *StampedMessage, c chan<- *StampedMessage) {
@@ -69,7 +69,7 @@ func (d *arkeDispatcher) dispatchMessage(m *StampedMessage) {
 
 func (d *arkeDispatcher) Dispatch() {
 	d.done = make(chan struct{})
-	defer d.closeChannels()
+	defer close(d.done)
 	for {
 		f, err := d.intf.Receive()
 		if err != nil {
@@ -110,7 +110,12 @@ func (d *arkeDispatcher) Register(devicesID arke.NodeID) <-chan *StampedMessage 
 	return newChannel
 }
 
+func (d *arkeDispatcher) Send(id arke.NodeID, m arke.SendableMessage) error {
+	return arke.SendMessage(d.intf, m, false, id)
+}
+
 func (d *arkeDispatcher) Close() error {
+	defer d.closeChannels()
 	err := d.intf.Close()
 	if d.done == nil {
 		return err
