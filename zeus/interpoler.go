@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -54,6 +55,8 @@ func (i *Interpoler) Interpolate() {
 			close(i.reports)
 		}
 	}()
+	i.quit = make(chan struct{})
+
 	i.log.Printf("Starting interpolation loop ")
 	now := time.Now()
 	cur, nextTime, next := i.interpoler.CurrentInterpolation(now)
@@ -70,7 +73,6 @@ func (i *Interpoler) Interpolate() {
 
 	timer := time.NewTicker(i.period)
 	defer timer.Stop()
-	i.quit = make(chan struct{})
 
 	for {
 		select {
@@ -127,10 +129,11 @@ func NewInterpoler(name string,
 
 }
 
-func (i *Interpoler) Close() {
+func (i *Interpoler) Close() error {
 	if i.quit == nil {
-		return
+		return fmt.Errorf("Already closed")
 	}
 	close(i.quit)
 	i.quit = nil
+	return nil
 }

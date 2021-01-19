@@ -31,15 +31,15 @@ func (s *InterpolationManagerSuite) TestInterpolationReportsSanitized(c *C) {
 
 	m, err := NewInterpoler("test-zone", states, []zeus.Transition{}, []capability{}, reports, bytes.NewBuffer(nil))
 	c.Assert(err, IsNil)
-	init := make(chan struct{})
-	quit := make(chan struct{})
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go m.Interpolate()
 
 	m.period = 1 * time.Millisecond
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		m.Interpolate()
+		wg.Done()
+	}()
 
-	close(init)
 	r, ok := <-reports
 	c.Assert(r.Current, Not(IsNil))
 	c.Check(ok, Equals, true)
@@ -51,11 +51,10 @@ func (s *InterpolationManagerSuite) TestInterpolationReportsSanitized(c *C) {
 	c.Check(r.Next, IsNil)
 	c.Check(r.NextTime, IsNil)
 
-	time.Sleep(5 * m.period)
-
-	close(quit)
+	c.Check(m.Close(), IsNil)
 
 	_, ok = <-reports
 	c.Check(ok, Equals, false)
+	wg.Wait()
 
 }

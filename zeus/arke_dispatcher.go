@@ -16,7 +16,7 @@ type StampedMessage struct {
 
 type ArkeDispatcher interface {
 	Dispatch()
-	Register(devicesID arke.NodeID) chan<- StampedMessage
+	Register(devicesID arke.NodeID) <-chan StampedMessage
 	Close() error
 }
 
@@ -29,7 +29,7 @@ func (d *arkeDispatcher) Dispatch() {
 	return
 }
 
-func (d *arkeDispatcher) Register(devicesID arke.NodeID) chan<- StampedMessage {
+func (d *arkeDispatcher) Register(devicesID arke.NodeID) <-chan StampedMessage {
 	return nil
 }
 
