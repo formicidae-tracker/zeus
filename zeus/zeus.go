@@ -1,18 +1,6 @@
 package main
 
-import (
-	"context"
-	"fmt"
-	"log"
-	"net/http"
-	"net/rpc"
-	"os"
-
-	"github.com/formicidae-tracker/libarke/src-go/arke"
-	"github.com/formicidae-tracker/zeus"
-	"github.com/grandcat/zeroconf"
-)
-
+/*
 type Zeus struct {
 	olympusHost string
 
@@ -322,3 +310,4 @@ func (z *Zeus) Running(ignored int, reply *bool) error {
 	*reply = z.running()
 	return nil
 }
+*/

@@ -29,13 +29,13 @@ func (s *InterpolationManagerSuite) TestInterpolationReportsSanitized(c *C) {
 
 	reports := make(chan zeus.StateReport, 1)
 
-	m, err := NewInterpolationManager("test-zone", states, []zeus.Transition{}, []capability{}, reports, bytes.NewBuffer(nil))
+	m, err := NewInterpoler("test-zone", states, []zeus.Transition{}, []capability{}, reports, bytes.NewBuffer(nil))
 	c.Assert(err, IsNil)
 	init := make(chan struct{})
 	quit := make(chan struct{})
 	wg := sync.WaitGroup{}
 	wg.Add(1)
-	go m.Interpolate(&wg, init, quit)
+	go m.Interpolate()
 
 	m.period = 1 * time.Millisecond
 

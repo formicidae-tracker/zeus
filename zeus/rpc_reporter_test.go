@@ -122,7 +122,7 @@ func (s *RPCClimateReporterSuite) TearDownSuite(c *C) {
 
 func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 	go func() { s.H.C <- c }()
-	zone := zeus.Zone{}
+	zone := zeus.ZoneClimate{}
 
 	n, err := NewRPCReporter("test-zone", testAddress, zone, bytes.NewBuffer(nil))
 	c.Assert(err, IsNil)

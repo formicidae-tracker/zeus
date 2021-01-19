@@ -164,7 +164,7 @@ func (r *RPCReporter) Report(wg *sync.WaitGroup) {
 	r.Conn.Close()
 }
 
-func NewRPCReporter(name, address string, zone zeus.Zone, logs io.Writer) (*RPCReporter, error) {
+func NewRPCReporter(name, address string, zone zeus.ZoneClimate, logs io.Writer) (*RPCReporter, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, err

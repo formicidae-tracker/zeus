@@ -72,9 +72,9 @@ func TestBusManagerClose(t *testing.T) {
 	s.SetUpMock(t)
 	defer s.ctrl.Finish()
 
-	manager := NewBusManagerFromInterface("mock", s.intf, 5*time.Millisecond)
+	manager := NewBusListenerFromInterface("mock", s.intf, 5*time.Millisecond)
 	//removes all the nasty logs
-	manager.(*busManager).log.SetOutput(bytes.NewBuffer([]byte{}))
+	manager.(*busListener).log.SetOutput(bytes.NewBuffer([]byte{}))
 
 	cap := &stubCapability{
 		ready:   make(chan struct{}),

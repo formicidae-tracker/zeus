@@ -1,8 +1,17 @@
 package main
 
-import "github.com/formicidae-tracker/zeus"
+import (
+	"time"
 
-func ComputeZoneRequirements(z *zeus.Zone, reporters []ClimateReporter) ([]capability, error) {
+	"github.com/adrg/xdg"
+	"github.com/formicidae-tracker/zeus"
+)
+
+func climateReportFilePath() (string, error) {
+	return xdg.DataFile("fort-experiments/climate/climate." + time.Now().Format("2006-01-02T15:04:05.000") + ".txt")
+}
+
+func ComputeZoneRequirements(z *zeus.ZoneClimate, reporters []ClimateReporter) ([]capability, error) {
 	res := []capability{}
 
 	needClimateReport := false
@@ -12,14 +21,17 @@ func ComputeZoneRequirements(z *zeus.Zone, reporters []ClimateReporter) ([]capab
 	if zeus.IsUndefined(z.MinimalHumidity) == false || zeus.IsUndefined(z.MaximalHumidity) == false {
 		needClimateReport = true
 	}
-	if len(z.ClimateReportFile) != 0 {
-		fn, _, err := NewFileClimateReporter(z.ClimateReportFile)
-		if err != nil {
-			return res, err
-		}
-		reporters = append(reporters, fn)
-		go fn.Report()
+
+	reportFileName, err := climateReportFilePath()
+	if err != nil {
+		return nil, err
 	}
+	fn, _, err := NewFileClimateReporter(reportFileName)
+	if err != nil {
+		return res, err
+	}
+	reporters = append(reporters, fn)
+	go fn.Report()
 
 	if needClimateReport == true || len(reporters) != 0 {
 

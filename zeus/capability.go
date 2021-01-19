@@ -8,12 +8,6 @@ import (
 	"github.com/formicidae-tracker/zeus"
 )
 
-type StampedMessage struct {
-	M  arke.ReceivableMessage
-	T  time.Time
-	ID arke.NodeID
-}
-
 type callback func(c chan<- zeus.Alarm, m *StampedMessage) error
 
 type capability interface {
