@@ -7,54 +7,20 @@ import (
 	"net/http"
 	"net/rpc"
 	"os"
-	"sync"
 
 	"github.com/formicidae-tracker/libarke/src-go/arke"
 	"github.com/formicidae-tracker/zeus"
 	"github.com/grandcat/zeroconf"
 )
 
-type ZoneRunner struct {
-	interpoler   *InterpolationManager
-	reporter     *RPCReporter
-	capabilities []capability
-	alarmMonitor AlarmMonitor
-}
-
 type Zeus struct {
-	logger         *log.Logger
-	slcandManagers map[string]*SlcandManager
-	quit, idle     chan struct{}
-
-	zones map[string]ZoneDefinition
-
 	olympusHost string
-	runners     map[string]*ZoneRunner
-	managers    map[string]BusManager
 
-	wgReporter, wgInterpolation, wgManager sync.WaitGroup
+	logger *log.Logger
 
-	stop, init chan struct{}
-}
-
-func (z *Zeus) openSlcands(interfaces map[string]string) error {
-	for ifname, devname := range interfaces {
-		z.logger.Printf("Starting slcand for '%s' on %s", ifname, devname)
-		slcandManager, err := OpenSlcand(ifname, devname)
-		if err != nil {
-			return err
-		}
-		z.slcandManagers[ifname] = slcandManager
-	}
-	return nil
-}
-
-func (z *Zeus) closeSlcands() {
-	for ifname, s := range z.slcandManagers {
-		if err := s.Close(); err != nil {
-			z.logger.Printf("could not close slcand '%s': %s", ifname, err)
-		}
-	}
+	definitions map[string]ZoneDefinition
+	runners     map[string]*ZoneClimateRunner
+	managers    map[string]BusListener
 }
 
 func OpenZeus(c Config) (*Zeus, error) {
@@ -66,7 +32,7 @@ func OpenZeus(c Config) (*Zeus, error) {
 		slcandManagers: make(map[string]*SlcandManager),
 		zones:          c.Zones,
 		runners:        make(map[string]*ZoneRunner),
-		managers:       make(map[string]BusManager),
+		managers:       make(map[string]BusListener),
 		logger:         log.New(os.Stderr, "[zeus] ", 0),
 	}
 	for name, def := range c.Zones {
@@ -149,7 +115,7 @@ func (z *Zeus) hasZone(name string) bool {
 	return ok
 }
 
-func (z *Zeus) managerForZone(zoneName string) (BusManager, error) {
+func (z *Zeus) managerForZone(zoneName string) (BusListener, error) {
 	def, ok := z.zones[zoneName]
 	if ok == false {
 		return nil, fmt.Errorf("Unknown zone '%s'", zoneName)
@@ -160,7 +126,7 @@ func (z *Zeus) managerForZone(zoneName string) (BusManager, error) {
 		return m, nil
 	}
 	z.logger.Printf("Opening interface '%s'", def.CANInterface)
-	b, err := NewBusManager(def.CANInterface, zeus.HeartBeatPeriod)
+	b, err := NewBusListener(def.CANInterface, zeus.HeartBeatPeriod)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +168,7 @@ func (z *Zeus) setupZoneClimate(name string, zone zeus.Zone, devicesID arke.Node
 		return nil, err
 	}
 
-	runner.interpoler, err = NewInterpolationManager(name, zone.States, zone.Transitions, runner.capabilities, stateReports, os.Stderr)
+	runner.interpoler, err = NewInterpoler(name, zone.States, zone.Transitions, runner.capabilities, stateReports, os.Stderr)
 	if err != nil {
 		return nil, err
 	}
@@ -243,12 +209,13 @@ func spawnAlarmMonitor(name string, alarmMonitor AlarmMonitor, reporter *RPCRepo
 	}
 }
 
-func (z *Zeus) spawnInterpoler(interpoler *InterpolationManager) {
+func (z *Zeus) spawnInterpoler(interpoler *Interpoler) {
 	z.wgInterpolation.Add(1)
-	go interpoler.Interpolate(&z.wgInterpolation, z.init, z.stop)
+	interpoler.Interpolate(&z.wgInterpolation, z.init, z.stop)
+
 }
 
-func (z *Zeus) spawnManager(manager BusManager) {
+func (z *Zeus) spawnManager(manager BusListener) {
 	z.wgManager.Add(1)
 	go func() {
 		manager.Listen()
@@ -324,7 +291,7 @@ func (z *Zeus) resetClimate() {
 	z.quit = nil
 	z.init = nil
 	z.runners = make(map[string]*ZoneRunner)
-	z.managers = make(map[string]BusManager)
+	z.managers = make(map[string]BusListener)
 
 }
 

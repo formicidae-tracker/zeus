@@ -13,7 +13,7 @@ import (
 	"github.com/formicidae-tracker/zeus"
 )
 
-type BusManager interface {
+type BusListener interface {
 	Listen()
 	AssignCapabilitiesForID(arke.NodeID, []capability, chan<- zeus.Alarm) error
 	Close() error
@@ -29,7 +29,7 @@ type messageDefinition struct {
 	MessageID arke.MessageClass
 }
 
-type busManager struct {
+type busListener struct {
 	name              string
 	intf              socketcan.RawInterface
 	capabilities      []capability
@@ -42,7 +42,7 @@ type busManager struct {
 	heartbeat         time.Duration
 }
 
-func (b *busManager) receiveAndStampMessage(frames chan<- *StampedMessage) {
+func (b *busListener) receiveAndStampMessage(frames chan<- *StampedMessage) {
 	for {
 		f, err := b.intf.Receive()
 		if err != nil {
@@ -70,7 +70,7 @@ func (b *busManager) receiveAndStampMessage(frames chan<- *StampedMessage) {
 	}
 }
 
-func (b *busManager) Listen() {
+func (b *busListener) Listen() {
 	allClasses := map[arke.NodeClass]bool{}
 	receivedHeartbeat := map[deviceDefinition]bool{}
 
@@ -144,7 +144,7 @@ func (b *busManager) Listen() {
 	}
 }
 
-func (b *busManager) assignCapabilityUnsafe(c capability, ID arke.NodeID) {
+func (b *busListener) assignCapabilityUnsafe(c capability, ID arke.NodeID) {
 	b.capabilities = append(b.capabilities, c)
 	for _, class := range c.Requirements() {
 		def := deviceDefinition{
@@ -178,7 +178,7 @@ func (b *busManager) assignCapabilityUnsafe(c capability, ID arke.NodeID) {
 	}
 }
 
-func (b *busManager) AssignCapabilitiesForID(ID arke.NodeID, capabilities []capability, alarms chan<- zeus.Alarm) error {
+func (b *busListener) AssignCapabilitiesForID(ID arke.NodeID, capabilities []capability, alarms chan<- zeus.Alarm) error {
 	if _, ok := b.alarms[ID]; ok == true {
 		return fmt.Errorf("ID %d is already assigned", ID)
 	}
@@ -190,7 +190,7 @@ func (b *busManager) AssignCapabilitiesForID(ID arke.NodeID, capabilities []capa
 	return nil
 }
 
-func (b *busManager) Close() error {
+func (b *busListener) Close() error {
 	err := b.intf.Close()
 	b.listenWaitGroup.Wait()
 	b.callbackWaitGroup.Wait()
@@ -200,17 +200,17 @@ func (b *busManager) Close() error {
 	return err
 }
 
-func NewBusManager(interfaceName string, heartbeat time.Duration) (BusManager, error) {
+func NewBusListener(interfaceName string, heartbeat time.Duration) (BusListener, error) {
 	intf, err := socketcan.NewRawInterface(interfaceName)
 	if err != nil {
 		return nil, err
 	}
-	return NewBusManagerFromInterface(interfaceName, intf, heartbeat), nil
+	return NewBusListenerFromInterface(interfaceName, intf, heartbeat), nil
 }
 
-func NewBusManagerFromInterface(interfaceName string, intf socketcan.RawInterface, heartbeat time.Duration) BusManager {
+func NewBusListenerFromInterface(interfaceName string, intf socketcan.RawInterface, heartbeat time.Duration) BusListener {
 	logger := log.New(os.Stderr, "[CAN/"+interfaceName+"]: ", 0)
-	return &busManager{
+	return &busListener{
 		name:              interfaceName,
 		intf:              intf,
 		callbacks:         make(map[messageDefinition][]callback),

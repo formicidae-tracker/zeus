@@ -5,28 +5,28 @@ import (
 	"log"
 	"os"
 	"path"
-	"sync"
 	"time"
 
 	"github.com/formicidae-tracker/zeus"
 )
 
-type InterpolationManager struct {
+type Interpoler struct {
 	name         string
 	interpoler   zeus.ClimateInterpoler
 	capabilities []capability
 	reports      chan<- zeus.StateReport
 	log          *log.Logger
 	period       time.Duration
+	quit         chan struct{}
 }
 
-func (i *InterpolationManager) SendState(s zeus.State) {
+func (i *Interpoler) SendState(s zeus.State) {
 	for _, c := range i.capabilities {
 		c.Action(s)
 	}
 }
 
-func (i *InterpolationManager) StateReport(current, next zeus.Interpolation, now time.Time, nextTime time.Time) zeus.StateReport {
+func (i *Interpoler) StateReport(current, next zeus.Interpolation, now time.Time, nextTime time.Time) zeus.StateReport {
 	report := zeus.StateReport{
 		Zone:       i.name,
 		Current:    zeus.SanitizeState(current.State(now)),
@@ -48,15 +48,13 @@ func (i *InterpolationManager) StateReport(current, next zeus.Interpolation, now
 	return report
 }
 
-func (i *InterpolationManager) Interpolate(wg *sync.WaitGroup, init, quit <-chan struct{}) {
+func (i *Interpoler) Interpolate() {
 	defer func() {
 		if i.reports != nil {
 			close(i.reports)
 		}
-		wg.Done()
 	}()
 	i.log.Printf("Starting interpolation loop ")
-	<-init
 	now := time.Now()
 	cur, nextTime, next := i.interpoler.CurrentInterpolation(now)
 	i.log.Printf("Starting interpolation is %s", cur)
@@ -72,10 +70,11 @@ func (i *InterpolationManager) Interpolate(wg *sync.WaitGroup, init, quit <-chan
 
 	timer := time.NewTicker(i.period)
 	defer timer.Stop()
-	log.Printf("%+v", quit)
+	i.quit = make(chan struct{})
+
 	for {
 		select {
-		case <-quit:
+		case <-i.quit:
 			i.log.Printf("Closing climate interpolation")
 			return
 		case now := <-timer.C:
@@ -100,12 +99,12 @@ func (i *InterpolationManager) Interpolate(wg *sync.WaitGroup, init, quit <-chan
 	}
 }
 
-func NewInterpolationManager(name string,
+func NewInterpoler(name string,
 	states []zeus.State,
 	transitions []zeus.Transition,
 	caps []capability,
 	reports chan<- zeus.StateReport,
-	logs io.Writer) (*InterpolationManager, error) {
+	logs io.Writer) (*Interpoler, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, err
@@ -117,7 +116,7 @@ func NewInterpolationManager(name string,
 		return nil, err
 	}
 
-	return &InterpolationManager{
+	return &Interpoler{
 		name:         path.Join(hostname, "zone", name),
 		interpoler:   i,
 		capabilities: caps,
@@ -126,4 +125,12 @@ func NewInterpolationManager(name string,
 		period:       5 * time.Second,
 	}, nil
 
+}
+
+func (i *Interpoler) Close() {
+	if i.quit == nil {
+		return
+	}
+	close(i.quit)
+	i.quit = nil
 }
