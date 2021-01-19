@@ -1,14 +1,31 @@
 package main
 
-type ZoneClimateRunner struct {
+import (
+	"fmt"
+
+	"github.com/formicidae-tracker/zeus"
+)
+
+type ZoneClimateRunner interface {
+	Run()
+	Close() error
+}
+
+type zoneClimateRunner struct {
 	interpoler   *Interpoler
 	reporter     *RPCReporter
 	capabilities []capability
 	alarmMonitor AlarmMonitor
 }
 
-func (r *ZoneClimateRunner) Run() {
+func (r *zoneClimateRunner) Run() {
 }
 
-func (r *ZoneClimateRunner) Stop() {
+func (r *zoneClimateRunner) Close() error {
+	return nil
+}
+
+func NewZoneClimateRunner(d ArkeDispatcher, definition ZoneDefinition, climate zeus.ZoneClimate, olympusHost string) (ZoneClimateRunner, error) {
+	return nil, fmt.Errorf("Not yet implemented")
+
 }
