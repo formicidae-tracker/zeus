@@ -97,7 +97,11 @@ func (s *RPCClimateReporterSuite) listen(final bool, ready chan struct{}) {
 	}
 }
 
+var baseMux *http.ServeMux
+
 func (s *RPCClimateReporterSuite) SetUpSuite(c *C) {
+	baseMux = http.DefaultServeMux
+	http.DefaultServeMux = http.NewServeMux()
 	hostname, err := os.Hostname()
 	c.Assert(err, IsNil)
 	s.Http = &http.Server{Addr: testAddress}
@@ -118,6 +122,7 @@ func (s *RPCClimateReporterSuite) TearDownSuite(c *C) {
 	err, ok := <-s.Errors
 	c.Check(ok, Equals, false, Commentf("Got server error: %s", err))
 	c.Check(err, IsNil)
+	http.DefaultServeMux = baseMux
 }
 
 func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {

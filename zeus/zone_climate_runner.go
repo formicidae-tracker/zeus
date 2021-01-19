@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/formicidae-tracker/zeus"
 )
 
@@ -26,6 +24,6 @@ func (r *zoneClimateRunner) Close() error {
 }
 
 func NewZoneClimateRunner(d ArkeDispatcher, definition ZoneDefinition, climate zeus.ZoneClimate, olympusHost string) (ZoneClimateRunner, error) {
-	return nil, fmt.Errorf("Not yet implemented")
+	return &zoneClimateRunner{}, nil
 
 }

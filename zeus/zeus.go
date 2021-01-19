@@ -9,11 +9,14 @@ import (
 	"os"
 	"sync"
 
+	socketcan "github.com/atuleu/golang-socketcan"
 	"github.com/formicidae-tracker/zeus"
 	"github.com/grandcat/zeroconf"
 )
 
 type Zeus struct {
+	intfFactory func(ifname string) (socketcan.RawInterface, error)
+
 	logger *log.Logger
 
 	olympusHost string
@@ -31,6 +34,7 @@ func OpenZeus(c Config) (*Zeus, error) {
 		return nil, fmt.Errorf("Invalid config: %s", err)
 	}
 	z := &Zeus{
+		intfFactory: socketcan.NewRawInterface,
 		logger:      log.New(os.Stderr, "[zeus] ", 0),
 		olympusHost: c.Olympus,
 		definitions: c.Zones,
@@ -118,11 +122,11 @@ func (z *Zeus) dispatcherForInterface(ifname string) (ArkeDispatcher, error) {
 		return d, nil
 	}
 	z.logger.Printf("Opening interface '%s'", ifname)
-	d, err := DispatchInterface(ifname)
+	intf, err := z.intfFactory(ifname)
 	if err != nil {
 		return nil, err
 	}
-	z.dispatchers[ifname] = d
+	z.dispatchers[ifname] = NewArkeDispatcher(ifname, intf)
 	return d, nil
 }
 
@@ -149,6 +153,10 @@ func (z *Zeus) setupZoneClimate(name string, definition ZoneDefinition, climate 
 }
 
 func (z *Zeus) startClimate(season zeus.SeasonFile) (rerr error) {
+	if z.isRunning() == true {
+		return fmt.Errorf("Already started")
+	}
+
 	defer func() {
 		if rerr == nil {
 			return
@@ -156,10 +164,6 @@ func (z *Zeus) startClimate(season zeus.SeasonFile) (rerr error) {
 		z.closeDispatchers()
 		z.reset()
 	}()
-
-	if z.isRunning() == true {
-		return fmt.Errorf("Already started")
-	}
 
 	if err := z.checkSeason(season); err != nil {
 		return fmt.Errorf("invalid season file: %s", err)
