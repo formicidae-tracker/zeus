@@ -31,8 +31,13 @@ func (s *ArkeDispatcherSuite) TestClosesInterface(c *C) {
 	c.Check(s.d.Close(), IsNil)
 
 	s.SetUpTest(c)
-	go s.d.Dispatch()
+	done := make(chan struct{})
+	go func() {
+		s.d.Dispatch()
+		close(done)
+	}()
 	c.Check(s.d.Close(), IsNil)
+	<-done
 }
 
 func (s *ArkeDispatcherSuite) TestDispatchMessages(c *C) {

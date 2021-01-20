@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"os/exec"
 	"sync"
 	"syscall"
 	"time"
@@ -128,9 +129,22 @@ func (d *arkeDispatcher) Close() error {
 	if d.done == nil {
 		return err
 	}
-	<-d.done
-	d.done = nil
-	return err
+	select {
+	case <-d.done:
+		d.done = nil
+		return err
+	case <-time.After(3 * time.Second):
+		d.logger.Printf("dispatcher apparently hang up, sending request over bus")
+		cmd := exec.Command("cansend", d.name, "007#")
+		cmd.Run()
+	}
+	select {
+	case <-d.done:
+		d.done = nil
+		return err
+	case <-time.After(3 * time.Second):
+		panic("[dispatch/" + d.name + "] closing hangup")
+	}
 }
 
 func DispatchInterface(ifname string) (ArkeDispatcher, error) {
