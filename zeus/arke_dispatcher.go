@@ -20,7 +20,6 @@ type StampedMessage struct {
 type ArkeDispatcher interface {
 	Dispatch()
 	Register(devicesID arke.NodeID) <-chan *StampedMessage
-	Send(ID arke.NodeID, m arke.SendableMessage) error
 	Close() error
 }
 

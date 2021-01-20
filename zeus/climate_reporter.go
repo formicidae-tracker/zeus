@@ -9,6 +9,7 @@ import (
 )
 
 type ClimateReporter interface {
+	Report()
 	ReportChannel() chan<- zeus.ClimateReport
 }
 

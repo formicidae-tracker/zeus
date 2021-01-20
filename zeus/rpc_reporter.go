@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/rpc"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/formicidae-tracker/zeus"
@@ -73,8 +72,7 @@ func (r *RPCReporter) reconnect() error {
 	return r.Conn.Call("Olympus.ReportState", r.LastStateReport, &unused)
 }
 
-func (r *RPCReporter) Report(wg *sync.WaitGroup) {
-	defer wg.Done()
+func (r *RPCReporter) Report() {
 	var rerr error
 	trials := 0
 	var resetConnection <-chan time.Time = nil

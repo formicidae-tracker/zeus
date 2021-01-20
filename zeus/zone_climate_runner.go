@@ -10,10 +10,12 @@ type ZoneClimateRunner interface {
 }
 
 type zoneClimateRunner struct {
-	interpoler   *Interpoler
-	reporter     *RPCReporter
+	interpoler Interpoler
+
 	capabilities []capability
 	alarmMonitor AlarmMonitor
+
+	reporter *RPCReporter
 }
 
 func (r *zoneClimateRunner) Run() {
