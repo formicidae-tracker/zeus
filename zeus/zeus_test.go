@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"sync"
@@ -48,6 +49,7 @@ func (s *ZeusSuite) SetUpTest(c *C) {
 	})
 	c.Check(err, IsNil)
 	s.zeus.intfFactory = s.interfaceFactory()
+	s.zeus.logger.SetOutput(bytes.NewBuffer(nil))
 }
 
 func (s *ZeusSuite) TearDownTest(c *C) {

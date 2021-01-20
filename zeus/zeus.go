@@ -41,9 +41,6 @@ func OpenZeus(c Config) (*Zeus, error) {
 		runners:     make(map[string]ZoneClimateRunner),
 		dispatchers: make(map[string]ArkeDispatcher),
 	}
-	for name, def := range c.Zones {
-		z.logger.Printf("will manage zone '%s' on %s:%d", name, def.CANInterface, def.DevicesID)
-	}
 	return z, nil
 }
 
@@ -93,6 +90,11 @@ func (z *Zeus) runRPC() error {
 func (z *Zeus) run() error {
 	z.quit = make(chan struct{})
 	z.idle = make(chan struct{})
+
+	for name, def := range z.definitions {
+		z.logger.Printf("will manage zone '%s' on %s:%d", name, def.CANInterface, def.DevicesID)
+	}
+
 	z.spawnZeroconf()
 
 	return z.runRPC()

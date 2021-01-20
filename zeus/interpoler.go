@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path"
@@ -11,23 +10,27 @@ import (
 	"github.com/formicidae-tracker/zeus"
 )
 
-type Interpoler struct {
-	name         string
-	interpoler   zeus.ClimateInterpoler
-	capabilities []capability
-	reports      chan<- zeus.StateReport
-	log          *log.Logger
-	period       time.Duration
-	quit         chan struct{}
+type Interpoler interface {
+	Interpolate()
+
+	States() <-chan zeus.State
+	Reports() <-chan zeus.StateReport
+
+	Close() error
 }
 
-func (i *Interpoler) SendState(s zeus.State) {
-	for _, c := range i.capabilities {
-		c.Action(s)
-	}
+type interpoler struct {
+	Period time.Duration
+
+	logger     *log.Logger
+	name       string
+	interpoler zeus.ClimateInterpoler
+	quit       chan struct{}
+	states     chan zeus.State
+	reports    chan zeus.StateReport
 }
 
-func (i *Interpoler) StateReport(current, next zeus.Interpolation, now time.Time, nextTime time.Time) zeus.StateReport {
+func (i *interpoler) stateReport(current, next zeus.Interpolation, now time.Time, nextTime time.Time) zeus.StateReport {
 	report := zeus.StateReport{
 		Zone:       i.name,
 		Current:    zeus.SanitizeState(current.State(now)),
@@ -49,87 +52,93 @@ func (i *Interpoler) StateReport(current, next zeus.Interpolation, now time.Time
 	return report
 }
 
-func (i *Interpoler) Interpolate() {
+func (i *interpoler) sendReport(r zeus.StateReport) {
+	select {
+	case i.reports <- r:
+	default:
+	}
+}
+
+func (i *interpoler) sendState(s zeus.State) {
+	i.states <- s
+}
+
+func (i *interpoler) Interpolate() {
 	defer func() {
-		if i.reports != nil {
-			close(i.reports)
-		}
+		close(i.states)
+		close(i.reports)
 	}()
 	i.quit = make(chan struct{})
 
-	i.log.Printf("Starting interpolation loop ")
+	i.logger.Printf("Starting interpolation loop")
 	now := time.Now()
 	cur, nextTime, next := i.interpoler.CurrentInterpolation(now)
-	i.log.Printf("Starting interpolation is %s", cur)
+	i.logger.Printf("Starting interpolation is %s", cur)
 
-	i.SendState(cur.State(now))
+	i.sendState(cur.State(now))
 
 	isTransition := cur.End() != nil
 
-	if i.reports != nil {
-		report := i.StateReport(cur, next, now, nextTime)
-		i.reports <- report
-	}
+	i.sendReport(i.stateReport(cur, next, now, nextTime))
 
-	timer := time.NewTicker(i.period)
+	timer := time.NewTicker(i.Period)
 	defer timer.Stop()
 
 	for {
 		select {
 		case <-i.quit:
-			i.log.Printf("Closing climate interpolation")
+			i.logger.Printf("Closing climate interpolation")
 			return
 		case now := <-timer.C:
 			new, nextTime, next := i.interpoler.CurrentInterpolation(now)
 			newIsTransition := new.End() != nil
 
 			if isTransition != newIsTransition {
-				i.log.Printf("New interpolation %s", new)
+				i.logger.Printf("New interpolation %s", new)
 				cur = new
 				isTransition = newIsTransition
 			} else if isTransition == false {
-				i.SendState(cur.State(now))
+				i.sendState(cur.State(now))
 				continue
 			}
 			s := cur.State(now)
-			i.SendState(s)
-			if i.reports != nil {
-				report := i.StateReport(cur, next, now, nextTime)
-				i.reports <- report
-			}
+			i.sendState(s)
+			report := i.stateReport(cur, next, now, nextTime)
+			i.sendReport(report)
 		}
 	}
 }
 
-func NewInterpoler(name string,
-	states []zeus.State,
-	transitions []zeus.Transition,
-	caps []capability,
-	reports chan<- zeus.StateReport,
-	logs io.Writer) (*Interpoler, error) {
+func NewInterpoler(name string, states []zeus.State, transitions []zeus.Transition) (Interpoler, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, err
 	}
-	logger := log.New(logs, "[zone/"+name+"/climate]: ", 0)
-	logger.Printf("Computing climate interpolation")
+	logger := log.New(os.Stderr, "[zone/"+name+"/climate]: ", 0)
 	i, err := zeus.NewClimateInterpoler(states, transitions, time.Now().UTC())
 	if err != nil {
 		return nil, err
 	}
 
-	return &Interpoler{
-		name:         path.Join(hostname, "zone", name),
-		interpoler:   i,
-		capabilities: caps,
-		log:          logger,
-		reports:      reports,
-		period:       5 * time.Second,
+	return &interpoler{
+		name:       path.Join(hostname, "zone", name),
+		interpoler: i,
+		logger:     logger,
+		reports:    make(chan zeus.StateReport, 1),
+		states:     make(chan zeus.State, 1),
+		Period:     5 * time.Second,
 	}, nil
-
 }
 
-func (i *Interpoler) Close() error {
+func (i *interpoler) States() <-chan zeus.State {
+	return i.states
+}
+
+func (i *interpoler) Reports() <-chan zeus.StateReport {
+	return i.reports
+}
+
+func (i *interpoler) Close() error {
 	if i.quit == nil {
 		return fmt.Errorf("Already closed")
 	}

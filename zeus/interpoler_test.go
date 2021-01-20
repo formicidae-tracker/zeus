@@ -27,20 +27,19 @@ func (s *InterpolationManagerSuite) TestInterpolationReportsSanitized(c *C) {
 		},
 	}
 
-	reports := make(chan zeus.StateReport, 1)
-
-	m, err := NewInterpoler("test-zone", states, []zeus.Transition{}, []capability{}, reports, bytes.NewBuffer(nil))
+	i, err := NewInterpoler("test-zone", states, []zeus.Transition{})
 	c.Assert(err, IsNil)
 
-	m.period = 1 * time.Millisecond
+	i.(*interpoler).logger.SetOutput(bytes.NewBuffer(nil))
+	i.(*interpoler).Period = 1 * time.Millisecond
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		m.Interpolate()
+		i.Interpolate()
 		wg.Done()
 	}()
 
-	r, ok := <-reports
+	r, ok := <-i.Reports()
 	c.Assert(r.Current, Not(IsNil))
 	c.Check(ok, Equals, true)
 	c.Check(r.Current.Temperature, Equals, states[0].Temperature)
@@ -51,9 +50,9 @@ func (s *InterpolationManagerSuite) TestInterpolationReportsSanitized(c *C) {
 	c.Check(r.Next, IsNil)
 	c.Check(r.NextTime, IsNil)
 
-	c.Check(m.Close(), IsNil)
+	c.Check(i.Close(), IsNil)
 
-	_, ok = <-reports
+	_, ok = <-i.Reports()
 	c.Check(ok, Equals, false)
 	wg.Wait()
 

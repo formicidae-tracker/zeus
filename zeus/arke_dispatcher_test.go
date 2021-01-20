@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+
 	"github.com/formicidae-tracker/libarke/src-go/arke"
 	. "gopkg.in/check.v1"
 )
@@ -15,6 +17,7 @@ var _ = Suite(&ArkeDispatcherSuite{})
 func (s *ArkeDispatcherSuite) SetUpTest(c *C) {
 	s.intf = NewStubRawInterface()
 	s.d = NewArkeDispatcher("can-stub", s.intf)
+	s.d.(*arkeDispatcher).logger.SetOutput(bytes.NewBuffer(nil))
 }
 
 func (s *ArkeDispatcherSuite) TearDownTest(c *C) {
