@@ -185,7 +185,7 @@ func (r *zoneClimateRunner) Run() {
 	}()
 
 	r.spawnTasks(&wg)
-
+	r.logger.Printf("started")
 	for {
 		select {
 		case <-r.quit:
@@ -203,7 +203,9 @@ func (r *zoneClimateRunner) Close() error {
 	if r.quit == nil {
 		return fmt.Errorf("already closed")
 	}
+	r.logger.Printf("closing")
 	close(r.quit)
+	r.logger.Printf("closed")
 	<-r.done
 	return nil
 }

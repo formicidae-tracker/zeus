@@ -72,6 +72,7 @@ func (d *arkeDispatcher) dispatchMessage(m *StampedMessage) {
 func (d *arkeDispatcher) Dispatch() {
 	d.done = make(chan struct{})
 	defer close(d.done)
+	d.logger.Printf("started")
 	for {
 		f, err := d.intf.Receive()
 		if err != nil {
@@ -117,7 +118,12 @@ func (d *arkeDispatcher) Send(id arke.NodeID, m arke.SendableMessage) error {
 }
 
 func (d *arkeDispatcher) Close() error {
-	defer d.closeChannels()
+	defer func() {
+		d.closeChannels()
+		d.logger.Printf("closed")
+	}()
+
+	d.logger.Printf("closing")
 	err := d.intf.Close()
 	if d.done == nil {
 		return err
