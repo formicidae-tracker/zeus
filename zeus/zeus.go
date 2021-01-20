@@ -26,8 +26,8 @@ type Zeus struct {
 	dispatchers map[string]ArkeDispatcher
 	runners     map[string]ZoneClimateRunner
 
-	mx         sync.RWMutex
-	quit, idle chan struct{}
+	mx               sync.RWMutex
+	quit, done, idle chan struct{}
 }
 
 func OpenZeus(c Config) (*Zeus, error) {
@@ -90,8 +90,9 @@ func (z *Zeus) runRPC() error {
 
 func (z *Zeus) run() error {
 	z.quit = make(chan struct{})
+	z.done = make(chan struct{})
 	z.idle = make(chan struct{})
-
+	defer close(z.done)
 	for name, def := range z.definitions {
 		z.logger.Printf("will manage zone '%s' on %s:%d", name, def.CANInterface, def.DevicesID)
 	}
@@ -111,6 +112,8 @@ func (z *Zeus) shutdown() error {
 	}
 
 	close(z.quit)
+	<-z.done
+	z.done = nil
 	return nil
 }
 
@@ -236,6 +239,7 @@ func (z *Zeus) stopClimate() error {
 	z.closeDispatchers()
 	z.reset()
 
+	z.logger.Printf("Climate stopped")
 	return nil
 }
 

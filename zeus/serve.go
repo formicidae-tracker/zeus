@@ -1,7 +1,8 @@
 package main
 
 import (
-	"fmt"
+	"os"
+	"os/signal"
 
 	flags "github.com/jessevdk/go-flags"
 )
@@ -13,7 +14,21 @@ type ServeCommand struct {
 }
 
 func (c *ServeCommand) Execute(args []string) error {
-	return fmt.Errorf("Not yet implemented")
+	config, err := OpenConfigFromArg(c.Args.Config)
+	if err != nil {
+		return err
+	}
+	z, err := OpenZeus(*config)
+	if err != nil {
+		return err
+	}
+
+	sigint := make(chan os.Signal)
+	signal.Notify(sigint, os.Interrupt)
+	go z.run()
+	<-sigint
+
+	return z.shutdown()
 }
 
 func init() {
