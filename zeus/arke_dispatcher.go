@@ -20,6 +20,8 @@ type StampedMessage struct {
 type ArkeDispatcher interface {
 	Dispatch()
 	Register(devicesID arke.NodeID) <-chan *StampedMessage
+	Name() string
+	Interface() socketcan.RawInterface
 	Close() error
 }
 
@@ -27,6 +29,7 @@ type arkeDispatcher struct {
 	mx       sync.RWMutex
 	channels map[int][]chan *StampedMessage
 
+	name   string
 	intf   socketcan.RawInterface
 	logger *log.Logger
 	done   chan struct{}
@@ -132,9 +135,18 @@ func DispatchInterface(ifname string) (ArkeDispatcher, error) {
 	return NewArkeDispatcher(ifname, intf), nil
 }
 
+func (d *arkeDispatcher) Name() string {
+	return d.name
+}
+
+func (d *arkeDispatcher) Interface() socketcan.RawInterface {
+	return d.intf
+}
+
 func NewArkeDispatcher(ifname string, intf socketcan.RawInterface) ArkeDispatcher {
 	return &arkeDispatcher{
 		channels: make(map[int][]chan *StampedMessage),
+		name:     ifname,
 		intf:     intf,
 		logger:   log.New(os.Stderr, "[dispatch/"+ifname+"] ", 0),
 	}

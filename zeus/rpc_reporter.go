@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"net/rpc"
 	"os"
@@ -162,15 +161,14 @@ func (r *RPCReporter) Report() {
 	r.Conn.Close()
 }
 
-func NewRPCReporter(name, address string, zone zeus.ZoneClimate, logs io.Writer) (*RPCReporter, error) {
+func NewRPCReporter(name, address string, zone zeus.ZoneClimate) (*RPCReporter, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, err
 	}
-	logger := log.New(logs, "[zone/"+name+"/rpc] ", 0)
+	logger := log.New(os.Stderr, "[zone/"+name+"/rpc] ", 0)
 
 	logger.Printf("Opening connection to '%s'", address)
-
 	conn, err := rpc.DialHTTP("tcp", address)
 	if err != nil {
 		return nil, fmt.Errorf("rpc: conn: %s", err)

@@ -13,17 +13,17 @@ type ClimateReporter interface {
 	ReportChannel() chan<- zeus.ClimateReport
 }
 
-type FileClimateReporter struct {
+type fileClimateReporter struct {
 	File  *os.File
 	Start time.Time
 	Chan  chan zeus.ClimateReport
 }
 
-func (n *FileClimateReporter) ReportChannel() chan<- zeus.ClimateReport {
+func (n *fileClimateReporter) ReportChannel() chan<- zeus.ClimateReport {
 	return n.Chan
 }
 
-func (n *FileClimateReporter) Report() {
+func (n *fileClimateReporter) Report() {
 	for cr := range n.Chan {
 		fmt.Fprintf(n.File,
 			"%d %.2f %.2f %.2f %.2f %.2f\n",
@@ -37,8 +37,8 @@ func (n *FileClimateReporter) Report() {
 	n.File.Close()
 }
 
-func NewFileClimateReporter(filename string) (*FileClimateReporter, string, error) {
-	res := &FileClimateReporter{
+func NewFileClimateReporter(filename string) (ClimateReporter, string, error) {
+	res := &fileClimateReporter{
 		Chan:  make(chan zeus.ClimateReport, 10),
 		Start: time.Now(),
 	}

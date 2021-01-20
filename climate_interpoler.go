@@ -259,6 +259,9 @@ func (i *climateInterpolation) CurrentInterpolation(t time.Time) (Interpolation,
 }
 
 func NewClimateInterpoler(states []State, transitions []Transition, reference time.Time) (ClimateInterpoler, error) {
+	if len(states) == 0 {
+		return nil, fmt.Errorf("climate interpolation needs at least one state")
+	}
 	y, m, d := reference.Date()
 	res := &climateInterpolation{
 		states:      make(map[string]*computedState),

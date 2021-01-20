@@ -54,7 +54,7 @@ func (s *FileClimateReporterSuite) TestFileNameWriting(c *C) {
 	}()
 
 	for i := 0; i < 4; i++ {
-		cr.Time = fn.Start.Add(time.Duration(i*333) * time.Millisecond)
+		cr.Time = fn.(*fileClimateReporter).Start.Add(time.Duration(i*333) * time.Millisecond)
 		fn.ReportChannel() <- cr
 	}
 	close(fn.ReportChannel())
@@ -69,6 +69,6 @@ func (s *FileClimateReporterSuite) TestFileNameWriting(c *C) {
 333 50.00 21.00 21.00 21.00 21.00
 666 50.00 21.00 21.00 21.00 21.00
 999 50.00 21.00 21.00 21.00 21.00
-`, fn.Start))
+`, fn.(*fileClimateReporter).Start))
 
 }

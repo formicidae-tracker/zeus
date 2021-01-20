@@ -8,6 +8,7 @@ import (
 	"net/rpc"
 	"os"
 	"sync"
+	"time"
 
 	socketcan "github.com/atuleu/golang-socketcan"
 	"github.com/formicidae-tracker/zeus"
@@ -128,7 +129,8 @@ func (z *Zeus) dispatcherForInterface(ifname string) (ArkeDispatcher, error) {
 	if err != nil {
 		return nil, err
 	}
-	z.dispatchers[ifname] = NewArkeDispatcher(ifname, intf)
+	d = NewArkeDispatcher(ifname, intf)
+	z.dispatchers[ifname] = d
 	return d, nil
 }
 
@@ -141,12 +143,19 @@ func (z *Zeus) checkSeason(season zeus.SeasonFile) error {
 	return nil
 }
 
-func (z *Zeus) setupZoneClimate(name string, definition ZoneDefinition, climate zeus.ZoneClimate) error {
+func (z *Zeus) setupZoneClimate(name, suffix string, definition ZoneDefinition, climate zeus.ZoneClimate) error {
 	d, err := z.dispatcherForInterface(definition.CANInterface)
 	if err != nil {
 		return err
 	}
-	r, err := NewZoneClimateRunner(d, definition, climate, z.olympusHost)
+	r, err := NewZoneClimateRunner(ZoneClimateRunnerOptions{
+		Name:        name,
+		FileSuffix:  suffix,
+		Dispatcher:  d,
+		Climate:     climate,
+		OlympusHost: z.olympusHost,
+		Definition:  definition,
+	})
 	if err != nil {
 		return err
 	}
@@ -171,8 +180,10 @@ func (z *Zeus) startClimate(season zeus.SeasonFile) (rerr error) {
 		return fmt.Errorf("invalid season file: %s", err)
 	}
 
+	suffix := time.Now().Format("2006-01-02T150405")
+
 	for name, climate := range season.Zones {
-		err := z.setupZoneClimate(name, z.definitions[name], climate)
+		err := z.setupZoneClimate(name, suffix, z.definitions[name], climate)
 		if err != nil {
 			return fmt.Errorf("Could not setup zone '%s': %s", name, err)
 		}

@@ -129,7 +129,8 @@ func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 	go func() { s.H.C <- c }()
 	zone := zeus.ZoneClimate{}
 
-	n, err := NewRPCReporter("test-zone", testAddress, zone, bytes.NewBuffer(nil))
+	n, err := NewRPCReporter("test-zone", testAddress, zone)
+	n.log.SetOutput(bytes.NewBuffer(nil))
 	c.Assert(err, IsNil)
 	n.MaxAttempts = 2
 	n.ReconnectionWindow = 5 * time.Millisecond

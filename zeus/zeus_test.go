@@ -100,7 +100,18 @@ func (s *ZeusSuite) TestStartStop(c *C) {
 	c.Check(s.zeus.stopClimate(), ErrorMatches, "Not running")
 	c.Check(s.zeus.startClimate(zeus.SeasonFile{
 		Zones: map[string]zeus.ZoneClimate{
-			"nest": zeus.ZoneClimate{},
+			"nest": zeus.ZoneClimate{
+				States: []zeus.State{
+					zeus.State{
+						Name:         "day",
+						Temperature:  26.0,
+						Humidity:     50,
+						Wind:         100,
+						VisibleLight: 100,
+						UVLight:      100,
+					},
+				},
+			},
 		},
 	}), IsNil)
 	c.Check(s.zeus.isRunning(), Equals, true)
