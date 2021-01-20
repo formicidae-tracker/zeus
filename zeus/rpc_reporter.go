@@ -77,6 +77,7 @@ func (r *RPCReporter) Report() {
 	var resetConnection <-chan time.Time = nil
 	var resetTimer *time.Timer = nil
 	unused := 0
+	r.log.Printf("started")
 	for {
 		if rerr != nil && resetConnection == nil {
 			if trials < r.MaxAttempts {

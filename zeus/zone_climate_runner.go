@@ -72,10 +72,10 @@ func (r *zoneClimateRunner) spawnAlarmMonitor(wg *sync.WaitGroup) {
 func (r *zoneClimateRunner) spawnReporters(wg *sync.WaitGroup) {
 	for _, reporter := range r.reporters {
 		wg.Add(1)
-		go func() {
+		go func(reporter Reporter) {
 			reporter.Report()
 			wg.Done()
-		}()
+		}(reporter)
 	}
 }
 
@@ -143,6 +143,10 @@ func (r *zoneClimateRunner) stopTasks() {
 		r.logger.Printf("presenceMonitorer did not close gracefully: %s", err)
 	}
 
+	for _, capability := range r.capabilities {
+		capability.Close()
+	}
+
 	close(r.alarmMonitor.Inbound())
 }
 
@@ -205,8 +209,8 @@ func (r *zoneClimateRunner) Close() error {
 	}
 	r.logger.Printf("closing")
 	close(r.quit)
-	r.logger.Printf("closed")
 	<-r.done
+	r.logger.Printf("closed")
 	return nil
 }
 
