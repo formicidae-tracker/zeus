@@ -1,0 +1,30 @@
+name: fort-zeus-cli
+base: core20 # the base snap is the execution environment for this snap
+version: git
+summary: FORT zeus command line utility
+description: |
+  fort-zeus-cli install the `zeus-cli` command line utility, used to
+  scan, start and stop season file on zeus node on the local network.
+grade: stable
+confinement: devmode
+
+parts:
+  zeus-cli:
+    # See 'snapcraft plugins'
+    plugin: go
+    source: .
+    source-type: local
+
+  zeus-cli-completion:
+    plugin: dump
+    source: snap/local
+    source-type: local
+
+
+apps:
+  fort-zeus-cli:
+    command: bin/zeus-cli
+    plugs:
+      - home
+      - network
+    completer: fort-zeus-cli.bash-completer
