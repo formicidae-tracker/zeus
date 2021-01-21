@@ -14,6 +14,8 @@ parts:
     plugin: go
     source: .
     source-type: local
+    prime:
+      - bin/zeus-cli
 
   zeus-cli-completion:
     plugin: dump

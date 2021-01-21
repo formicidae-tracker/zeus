@@ -5,3 +5,4 @@ cover.out
 /tools/arke-zeus-config/arke-zeus-config
 zeus-cli/zeus-cli
 prime/
+*.snap
