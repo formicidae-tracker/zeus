@@ -6,7 +6,7 @@ description: |
   fort-zeus-cli install the `zeus-cli` command line utility, used to
   scan, start and stop season file on zeus node on the local network.
 grade: stable
-confinement: devmode
+confinement: strict
 
 parts:
   zeus-cli:
