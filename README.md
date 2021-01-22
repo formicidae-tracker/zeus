@@ -97,4 +97,4 @@ https://github.com/formicidae-tracker/fort-configuration/
 
 ## License
 
-This project is licensed under the GPL version 3 license
+This project is licensed under the LGPL version 3 license
