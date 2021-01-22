@@ -1,4 +1,4 @@
-# dieu: climate control program for the FORmicidae Tracker
+# zeus: climate control program for the FORmicidae Tracker
 
 This program inrterface with the fort hardware to monitor and control
 the climate for the tracking chamber. It features:
@@ -13,38 +13,50 @@ the climate for the tracking chamber. It features:
 * YAML based configuration file for setting up the climate state
   machine
 
+
+The program is spit in two, `zeus` that is meant to be runned as a
+service and the `zeus-cli` program to start/stop climate on nodes and
+simulate season files.
+
+`zeus` is not meant to be used directly by user of the FORmicidae
+Tracker. It should be installed and configured properly by site
+administrators (with certainly the help of the [FORT ansible
+configuration](https://github.com/formicidae-tracker/fort-configuration)
+
 ## Getting started
 
-### Prerequesite
+### zeus-cli
 
-If actual climate should be controlled the host should run Linux and
-have installed `slcan-utils` packages.
-
-Otherwise if just simulation is required, you only need to install go
-version 1.11. You can follow installation instructions
-[here](https://golang.org/doc/install).
-
-Please do not forget to setup your GOPATH and [test your
-installation](https://golang.org/doc/install#testing)
-
-### Installing
+`zeus-cli` is installed by using snap.
 
 ``` bash
-go get -u github.com/formicidae-tracker/dieu/dieu
-go install github.com/formicidae-tracker/dieu/dieu
+sudo snap install fort-zeus-cli
+sudo snap alias fort-zeus-cli zeus-cli
 ```
 
-You should now be able to run the `dieu` command.
+You should be able to scan node over the network with
 
+``` bash
+zeus-cli scan
+```
+
+you may run into a tcp lookup error. This is due to a limitation of
+snap regarding `.local` network addresses. It can be solved using the
+following commands once.
+
+``` bash
+sudo apt install nscd
+sudo service snapd restart
+```
 
 ## Testing a season file
 
 You can find sample season file in `examples/` subfolder. You can test
-the climate it will produce using `dieu simulate` subcommand.
+the climate it will produce using `zeus-cli simulate <file>` subcommand.
 
 ``` bash
 cd examples
-dieu -c simple.season simulate [-d 10] [-s 06:00]
+zeus-cli simulate [-d 10] [-s 06:00] simple.season
 ```
 
 Will list on stdout the states dieu will go through over a duration of
@@ -55,6 +67,28 @@ with the `-s` flags.
 
 You can find more information in
 [examples](/examples/list.md).
+
+### Starting/stopping climate on a node
+
+Climate could be started on a node with the command
+
+``` bash
+zeus-cli start <node> <file>
+```
+
+The snap install tab auto-completion for your shell that will discover
+available node on the local network and complete them.
+
+Climate can be stopped using the command
+
+``` bash
+zeus-cli stop <node>
+```
+
+### `zeus`
+
+It is highly advised to use the ansible configuration repository:
+https://github.com/formicidae-tracker/fort-configuration/
 
 
 ## Authors
