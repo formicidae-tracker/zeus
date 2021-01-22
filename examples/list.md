@@ -12,17 +12,11 @@ You can do a lot of nifty things with season file. So test them using the `dieu 
 
 ## Structure of a season file
 
-Season file are based on [YAML](https://learn.getgrav.org/advanced/yaml) language. 
-We first defines a list of emails
+Season file are based on [YAML](https://learn.getgrav.org/advanced/yaml) language.
 
-```yaml
-# -*- mode: yaml -*- 
-emails:
-  - no-reply@example.com
-  - no-reply@some.org
-```
-
-Then we define a list of named zone that dieu will control
+We start by defining a list of named zone that zeus must control. Each
+node declares the zone it can manage. By default this zone is called
+`box`.
 
 ```yaml
 zones:
@@ -30,16 +24,10 @@ zones:
   box:
 ```
 
-Each zone should be tied to a single CAN bus, identified by its inerface name. Several zone can share the same CAN bus by using different devices-id. For simple single zone scenarii, just use 'slcan0' and '1'
 
-```yaml
-zones:
-  box:
-    can-interface: slcan0
-    devices-id: 1
-```
-
-For each zone that have temperature and humidity monitoring (where a Zeus board is assigned to) you can define a file to log all climate data and temperature and humidity boundaries that will trigger an alert.
+For each zone that have temperature and humidity monitoring (where a
+Zeus board is assigned to) you can define boundary condition wich will
+trigger alarms.
 
 ```yaml
 zones:
@@ -48,10 +36,13 @@ zones:
     maximal-temperature: 31.0 #°C
     minimal-humidity: 40.0 # % R.H.
     maximal-humidity: 80.0 # % R.H.
-    climate-report-file: /data/someuser/experiments.txt
 ```
 
-Then we define all the possible states of our climate state machine. Each states can defines desired temperature, humidity, wind, and light (visible and UV). Each state should have a unique name. You can define as many state you want for a zone.
+Then we define all the possible states of our climate state
+machine. Each states can defines desired temperature, humidity, wind,
+and light (visible and UV). Each state should have a unique name. You
+can define as many state you want for a zone.
+
 ```yaml
 zones:
   box:
@@ -68,7 +59,9 @@ zones:
         uv-light: 0
 ```
 
-You do not have to specify all the state value. If two state are linked with a transition, all the misisng values will be taken from the previous value
+You do not have to specify all the state value. If two state are
+linked with a transition, all the misisng values will be taken from
+the previous value
 
 Finally we should define transitions from one state to another.
 
@@ -86,11 +79,21 @@ zones:
         duration: 40m
 ```
 
-Here we define two transitions, one from the 'night' to the 'day state, occuring every day at 06:00 __UTC__ , and another one from 'day' to 'night' occuring every day at 17:00 __UTC__ . Indeed the use of UTC time is mandatory to avoid changes in the expected 24h cycle if the experiment would be run during a daylight time change in your local timezone.
+Here we define two transitions, one from the 'night' to the 'day
+state, occuring every day at 06:00 __UTC__ , and another one from
+'day' to 'night' occuring every day at 17:00 __UTC__ . Indeed the use
+of UTC time is mandatory to avoid changes in the expected 24h cycle if
+the experiment would be run during a daylight time change in your
+local timezone.
 
-Each transition is not necersarly instantaneous, and a could use the duration field.. Then dieu will linearly interpolate all the value between the two steps over the desired duration. Possible suffixes are 'h' 'm' 's' and 'us'.
+Each transition is not necersarly instantaneous, and a could use the
+duration field.. Then dieu will linearly interpolate all the value
+between the two steps over the desired duration. Possible suffixes are
+'h' 'm' 's' and 'us'.
 
-Furthermore transitions are not necersarly occuring everyday. Using the `day` field, we can define a transition that will occurs only in the experiment n days after the start of the experiment
+Furthermore transitions are not necersarly occuring everyday. Using
+the `day` field, we can define a transition that will occurs only in
+the experiment n days after the start of the experiment
 
 ```yaml
 zones:
@@ -108,13 +111,3 @@ zones:
         start: 17:00
         duration: 30m
 ```
-
-
-
-
-
-
-
-
-
-

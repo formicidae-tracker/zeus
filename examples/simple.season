@@ -1,21 +1,9 @@
 # -*- mode: yaml -*-
-# emails are used to send alert
-emails:
-  - no-reply@unil.ch
-    no-reply@tuleu.science
-# We define here the zone we can control. dieu should be able to
+# We define here the zone we can control. zeus should be able to
 # control different zone if you plug enough hardware
 zones:
   # The name of the zone
   box:
-    # each zone is tied to one CAN bus interface. Zone can share
-    # interface
-    can-interface: slcan0
-    # if you have two zone with the same CAN bus, you must use devices
-    # with different ID (1 to 7)
-    devices-id: 1
-    # if you want to log all climate data to a file
-    climate-report-file: /data/someuser/experiments.txt
     # defines minima and maxima that will trigger alarms
     minimal-temperature: 20.0
     maximal-temperature: 31.0

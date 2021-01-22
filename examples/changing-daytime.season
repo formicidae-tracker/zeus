@@ -1,12 +1,6 @@
 # -*- mode: yaml -*-
-emails:
-  - no-reply@unil.ch
-    no-reply@tuleu.science
 zones:
   box:
-    can-interface: slcan0
-    devices-id: 1
-    climate-report-file: /data/someuser/experiments.txt
     minimal-temperature: 20.0
     maximal-temperature: 31.0
     minimal-humidity: 40.0

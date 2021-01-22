@@ -1,7 +1,4 @@
 # -*- mode: yaml -*-
-emails:
-  - no-reply@unil.ch
-    no-reply@tuleu.science
 zones:
   box:
     can-interface: slcan0
@@ -31,12 +28,8 @@ zones:
         to: night
         start: 17:00
         duration: 30m
-  # we add another zone
+  # we use another zone
   tunnel:
-    # we share the same interface
-    can-interface: slcan0
-    # therefore we should use a different ID than the default 1
-    devices-id: 2
     # we do not have a zeus board for this zone, so we can't report
     # and monitor the temperature/humidity. But we still need a state
     states:
