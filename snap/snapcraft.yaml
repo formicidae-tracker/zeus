@@ -19,6 +19,8 @@ parts:
       go install -p 2 -ldflags="-X 'github.com/formicidae-tracker/zeus.ZEUS_VERSION=$(git describe)' -linkmode=external" ./...
     prime:
       - bin/zeus-cli
+    stage-packages:
+      - avahi-daemon
 
   zeus-cli-completion:
     plugin: dump
