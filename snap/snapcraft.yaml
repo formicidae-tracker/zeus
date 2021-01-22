@@ -32,4 +32,5 @@ apps:
     plugs:
       - home
       - network
+      - avahi-observe
     completer: fort-zeus-cli.bash-completer
