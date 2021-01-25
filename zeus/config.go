@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"regexp"
 
 	flags "github.com/jessevdk/go-flags"
@@ -44,6 +45,11 @@ func OpenConfig(filename string) (*Config, error) {
 	err = yaml.Unmarshal(buf, c)
 	if err != nil {
 		return nil, err
+	}
+
+	slackToken := os.Getenv("ZEUS_SLACK_API_TOKEN")
+	if len(slackToken) > 0 {
+		c.SlackToken = slackToken
 	}
 
 	return c, nil
