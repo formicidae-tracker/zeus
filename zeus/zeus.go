@@ -45,6 +45,7 @@ func OpenZeus(c Config) (*Zeus, error) {
 		dispatchers: make(map[string]ArkeDispatcher),
 	}
 	if len(c.SlackToken) > 0 {
+		z.logger.Printf("Slack notification are enabled")
 		z.slackClient = slack.New(c.SlackToken)
 	}
 	return z, nil
@@ -199,6 +200,7 @@ func (z *Zeus) startClimate(season zeus.SeasonFile) (rerr error) {
 		if err != nil {
 			return err
 		}
+		z.logger.Printf("Will report to %s:%s", season.SlackUser, userID)
 	}
 
 	for name, climate := range season.Zones {

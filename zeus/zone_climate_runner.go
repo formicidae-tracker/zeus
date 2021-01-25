@@ -319,7 +319,7 @@ func (r *zoneClimateRunner) setUpSlackReporter(o ZoneClimateRunnerOptions) error
 	if o.SlackClient == nil || len(o.SlackUserID) == 0 {
 		return nil
 	}
-	aReporter, err := NewSlackReporter(o.SlackClient, o.SlackUserID)
+	aReporter, err := NewSlackReporter(o.SlackClient, o.SlackUserID, o.Name)
 	if err != nil {
 		return err
 	}

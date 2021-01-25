@@ -12,6 +12,7 @@ import (
 type slackReporter struct {
 	c        *slack.Client
 	userID   string
+	zoneName string
 	hostName string
 	events   chan zeus.AlarmEvent
 }
@@ -27,9 +28,17 @@ func (r *slackReporter) formatEvent(e zeus.AlarmEvent) string {
 }
 
 func (r *slackReporter) Report() {
+	r.c.PostMessage(r.userID, slack.MsgOptionText(fmt.Sprintf(":ok: climate control on %s.%s started.", r.hostName, r.zoneName), true))
 	for e := range r.events {
-		r.c.PostMessage(r.userID, slack.MsgOptionText(r.formatEvent(e), true))
+		if e.Zone != r.zoneName {
+			continue
+		}
+		_, _, err := r.c.PostMessage(r.userID, slack.MsgOptionText(r.formatEvent(e), true))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[zone/%s/slack] cannot notify alarm: %s\n", r.zoneName, err)
+		}
 	}
+	r.c.PostMessage(r.userID, slack.MsgOptionText(fmt.Sprintf(":ok: climate control on %s.%s stopped.", r.hostName, r.zoneName), true))
 }
 
 func (r *slackReporter) AlarmChannel() chan<- zeus.AlarmEvent {
@@ -50,11 +59,12 @@ func FindSlackUser(c *slack.Client, username string) (string, error) {
 	return "", fmt.Errorf("Could not find user @%s on slack", username)
 }
 
-func NewSlackReporter(c *slack.Client, userID string) (AlarmReporter, error) {
+func NewSlackReporter(c *slack.Client, userID, zoneName string) (AlarmReporter, error) {
 	res := &slackReporter{
-		c:      c,
-		userID: userID,
-		events: make(chan zeus.AlarmEvent),
+		c:        c,
+		userID:   userID,
+		zoneName: zoneName,
+		events:   make(chan zeus.AlarmEvent),
 	}
 	var err error
 	res.hostName, err = os.Hostname()
