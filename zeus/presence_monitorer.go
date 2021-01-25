@@ -17,7 +17,7 @@ type DeviceDefinition struct {
 }
 
 type PresenceMonitorer interface {
-	Monitor([]DeviceDefinition, chan<- zeus.Alarm)
+	Monitor([]DeviceDefinition, chan<- TimedAlarm)
 	Ping(class arke.NodeClass, ID arke.NodeID)
 	Close() error
 }
@@ -45,7 +45,7 @@ func (m *presenceMonitorer) Close() error {
 	return nil
 }
 
-func (m *presenceMonitorer) Monitor(devices []DeviceDefinition, alarms chan<- zeus.Alarm) {
+func (m *presenceMonitorer) Monitor(devices []DeviceDefinition, alarms chan<- TimedAlarm) {
 
 	if m.quit != nil {
 		return
@@ -73,14 +73,14 @@ func (m *presenceMonitorer) Monitor(devices []DeviceDefinition, alarms chan<- ze
 				continue
 			}
 			received[def] = true
-		case <-timeout.C:
+		case t := <-timeout.C:
 			deviceRequest := make(map[arke.NodeClass]bool)
 			for d, ok := range received {
 				if ok == true {
 					received[d] = false
 					continue
 				}
-				alarms <- zeus.NewMissingDeviceAlarm(m.ifname, d.Class, d.ID)
+				alarms <- TimedAlarm{Alarm: zeus.NewMissingDeviceAlarm(m.ifname, d.Class, d.ID), Time: t}
 				deviceRequest[d.Class] = true
 			}
 			for c, _ := range deviceRequest {

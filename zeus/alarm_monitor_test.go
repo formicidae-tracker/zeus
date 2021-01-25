@@ -80,7 +80,7 @@ func (s *AlarmMonitorSuite) TestMonitor(c *C) {
 				return
 			default:
 			}
-			m.Inbound() <- alarms[1]
+			m.Inbound() <- TimedAlarm{Alarm: alarms[1], Time: time.Now()}
 		}
 	}()
 
@@ -105,7 +105,7 @@ func (s *AlarmMonitorSuite) TestMonitor(c *C) {
 				return
 			default:
 			}
-			m.Inbound() <- alarms[0]
+			m.Inbound() <- TimedAlarm{Alarm: alarms[0], Time: time.Now()}
 			time.Sleep(alarms[0].RepeatPeriod())
 		}
 	}()

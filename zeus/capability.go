@@ -8,7 +8,7 @@ import (
 	"github.com/formicidae-tracker/zeus"
 )
 
-type callback func(c chan<- zeus.Alarm, m *StampedMessage) error
+type callback func(c chan<- TimedAlarm, m *StampedMessage) error
 
 type capability interface {
 	Requirements() []arke.NodeClass
@@ -82,18 +82,18 @@ func (c *ClimateControllable) Action(s zeus.State) error {
 func (c *ClimateControllable) Callbacks() map[arke.MessageClass]callback {
 	res := map[arke.MessageClass]callback{}
 	if c.withCelaeno == true {
-		res[arke.CelaenoStatusMessage] = func(alarms chan<- zeus.Alarm, mm *StampedMessage) error {
+		res[arke.CelaenoStatusMessage] = func(alarms chan<- TimedAlarm, mm *StampedMessage) error {
 			m, ok := mm.M.(*arke.CelaenoStatus)
 			if ok == false {
 				return fmt.Errorf("Invalid message type %v", mm.M.MessageClassID())
 			}
 			if m.WaterLevel != arke.CelaenoWaterNominal {
 				if m.WaterLevel&arke.CelaenoWaterReadError != 0 {
-					alarms <- zeus.WaterLevelUnreadable
+					alarms <- TimedAlarm{Alarm: zeus.WaterLevelUnreadable, Time: mm.T}
 				} else if m.WaterLevel&arke.CelaenoWaterCritical != 0 {
-					alarms <- zeus.WaterLevelCritical
+					alarms <- TimedAlarm{Alarm: zeus.WaterLevelCritical, Time: mm.T}
 				} else {
-					alarms <- zeus.WaterLevelWarning
+					alarms <- TimedAlarm{Alarm: zeus.WaterLevelWarning, Time: mm.T}
 				}
 			}
 			if m.Fan.Status() != arke.FanOK {
@@ -106,13 +106,13 @@ func (c *ClimateControllable) Callbacks() map[arke.MessageClass]callback {
 
 					return c.celaeno.SendHeartbeatRequest()
 				} else {
-					alarms <- zeus.NewFanAlarm("Celaeno Fan", m.Fan.Status())
+					alarms <- TimedAlarm{Alarm: zeus.NewFanAlarm("Celaeno Fan", m.Fan.Status()), Time: mm.T}
 				}
 			}
 			return nil
 		}
 	}
-	res[arke.ZeusStatusMessage] = func(alarms chan<- zeus.Alarm, mm *StampedMessage) error {
+	res[arke.ZeusStatusMessage] = func(alarms chan<- TimedAlarm, mm *StampedMessage) error {
 		m, ok := mm.M.(*arke.ZeusStatus)
 		if ok == false {
 			return fmt.Errorf("Invalid message type %v", mm.M.MessageClassID())
@@ -120,7 +120,7 @@ func (c *ClimateControllable) Callbacks() map[arke.MessageClass]callback {
 
 		if m.Status&arke.ZeusClimateNotControlledWatchDog != 0 {
 			if m.Status&arke.ZeusActive != 0 {
-				alarms <- zeus.SensorReadoutIssue
+				alarms <- TimedAlarm{Alarm: zeus.SensorReadoutIssue, Time: mm.T}
 				if time.Now().After(c.zeusResetGuard) {
 					c.zeusResetGuard = time.Now().Add(FanResetWindow)
 					c.zeus.SendResetRequest()
@@ -130,7 +130,7 @@ func (c *ClimateControllable) Callbacks() map[arke.MessageClass]callback {
 					return err
 				}
 			} else {
-				alarms <- zeus.ClimateStateUndefined
+				alarms <- TimedAlarm{Alarm: zeus.ClimateStateUndefined, Time: mm.T}
 			}
 		}
 
@@ -144,18 +144,18 @@ func (c *ClimateControllable) Callbacks() map[arke.MessageClass]callback {
 
 				return c.celaeno.SendHeartbeatRequest()
 			} else {
-				alarms <- zeus.HumidityUnreachable
+				alarms <- TimedAlarm{Alarm: zeus.HumidityUnreachable, Time: mm.T}
 			}
 		}
 
 		for i, f := range m.Fans {
 			if f.Status() != arke.FanOK {
-				alarms <- zeus.NewFanAlarm(zeusFanNames[i], f.Status())
+				alarms <- TimedAlarm{Alarm: zeus.NewFanAlarm(zeusFanNames[i], f.Status()), Time: mm.T}
 			}
 		}
 
 		if m.Status&(arke.ZeusTemperatureUnreachable) != 0 {
-			alarms <- zeus.TemperatureUnreachable
+			alarms <- TimedAlarm{Alarm: zeus.TemperatureUnreachable, Time: mm.T}
 		}
 		return nil
 	}
@@ -245,18 +245,18 @@ func checkBound(v, min, max zeus.BoundedUnit) bool {
 
 func (r *ClimateRecordable) Callbacks() map[arke.MessageClass]callback {
 	return map[arke.MessageClass]callback{
-		arke.ZeusReportMessage: func(alarms chan<- zeus.Alarm, mm *StampedMessage) error {
+		arke.ZeusReportMessage: func(alarms chan<- TimedAlarm, mm *StampedMessage) error {
 			report, ok := mm.M.(*arke.ZeusReport)
 			if ok == false {
 				return fmt.Errorf("Invalid Message Type %v", mm.M.MessageClassID())
 			}
 
 			if checkBound(zeus.Humidity(report.Humidity), r.MinHumidity, r.MaxHumidity) == false {
-				alarms <- zeus.HumidityOutOfBound
+				alarms <- TimedAlarm{Alarm: zeus.HumidityOutOfBound, Time: mm.T}
 			}
 
 			if checkBound(zeus.Temperature(report.Temperature[0]), r.MinTemperature, r.MaxTemperature) == false {
-				alarms <- zeus.TemperatureOutOfBound
+				alarms <- TimedAlarm{Alarm: zeus.TemperatureOutOfBound, Time: mm.T}
 			}
 
 			creport := zeus.ClimateReport{

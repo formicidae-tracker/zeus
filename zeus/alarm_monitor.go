@@ -1,23 +1,30 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path"
 	"time"
 
+	"github.com/adrg/xdg"
 	"github.com/formicidae-tracker/zeus"
 )
+
+type TimedAlarm struct {
+	Alarm zeus.Alarm
+	Time  time.Time
+}
 
 type AlarmMonitor interface {
 	Name() string
 	Monitor()
-	Inbound() chan<- zeus.Alarm
+	Inbound() chan<- TimedAlarm
 	Outbound() <-chan zeus.AlarmEvent
 }
 
 type alarmMonitor struct {
-	inbound  chan zeus.Alarm
+	inbound  chan TimedAlarm
 	outbound chan zeus.AlarmEvent
 	name     string
 }
@@ -55,6 +62,17 @@ func (m *alarmMonitor) Monitor() {
 
 	quit := make(chan struct{})
 
+	logfilename, err := xdg.DataFile("fort-experiments/climate-debug/box.txt")
+	if err != nil {
+		panic(err.Error())
+	}
+
+	logfile, err := os.Create(logfilename)
+	if err != nil {
+		panic(err.Error())
+	}
+	defer logfile.Close()
+
 	for {
 		select {
 		case a, ok := <-m.inbound:
@@ -62,24 +80,28 @@ func (m *alarmMonitor) Monitor() {
 				close(quit)
 				return
 			}
-			if t, ok := trigged[a.Reason()]; ok == false || t <= 0 {
+			fmt.Fprintf(logfile, "%s: %+v\n", a.Time, a.Alarm)
+			if t, ok := trigged[a.Alarm.Reason()]; ok == false || t <= 0 {
 				go func() {
 					m.outbound <- zeus.AlarmEvent{
-						Reason:   a.Reason(),
-						Priority: a.Priority(),
+						Reason:   a.Alarm.Reason(),
+						Priority: a.Alarm.Priority(),
 						Status:   zeus.AlarmOn,
-						Time:     time.Now(),
+						Time:     a.Time,
 						Zone:     m.name,
 					}
 				}()
-				trigged[a.Reason()] = 1
-				alarms[a.Reason()] = a
+				trigged[a.Alarm.Reason()] = 1
+				alarms[a.Alarm.Reason()] = a.Alarm
+				fmt.Fprintf(logfile, "%s: %s:%d\n", time.Now(), a.Alarm.Reason(), 1)
 			} else {
-				trigged[a.Reason()] += 1
+				trigged[a.Alarm.Reason()] += 1
+				fmt.Fprintf(logfile, "%s: up %s:%d\n", time.Now(), a.Alarm.Reason(), trigged[a.Alarm.Reason()])
 			}
-			go wakeupAfter(clearWakeup, quit, a.Reason(), 3*a.RepeatPeriod())
+			go wakeupAfter(clearWakeup, quit, a.Alarm.Reason(), 3*a.Alarm.RepeatPeriod())
 		case r := <-clearWakeup:
 			t, ok := trigged[r]
+			fmt.Fprintf(logfile, "%s: down %s:%d\n", time.Now(), r, t)
 			if ok == false {
 				// should not happen but lets says it does
 				continue
@@ -103,7 +125,7 @@ func (m *alarmMonitor) Monitor() {
 	}
 }
 
-func (m *alarmMonitor) Inbound() chan<- zeus.Alarm {
+func (m *alarmMonitor) Inbound() chan<- TimedAlarm {
 	return m.inbound
 }
 
@@ -118,7 +140,7 @@ func NewAlarmMonitor(zoneName string) (AlarmMonitor, error) {
 	}
 
 	return &alarmMonitor{
-		inbound:  make(chan zeus.Alarm, 30),
+		inbound:  make(chan TimedAlarm, 30),
 		outbound: make(chan zeus.AlarmEvent, 60),
 		name:     path.Join(hostname, "zone", zoneName),
 	}, nil

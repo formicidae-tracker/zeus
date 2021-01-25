@@ -36,7 +36,7 @@ func (s *PresenceMonitorerSuite) TestClose(c *C) {
 }
 
 func (s *PresenceMonitorerSuite) TestAlarmsMissingDevices(c *C) {
-	alarms := make(chan zeus.Alarm)
+	alarms := make(chan TimedAlarm)
 	devices := []DeviceDefinition{
 		DeviceDefinition{Class: arke.ZeusClass, ID: 1},
 		DeviceDefinition{Class: arke.CelaenoClass, ID: 1},
@@ -50,6 +50,6 @@ func (s *PresenceMonitorerSuite) TestAlarmsMissingDevices(c *C) {
 	go s.m.Monitor(devices, alarms)
 	a, ok := <-alarms
 	c.Check(ok, Equals, true)
-	c.Check(a, DeepEquals, zeus.NewMissingDeviceAlarm("test-can", arke.CelaenoClass, 1))
+	c.Check(a, DeepEquals, TimedAlarm{Alarm: zeus.NewMissingDeviceAlarm("test-can", arke.CelaenoClass, 1), Time: a.Time})
 	c.Check(s.m.Close(), IsNil)
 }

@@ -159,14 +159,14 @@ func (r *zoneClimateRunner) handleMessage(m *StampedMessage, wg *sync.WaitGroup)
 		r.presenceMonitor.Ping(m.M.(*arke.HeartBeatData).Class, m.ID)
 	case arke.ErrorReportMessage:
 		e := m.M.(*arke.ErrorReportData)
-		r.alarmMonitor.Inbound() <- zeus.NewDeviceInternalError(r.dispatcher.Name(), e.Class, e.ID, e.ErrorCode)
+		r.alarmMonitor.Inbound() <- TimedAlarm{Alarm: zeus.NewDeviceInternalError(r.dispatcher.Name(), e.Class, e.ID, e.ErrorCode), Time: m.T}
 	default:
 		callbacks, ok := r.callbacks[m.M.MessageClassID()]
 		if ok == false {
 			return
 		}
 		wg.Add(1)
-		go func(m *StampedMessage, alarms chan<- zeus.Alarm) {
+		go func(m *StampedMessage, alarms chan<- TimedAlarm) {
 			for _, callback := range callbacks {
 				err := callback(alarms, m)
 				if err != nil {
