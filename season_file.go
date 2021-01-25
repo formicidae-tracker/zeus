@@ -10,7 +10,8 @@ import (
 )
 
 type SeasonFile struct {
-	Zones map[string]ZoneClimate
+	SlackUser string `yaml:"slack-user"`
+	Zones     map[string]ZoneClimate
 }
 
 type deprecatedLine struct {

@@ -13,12 +13,14 @@ import (
 	socketcan "github.com/atuleu/golang-socketcan"
 	"github.com/formicidae-tracker/zeus"
 	"github.com/grandcat/zeroconf"
+	"github.com/slack-go/slack"
 )
 
 type Zeus struct {
 	intfFactory func(ifname string) (socketcan.RawInterface, error)
 
-	logger *log.Logger
+	logger      *log.Logger
+	slackClient *slack.Client
 
 	olympusHost string
 	definitions map[string]ZoneDefinition
@@ -41,6 +43,9 @@ func OpenZeus(c Config) (*Zeus, error) {
 		definitions: c.Zones,
 		runners:     make(map[string]ZoneClimateRunner),
 		dispatchers: make(map[string]ArkeDispatcher),
+	}
+	if len(c.SlackToken) > 0 {
+		z.slackClient = slack.New(c.SlackToken)
 	}
 	return z, nil
 }
@@ -146,7 +151,7 @@ func (z *Zeus) checkSeason(season zeus.SeasonFile) error {
 	return nil
 }
 
-func (z *Zeus) setupZoneClimate(name, suffix string, definition ZoneDefinition, climate zeus.ZoneClimate) error {
+func (z *Zeus) setupZoneClimate(name, suffix string, definition ZoneDefinition, climate zeus.ZoneClimate, userID string) error {
 	d, err := z.dispatcherForInterface(definition.CANInterface)
 	if err != nil {
 		return err
@@ -158,6 +163,8 @@ func (z *Zeus) setupZoneClimate(name, suffix string, definition ZoneDefinition, 
 		Climate:     climate,
 		OlympusHost: z.olympusHost,
 		Definition:  definition,
+		SlackClient: z.slackClient,
+		SlackUserID: userID,
 	})
 	if err != nil {
 		return err
@@ -184,9 +191,18 @@ func (z *Zeus) startClimate(season zeus.SeasonFile) (rerr error) {
 	}
 
 	suffix := time.Now().Format("2006-01-02T150405")
+	userID := ""
+
+	if z.slackClient != nil && len(season.SlackUser) > 0 {
+		var err error
+		userID, err = FindSlackUser(z.slackClient, season.SlackUser)
+		if err != nil {
+			return err
+		}
+	}
 
 	for name, climate := range season.Zones {
-		err := z.setupZoneClimate(name, suffix, z.definitions[name], climate)
+		err := z.setupZoneClimate(name, suffix, z.definitions[name], climate, userID)
 		if err != nil {
 			return fmt.Errorf("Could not setup zone '%s': %s", name, err)
 		}
