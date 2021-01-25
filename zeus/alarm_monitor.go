@@ -1,9 +1,9 @@
 package main
 
 import (
-	"log"
 	"os"
 	"path"
+	"sort"
 	"time"
 
 	"github.com/formicidae-tracker/zeus"
@@ -26,34 +26,67 @@ func (m *alarmMonitor) Name() string {
 	return m.name
 }
 
-func wakeupAfter(wakeup chan<- string, quit <-chan struct{}, reason string, after time.Duration) {
-	time.Sleep(after)
-	//we allow sending on closed wakeup channel even if we really try not to.
-	defer func() {
-		if r := recover(); r != nil {
-			log.Printf("Recovered: %s", r)
-		}
-	}()
-	select {
-	case <-quit:
-		return
-	default:
-		wakeup <- reason
-	}
+type deadline struct {
+	reason string
+	when   time.Time
+}
 
+type deadlineList []deadline
+
+func (l deadlineList) Len() int {
+	return len(l)
+}
+func (l deadlineList) Swap(i, j int) {
+	l[i], l[j] = l[j], l[i]
+}
+func (l deadlineList) Less(i, j int) bool {
+	return l[i].when.Before(l[j].when)
+}
+
+type deadlineMeeter struct {
+	deadlines []deadline
+}
+
+func (d *deadlineMeeter) pushDeadline(reason string, after time.Duration) <-chan time.Time {
+	now := time.Now()
+	d.deadlines = append(d.deadlines, deadline{reason: reason, when: now.Add(after)})
+	sort.Sort(deadlineList(d.deadlines))
+	return time.After(d.deadlines[0].when.Sub(now) + 10*time.Millisecond)
+}
+
+func (d *deadlineMeeter) pop(now time.Time) ([]string, <-chan time.Time) {
+	res := make([]string, 0, len(d.deadlines))
+	i := 0
+	deadline := deadline{}
+	for i, deadline = range d.deadlines {
+		if deadline.when.After(now) == true {
+			break
+		}
+		res = append(res, deadline.reason)
+	}
+	d.deadlines = d.deadlines[i:]
+	if len(d.deadlines) == 0 {
+		return res, nil
+	}
+	return res, time.After(d.deadlines[0].when.Sub(now) + 10*time.Millisecond)
 }
 
 func (m *alarmMonitor) Monitor() {
-	trigged := make(map[string]int)
-	alarms := make(map[string]zeus.Alarm)
-	clearWakeup := make(chan string)
+	type alarmData struct {
+		alarm zeus.Alarm
+		count int
+	}
+	alarms := make(map[string]*alarmData)
 
 	defer func() {
 		close(m.outbound)
-		close(clearWakeup)
 	}()
 
 	quit := make(chan struct{})
+
+	meeter := &deadlineMeeter{}
+
+	var wakeUp <-chan time.Time = nil
 
 	for {
 		select {
@@ -62,42 +95,46 @@ func (m *alarmMonitor) Monitor() {
 				close(quit)
 				return
 			}
-			if t, ok := trigged[a.Reason()]; ok == false || t <= 0 {
+			if d, ok := alarms[a.Reason()]; ok == false || d.count <= 0 {
 				go func() {
 					m.outbound <- zeus.AlarmEvent{
-						Reason:   a.Reason(),
-						Priority: a.Priority(),
-						Status:   zeus.AlarmOn,
-						Time:     time.Now(),
-						Zone:     m.name,
+						Reason: a.Reason(),
+						Flags:  a.Flags(),
+						Status: zeus.AlarmOn,
+						Time:   time.Now(),
+						Zone:   m.name,
 					}
 				}()
-				trigged[a.Reason()] = 1
-				alarms[a.Reason()] = a
+				alarms[a.Reason()] = &alarmData{alarm: a, count: 1}
 			} else {
-				trigged[a.Reason()] += 1
+				alarms[a.Reason()].count += 1
 			}
-			go wakeupAfter(clearWakeup, quit, a.Reason(), 3*a.RepeatPeriod())
-		case r := <-clearWakeup:
-			t, ok := trigged[r]
-			if ok == false {
-				// should not happen but lets says it does
-				continue
-			}
+			wakeUp = meeter.pushDeadline(a.Reason(), a.DeadLine())
+		case now := <-wakeUp:
+			var expired []string = nil
+			expired, wakeUp = meeter.pop(now)
+			for _, r := range expired {
+				a, ok := alarms[r]
+				if ok == false {
+					// should not happen but lets says it does
+					continue
+				}
 
-			if t == 1 {
-				go func() {
-					m.outbound <- zeus.AlarmEvent{
-						Reason:   alarms[r].Reason(),
-						Priority: alarms[r].Priority(),
-						Status:   zeus.AlarmOff,
-						Time:     time.Now(),
-						Zone:     m.name,
-					}
-				}()
-			}
-			if t != 0 {
-				trigged[r] = t - 1
+				if a.count == 1 {
+					go func() {
+						m.outbound <- zeus.AlarmEvent{
+							Reason: a.alarm.Reason(),
+							Flags:  a.alarm.Flags(),
+							Status: zeus.AlarmOff,
+							Time:   now,
+							Zone:   m.name,
+						}
+					}()
+					delete(alarms, r)
+				}
+				if a.count > 1 {
+					a.count -= 1
+				}
 			}
 		}
 	}

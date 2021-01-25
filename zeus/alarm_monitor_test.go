@@ -33,11 +33,11 @@ func (a testAlarm) Reason() string {
 	return string(a)
 }
 
-func (a testAlarm) Priority() zeus.Priority {
+func (a testAlarm) Flags() zeus.AlarmFlags {
 	return zeus.Warning
 }
 
-func (a testAlarm) RepeatPeriod() time.Duration {
+func (a testAlarm) DeadLine() time.Duration {
 	return 5 * time.Millisecond
 }
 
@@ -74,7 +74,7 @@ func (s *AlarmMonitorSuite) TestMonitor(c *C) {
 		}()
 
 		for {
-			waiter(alarms[1].RepeatPeriod(), jitterAmount)
+			waiter(alarms[1].DeadLine()/3, jitterAmount)
 			select {
 			case <-quit:
 				return
@@ -93,7 +93,7 @@ func (s *AlarmMonitorSuite) TestMonitor(c *C) {
 	e, ok := <-m.Outbound()
 	c.Check(ok, Equals, true)
 	c.Check(e.Reason, Equals, alarms[1].Reason())
-	c.Check(e.Priority, Equals, alarms[1].Priority())
+	c.Check(e.Flags, Equals, alarms[1].Flags())
 	c.Check(e.Status, Equals, zeus.AlarmOn)
 
 	start := time.Now()
@@ -106,24 +106,24 @@ func (s *AlarmMonitorSuite) TestMonitor(c *C) {
 			default:
 			}
 			m.Inbound() <- alarms[0]
-			time.Sleep(alarms[0].RepeatPeriod())
+			time.Sleep(alarms[0].DeadLine() / 3)
 		}
 	}()
 	e, ok = <-m.Outbound()
 	c.Check(ok, Equals, true)
 	c.Check(e.Reason, Equals, alarms[0].Reason())
-	c.Check(e.Priority, Equals, alarms[0].Priority())
+	c.Check(e.Flags, Equals, alarms[0].Flags())
 	c.Check(e.Status, Equals, zeus.AlarmOn)
 
 	e, ok = <-m.Outbound()
 	end := time.Now()
 	c.Check(ok, Equals, true)
 	c.Check(e.Reason, Equals, alarms[0].Reason())
-	c.Check(e.Priority, Equals, alarms[0].Priority())
+	c.Check(e.Flags, Equals, alarms[0].Flags())
 	c.Check(e.Status, Equals, zeus.AlarmOff)
 
 	lasted := end.Sub(start)
-	expected := time.Duration(3+repeat-1) * alarms[0].RepeatPeriod()
+	expected := time.Duration(3+repeat-1) * alarms[0].DeadLine() / 3
 
 	c.Check(lasted > expected, Equals, true, Commentf("Lasted %s, expected at least %s", lasted, expected))
 

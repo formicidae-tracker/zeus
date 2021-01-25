@@ -156,11 +156,11 @@ func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 		wg.Done()
 	}()
 	n.AlarmChannel() <- zeus.AlarmEvent{
-		Zone:     zeus.ZoneIdentifier(s.H.hostname, "test-zone"),
-		Reason:   "foo",
-		Priority: zeus.Warning,
-		Status:   zeus.AlarmOn,
-		Time:     time.Now(),
+		Zone:   zeus.ZoneIdentifier(s.H.hostname, "test-zone"),
+		Reason: "foo",
+		Flags:  zeus.Warning,
+		Status: zeus.AlarmOn,
+		Time:   time.Now(),
 	}
 
 	wg.Add(1)

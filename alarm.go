@@ -7,45 +7,47 @@ import (
 	"github.com/formicidae-tracker/libarke/src-go/arke"
 )
 
-type Priority int
+type AlarmFlags int
 
 const (
-	Emergency Priority = iota
-	Warning
+	Warning             AlarmFlags = 0x00
+	Emergency                      = 0x01
+	InstantNotification            = 0x80
 )
 
 type Alarm interface {
-	Priority() Priority
+	Flags() AlarmFlags
 	Reason() string
-	RepeatPeriod() time.Duration
+	DeadLine() time.Duration
 }
 
 type AlarmString struct {
-	p      Priority
-	reason string
+	f        AlarmFlags
+	reason   string
+	deadline time.Duration
 }
 
-func (a AlarmString) Priority() Priority {
-	return a.p
+func (a AlarmString) Flags() AlarmFlags {
+	return a.f
 }
 
 func (a AlarmString) Reason() string {
 	return a.reason
 }
 
-func (a AlarmString) RepeatPeriod() time.Duration {
-	return 500 * time.Millisecond
+func (a AlarmString) DeadLine() time.Duration {
+	return a.deadline
 }
 
-var WaterLevelWarning = AlarmString{Warning, "Celaeno water level is low"}
-var WaterLevelCritical = AlarmString{Emergency, "Celaeno is empty"}
-var WaterLevelUnreadable = AlarmString{Emergency, "Celaeno water level is unreadable"}
-var HumidityUnreachable = AlarmString{Warning, "Cannot reach desired humidity"}
-var TemperatureUnreachable = AlarmString{Warning, "Cannot reach desired temperature"}
-var HumidityOutOfBound = AlarmString{Emergency, "Humidity is outside of boundaries"}
-var TemperatureOutOfBound = AlarmString{Emergency, "Temperature is outside of boundaries"}
-var SensorReadoutIssue = AlarmString{Emergency, "Cannot read sensors"}
-var ClimateStateUndefined = AlarmString{Emergency, "Climate State Undefined"}
+var WaterLevelWarning = AlarmString{Warning | InstantNotification, "Celaeno water level is low", 2 * time.Second}
+var WaterLevelCritical = AlarmString{Emergency | InstantNotification, "Celaeno is empty", 2 * time.Second}
+var WaterLevelUnreadable = AlarmString{Emergency | InstantNotification, "Celaeno water level is unreadable", 2 * time.Second}
+var HumidityUnreachable = AlarmString{Warning, "Cannot reach desired humidity", 10 * time.Minute}
+var TemperatureUnreachable = AlarmString{Warning, "Cannot reach desired temperature", 10 * time.Minute}
+var HumidityOutOfBound = AlarmString{Emergency | InstantNotification, "Humidity is outside of boundaries", 1 * time.Minute}
+var TemperatureOutOfBound = AlarmString{Emergency | InstantNotification, "Temperature is outside of boundaries", 1 * time.Minute}
+var SensorReadoutIssue = AlarmString{Emergency, "Cannot read sensors", 2 * time.Second}
+var ClimateStateUndefined = AlarmString{Emergency, "Climate State Undefined", 2 * time.Second}
 
 type MissingDeviceAlarm struct {
 	canInterface string
@@ -53,16 +55,16 @@ type MissingDeviceAlarm struct {
 	id           arke.NodeID
 }
 
-func (a MissingDeviceAlarm) Priority() Priority {
-	return Emergency
+func (a MissingDeviceAlarm) Flags() AlarmFlags {
+	return Emergency | InstantNotification
 }
 
 func (a MissingDeviceAlarm) Reason() string {
 	return fmt.Sprintf("Device %s.%s.%d is missing", a.canInterface, arke.ClassName(a.class), a.id)
 }
 
-func (a MissingDeviceAlarm) RepeatPeriod() time.Duration {
-	return HeartBeatPeriod
+func (a MissingDeviceAlarm) DeadLine() time.Duration {
+	return 5 * HeartBeatPeriod
 }
 
 func (a MissingDeviceAlarm) Device() (string, arke.NodeClass, arke.NodeID) {
@@ -83,7 +85,7 @@ type FanAlarm struct {
 	status arke.FanStatus
 }
 
-func (a FanAlarm) Priority() Priority {
+func (a FanAlarm) Flags() AlarmFlags {
 	if a.status == arke.FanStalled {
 		return Emergency
 	}
@@ -99,8 +101,8 @@ func (a FanAlarm) Reason() string {
 	return fmt.Sprintf("Fan %s is %s", a.fan, status)
 }
 
-func (a FanAlarm) RepeatPeriod() time.Duration {
-	return 500 * time.Millisecond
+func (a FanAlarm) DeadLine() time.Duration {
+	return 10 * time.Minute
 }
 
 func (a FanAlarm) Fan() string {
@@ -129,12 +131,12 @@ func NewDeviceInternalError(intfName string, c arke.NodeClass, id arke.NodeID, e
 	return DeviceInternalError{intfName: intfName, class: c, id: id, errorCode: e}
 }
 
-func (e DeviceInternalError) Priority() Priority {
+func (e DeviceInternalError) Flags() AlarmFlags {
 	return Warning
 }
 
-func (e DeviceInternalError) RepeatPeriod() time.Duration {
-	return 500 * time.Millisecond
+func (e DeviceInternalError) DeadLine() time.Duration {
+	return 2 * time.Second
 }
 
 func (e DeviceInternalError) Reason() string {
@@ -157,25 +159,16 @@ const (
 )
 
 type AlarmEvent struct {
-	Zone     string
-	Reason   string
-	Priority Priority
-	Status   AlarmStatus
-	Time     time.Time
+	Zone   string
+	Reason string
+	Flags  AlarmFlags
+	Status AlarmStatus
+	Time   time.Time
 }
 
-var levelByPriority map[Priority]int
-
-func MapPriority(p Priority) int {
-	if r, ok := levelByPriority[p]; ok == true {
-		return r
+func MapPriority(f AlarmFlags) int {
+	if f&Emergency != 0 {
+		return 2
 	}
-	return levelByPriority[Emergency]
-}
-
-func init() {
-	levelByPriority = map[Priority]int{
-		Warning:   1,
-		Emergency: 2,
-	}
+	return 1
 }

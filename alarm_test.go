@@ -16,42 +16,42 @@ func (s *AlarmSuite) TestRepeatPeriod(c *C) {
 		Alarm    Alarm
 		Expected time.Duration
 	}{
-		{AlarmString{}, 500 * time.Millisecond},
-		{NewFanAlarm("foo", arke.FanAging), 500 * time.Millisecond},
-		{NewMissingDeviceAlarm("foo", arke.ZeusClass, 1), HeartBeatPeriod},
-		{NewDeviceInternalError("foo", arke.ZeusClass, 1, 43), 500 * time.Millisecond},
+		{AlarmString{}, 0},
+		{NewFanAlarm("foo", arke.FanAging), 10 * time.Minute},
+		{NewMissingDeviceAlarm("foo", arke.ZeusClass, 1), 5 * HeartBeatPeriod},
+		{NewDeviceInternalError("foo", arke.ZeusClass, 1, 43), 2 * time.Second},
 	}
 
 	for _, d := range testdata {
-		c.Check(d.Alarm.RepeatPeriod(), Equals, d.Expected)
+		c.Check(d.Alarm.DeadLine(), Equals, d.Expected)
 	}
 
 }
 
 func (s *AlarmSuite) TestData(c *C) {
 	testdata := []struct {
-		Alarm            Alarm
-		ExpectedReason   string
-		ExpectedPriority Priority
+		Alarm          Alarm
+		ExpectedReason string
+		ExpectedFlags  AlarmFlags
 	}{
-		{WaterLevelWarning, "Celaeno water level is low", Warning},
-		{WaterLevelCritical, "Celaeno is empty", Emergency},
-		{WaterLevelUnreadable, "Celaeno water level is unreadable", Emergency},
+		{WaterLevelWarning, "Celaeno water level is low", Warning | InstantNotification},
+		{WaterLevelCritical, "Celaeno is empty", Emergency | InstantNotification},
+		{WaterLevelUnreadable, "Celaeno water level is unreadable", Emergency | InstantNotification},
 		{HumidityUnreachable, "Cannot reach desired humidity", Warning},
 		{TemperatureUnreachable, "Cannot reach desired temperature", Warning},
-		{HumidityOutOfBound, "Humidity is outside of boundaries", Emergency},
-		{TemperatureOutOfBound, "Temperature is outside of boundaries", Emergency},
+		{HumidityOutOfBound, "Humidity is outside of boundaries", Emergency | InstantNotification},
+		{TemperatureOutOfBound, "Temperature is outside of boundaries", Emergency | InstantNotification},
 		{SensorReadoutIssue, "Cannot read sensors", Emergency},
 		{NewFanAlarm("foo", arke.FanStalled), "Fan foo is stalled", Emergency},
 		{NewFanAlarm("bar", arke.FanAging), "Fan bar is aging", Warning},
 		{NewFanAlarm("baz", arke.FanOK), "Fan baz is aging", Warning},
-		{NewMissingDeviceAlarm("vcan0", arke.ZeusClass, 1), "Device vcan0.Zeus.1 is missing", Emergency},
+		{NewMissingDeviceAlarm("vcan0", arke.ZeusClass, 1), "Device vcan0.Zeus.1 is missing", Emergency | InstantNotification},
 		{NewDeviceInternalError("vcan0", arke.ZeusClass, 1, 0x42), "Device vcan0.Zeus.1 internal error 0x0042", Warning},
 	}
 
 	for _, d := range testdata {
 		c.Check(d.Alarm.Reason(), Equals, d.ExpectedReason)
-		c.Check(d.Alarm.Priority(), Equals, d.ExpectedPriority)
+		c.Check(d.Alarm.Flags(), Equals, d.ExpectedFlags)
 	}
 
 }
@@ -95,17 +95,17 @@ func (s *AlarmSuite) TestMisisngDeviceAlarm(c *C) {
 
 func (s *AlarmSuite) TestLevelMapping(c *C) {
 	testdata := []struct {
-		Priority Priority
-		Level    int
+		Flags AlarmFlags
+		Level int
 	}{
 		{Warning, 1},
 		{Emergency, 2},
-		{100, 2},
-		{-100, 2},
+		{Warning | InstantNotification, 1},
+		{Emergency | InstantNotification, 2},
 	}
 
 	for _, d := range testdata {
-		c.Check(MapPriority(d.Priority), Equals, d.Level)
+		c.Check(MapPriority(d.Flags), Equals, d.Level)
 	}
 }
 

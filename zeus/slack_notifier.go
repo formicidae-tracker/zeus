@@ -31,9 +31,13 @@ func (r *slackReporter) formatEvent(e zeus.AlarmEvent) string {
 func (r *slackReporter) Report() {
 	r.c.PostMessage(r.userID, slack.MsgOptionText(fmt.Sprintf(":ok: climate control on %s.%s started.", r.hostName, r.zoneName), true))
 	for e := range r.events {
+		if e.Flags&zeus.InstantNotification == 0 {
+			continue
+		}
 		if e.Zone != path.Join(r.hostName, "zone", r.zoneName) {
 			continue
 		}
+
 		_, _, err := r.c.PostMessage(r.userID, slack.MsgOptionText(r.formatEvent(e), true))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[zone/%s/slack] cannot notify alarm: %s\n", r.zoneName, err)
