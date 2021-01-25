@@ -6,3 +6,4 @@ cover.out
 zeus-cli/zeus-cli
 prime/
 *.snap
+check-lib

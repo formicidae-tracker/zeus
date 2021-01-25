@@ -1,10 +1,10 @@
 VERSION := $(shell git describe)
 LDFLAGS := -ldflags "-X 'github.com/formicidae-tracker/zeus.ZEUS_VERSION=$(VERSION)'"
 
-all: lib zeus/zeus arke-change-device-id arkedump arke-zeus-config zeus-calibrator zeus-cli/zeus-cli
+all: check-lib zeus/zeus tools/arke-change-device-id/arke-change-device-id tools/arkedump/arkedump tools/arke-zeus-config/arke-zeus-config tools/zeus-calibrator/zeus-calibrator zeus-cli/zeus-cli
 
-lib:
-	go test
+check-lib: *.go
+	go test && touch check-lib
 
 clean:
 	rm -f zeus/zeus
@@ -14,22 +14,22 @@ clean:
 	rm -f tools/zeus-calibrator/zeus-calibrator
 	rm -f zeus-cli/zeus-cli
 
-zeus/zeus:
+zeus/zeus: zeus/*.go
 	cd zeus && go build $(LDFLAGS) && go test
 
-arke-change-device-id:
+tools/arke-change-device-id/arke-change-device-id: tools/arke-change-device-id/*.go
 	cd tools/arke-change-device-id && go build $(LDFLAGS)
 
-arkedump:
+tools/arkedump/arkedump: tools/arkedump/*.go
 	cd tools/arkedump && go build $(LDFLAGS)
 
-arke-zeus-config:
+tools/arke-zeus-config/arke-zeus-config: tools/arke-zeus-config/*.go
 	cd tools/arke-zeus-config && go build $(LDFLAGS)
 
-zeus-calibrator:
+tools/zeus-calibrator/zeus-calibrator: tools/zeus-calibrator/*.go
 	cd tools/zeus-calibrator && go build $(LDFLAGS)
 
-zeus-cli/zeus-cli:
+zeus-cli/zeus-cli: zeus-cli/*.go
 	cd zeus-cli && go build $(LDFLAGS)
 
 INSTALL_PREFIX=/usr/local
