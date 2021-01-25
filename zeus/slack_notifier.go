@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/formicidae-tracker/zeus"
@@ -30,7 +31,7 @@ func (r *slackReporter) formatEvent(e zeus.AlarmEvent) string {
 func (r *slackReporter) Report() {
 	r.c.PostMessage(r.userID, slack.MsgOptionText(fmt.Sprintf(":ok: climate control on %s.%s started.", r.hostName, r.zoneName), true))
 	for e := range r.events {
-		if e.Zone != r.zoneName {
+		if e.Zone != path.Join(r.hostName, "zone", r.zoneName) {
 			continue
 		}
 		_, _, err := r.c.PostMessage(r.userID, slack.MsgOptionText(r.formatEvent(e), true))
@@ -52,7 +53,7 @@ func FindSlackUser(c *slack.Client, username string) (string, error) {
 		return "", err
 	}
 	for _, user := range users {
-		if user.Profile.DisplayNameNormalized == username {
+		if user.Profile.DisplayName == username {
 			return user.ID, nil
 		}
 	}
