@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/formicidae-tracker/zeus"
@@ -20,7 +21,7 @@ type SimulateCommand struct {
 var simulateCommand = &SimulateCommand{}
 
 func (c *SimulateCommand) Execute(args []string) error {
-	season, err := zeus.ReadSeasonFile(string(c.Args.SeasonFile))
+	season, err := zeus.ReadSeasonFile(string(c.Args.SeasonFile), os.Stderr)
 	if err != nil {
 		return err
 	}

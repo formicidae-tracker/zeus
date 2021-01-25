@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+
 	"github.com/formicidae-tracker/zeus"
 	"github.com/jessevdk/go-flags"
 )
@@ -13,7 +15,7 @@ type StartCommand struct {
 }
 
 func (c *StartCommand) Execute(args []string) error {
-	season, err := zeus.ReadSeasonFile(string(c.Args.SeasonFile))
+	season, err := zeus.ReadSeasonFile(string(c.Args.SeasonFile), os.Stderr)
 	if err != nil {
 		return err
 	}
