@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path"
@@ -17,9 +18,11 @@ type AlarmMonitor interface {
 }
 
 type alarmMonitor struct {
-	inbound  chan zeus.Alarm
-	outbound chan zeus.AlarmEvent
-	name     string
+	inbound    chan zeus.Alarm
+	outbound   chan zeus.AlarmEvent
+	logger     *log.Logger
+	concatened chan string
+	name       string
 }
 
 func (m *alarmMonitor) Name() string {
@@ -86,13 +89,40 @@ func (d *deadlineMeeter) pop(now time.Time) ([]string, <-chan time.Time) {
 	return res, d.next(now)
 }
 
+func (m *alarmMonitor) concatenedPrintf(format string, args ...interface{}) {
+	m.concatened <- fmt.Sprintf(format, args...)
+}
+
+func (m *alarmMonitor) logConcatened() {
+	period := 10 * time.Minute
+	ticker := time.NewTicker(period)
+	defer ticker.Stop()
+	logs := make(map[string]int)
+	for {
+		select {
+		case <-ticker.C:
+			for l, count := range logs {
+				m.logger.Printf("(%d times in %s) %s", count, period, l)
+			}
+			logs = make(map[string]int)
+		case l, ok := <-m.concatened:
+			if ok == false {
+				return
+			}
+			logs[l] = logs[l] + 1
+		}
+	}
+
+}
+
 func (m *alarmMonitor) Monitor() {
 	alarms := make(map[string]zeus.Alarm)
 
 	defer func() {
+		close(m.concatened)
 		close(m.outbound)
 	}()
-
+	go m.logConcatened()
 	quit := make(chan struct{})
 
 	meeter := newDeadLineMeeter()
@@ -125,7 +155,7 @@ func (m *alarmMonitor) Monitor() {
 			expired, wakeUpChan = meeter.pop(now)
 
 			if len(expired) == 0 {
-				log.Printf("spurious pop")
+				m.concatenedPrintf("spurious pop")
 			}
 
 			for _, r := range expired {
@@ -164,8 +194,10 @@ func NewAlarmMonitor(zoneName string) (AlarmMonitor, error) {
 	}
 
 	return &alarmMonitor{
-		inbound:  make(chan zeus.Alarm, 30),
-		outbound: make(chan zeus.AlarmEvent, 60),
-		name:     path.Join(hostname, "zone", zoneName),
+		inbound:    make(chan zeus.Alarm, 30),
+		outbound:   make(chan zeus.AlarmEvent, 60),
+		name:       path.Join(hostname, "zone", zoneName),
+		logger:     log.New(os.Stderr, "[zone/"+zoneName+"/alarm] ", 0),
+		concatened: make(chan string),
 	}, nil
 }
