@@ -14,7 +14,7 @@ clean:
 	rm -f tools/zeus-calibrator/zeus-calibrator
 	rm -f zeus-cli/zeus-cli
 
-zeus/zeus: zeus/*.go
+zeus/zeus: zeus/*.go *.go
 	cd zeus && go build $(LDFLAGS) && go test
 
 tools/arke-change-device-id/arke-change-device-id: tools/arke-change-device-id/*.go
@@ -29,7 +29,7 @@ tools/arke-zeus-config/arke-zeus-config: tools/arke-zeus-config/*.go
 tools/zeus-calibrator/zeus-calibrator: tools/zeus-calibrator/*.go
 	cd tools/zeus-calibrator && go build $(LDFLAGS)
 
-zeus-cli/zeus-cli: zeus-cli/*.go
+zeus-cli/zeus-cli: zeus-cli/*.go *.go
 	cd zeus-cli && go build $(LDFLAGS)
 
 INSTALL_PREFIX=/usr/local
