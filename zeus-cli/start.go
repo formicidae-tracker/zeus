@@ -24,7 +24,11 @@ func (c *StartCommand) Execute(args []string) error {
 		return err
 	}
 	unused := 0
-	return node.RunMethod("Zeus.StartClimate", *season, &unused)
+	return node.RunMethod("Zeus.StartClimate",
+		zeus.ZeusStartArgs{
+			Version: zeus.ZEUS_VERSION,
+			Season:  *season,
+		}, &unused)
 }
 
 type StopCommand struct {

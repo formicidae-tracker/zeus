@@ -1,6 +1,10 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/formicidae-tracker/zeus"
+)
 
 type ScanCommand struct {
 }
@@ -10,22 +14,28 @@ func (c *ScanCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	format := " %15s | %s\n"
-	fmt.Printf(format, "Node", "Status")
-	fmt.Println("-----------------+--------------------------------------------------------------")
+	format := " %15s | %-7s | %-25s | %-10s \n"
+	fmt.Printf(format, "Node", "Status", "Version", "Compatible")
+	fmt.Println("-----------------+---------+---------------------------+------------")
 
 	for _, node := range nodes {
-		running := false
+		status := zeus.ZeusStatusReply{}
 		ignored := 0
-		err := node.RunMethod("Zeus.Running", ignored, &running)
+		err := node.RunMethod("Zeus.Status", ignored, &status)
 		if err != nil {
 			return err
 		}
-		value := "Idle"
-		if running == true {
-			value = "Running"
+		statusValue := "Idle"
+		if status.Running == true {
+			statusValue = "Running"
 		}
-		fmt.Printf(format, node.Name, value)
+		compatibleValue := "✓"
+		compatible, err := zeus.VersionAreCompatible(zeus.ZEUS_VERSION, status.Version)
+		if err != nil || compatible == false {
+			compatibleValue = "✗"
+		}
+
+		fmt.Printf(format, node.Name, statusValue, status.Version, compatibleValue)
 	}
 	return nil
 }

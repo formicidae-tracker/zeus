@@ -278,11 +278,20 @@ func (z *Zeus) stopClimate() error {
 	return nil
 }
 
-func (z *Zeus) StartClimate(season zeus.SeasonFile, unused *int) error {
+func (z *Zeus) StartClimate(args zeus.ZeusStartArgs, unused *int) error {
 	z.mx.Lock()
 	defer z.mx.Unlock()
 
-	return z.startClimate(season)
+	compatible, err := zeus.VersionAreCompatible(zeus.ZEUS_VERSION, args.Version)
+	if err != nil {
+		return err
+	}
+
+	if compatible == false {
+		return fmt.Errorf("client version (%s) is incompatible with service version (%s)", args.Version, zeus.ZEUS_VERSION)
+	}
+
+	return z.startClimate(args.Season)
 }
 
 func (z *Zeus) StopClimate(ignored int, unused *int) error {
@@ -296,11 +305,16 @@ func (z *Zeus) isRunning() bool {
 	return len(z.runners) != 0
 }
 
-func (z *Zeus) Running(ignored int, reply *bool) error {
+func (z *Zeus) Status(ignored int, reply *zeus.ZeusStatusReply) error {
 	z.mx.Lock()
 	defer z.mx.Unlock()
 
-	*reply = z.isRunning()
+	reply.Running = z.isRunning()
+	reply.Version = zeus.ZEUS_VERSION
+	if reply.Running == false {
+		return nil
+	}
+	reply.Since = z.since
 	return nil
 }
 
