@@ -2,6 +2,11 @@ package zeus
 
 import (
 	"bytes"
+	"io/ioutil"
+	"log"
+	"os"
+	"path/filepath"
+	"time"
 
 	. "gopkg.in/check.v1"
 )
@@ -59,4 +64,68 @@ ERROR: 'bar' is deprecated: another comment
 	c.Check(string(buffer.Bytes()), Equals, `WARNING: 'foo' is deprecated (will raise an error in a future release): comment
 WARNING: 'bar' is deprecated (will raise an error in a future release): another comment
 `)
+}
+
+func (s *SeasonFileSuite) TestWritingShouldBeReadable(c *C) {
+	season := SeasonFile{
+		SlackUser: "@John Doe",
+		Zones: map[string]ZoneClimate{
+			"box": ZoneClimate{
+				MinimalTemperature: 14.0,
+				MaximalTemperature: 34.0,
+				MinimalHumidity:    40.0,
+				MaximalHumidity:    80.0,
+				States: []State{
+					State{
+						Name:         "day",
+						Temperature:  16.0,
+						Humidity:     60.0,
+						Wind:         100,
+						VisibleLight: 20,
+						UVLight:      100,
+					},
+					State{
+						Name:         "night",
+						Temperature:  16.0,
+						Humidity:     UndefinedHumidity,
+						Wind:         UndefinedWind,
+						VisibleLight: 0,
+						UVLight:      0,
+					},
+				},
+				Transitions: []Transition{
+					Transition{
+						From:     "day",
+						To:       "night",
+						Duration: 30 * time.Minute,
+					},
+					Transition{
+						From:     "night",
+						To:       "day",
+						Duration: 30 * time.Minute,
+					},
+				},
+			},
+		},
+	}
+
+	season.Zones["box"].Transitions[0].Start, _ = time.Parse("15:04", "17:00")
+	season.Zones["box"].Transitions[1].Start, _ = time.Parse("15:04", "06:00")
+
+	tmpdir, err := ioutil.TempDir("", "zeus-tests-season")
+	c.Assert(err, IsNil)
+	defer os.RemoveAll(tmpdir)
+	filename := filepath.Join(tmpdir, "test.season")
+	c.Assert(season.WriteFile(filename), IsNil)
+	defer func() {
+		if c.Failed() == false {
+			return
+		}
+		content, err := ioutil.ReadFile(filename)
+		c.Assert(err, IsNil)
+		log.Printf("written file:\n%s", content)
+	}()
+	result, err := ReadSeasonFile(filename, bytes.NewBuffer(nil))
+	c.Check(err, IsNil)
+	c.Check(*result, DeepEquals, season)
 }

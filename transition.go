@@ -2,7 +2,6 @@ package zeus
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 )
 
@@ -25,13 +24,17 @@ func (t *Transition) Check() error {
 	return nil
 }
 
+type transitionShadow struct {
+	From           string
+	To             string
+	Start          string
+	Day            int `yaml:"day,omitempty"`
+	Duration       time.Duration
+	StartTimeDelta time.Duration `yaml:"start-time-delta,omitempty"`
+}
+
 func (t *Transition) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	type TransitionShadow struct {
-		From, To, Start, Day string
-		Duration             time.Duration
-		StartTimeDelta       time.Duration `yaml:"start-time-delta"`
-	}
-	shadow := TransitionShadow{}
+	shadow := transitionShadow{}
 	if err := unmarshal(&shadow); err != nil {
 		return err
 	}
@@ -44,16 +47,20 @@ func (t *Transition) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err != nil {
 		return err
 	}
-	if len(shadow.Day) == 0 {
-		t.Day = 0
-	} else {
-		t.Day, err = strconv.Atoi(shadow.Day)
-		if err != nil {
-			return err
-		}
-	}
+	t.Day = shadow.Day
 
 	return t.Check()
+}
+
+func (t Transition) MarshalYAML() (interface{}, error) {
+	return transitionShadow{
+		From:           t.From,
+		To:             t.To,
+		Start:          t.Start.Format("15:04"),
+		Day:            t.Day,
+		Duration:       t.Duration,
+		StartTimeDelta: t.StartTimeDelta,
+	}, nil
 }
 
 func (t Transition) String() string {

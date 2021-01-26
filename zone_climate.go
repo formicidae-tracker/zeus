@@ -1,10 +1,10 @@
 package zeus
 
 type ZoneClimate struct {
-	MinimalTemperature Temperature `yaml:"minimal-temperature"`
-	MaximalTemperature Temperature `yaml:"maximal-temperature"`
-	MinimalHumidity    Humidity    `yaml:"minimal-humidity"`
-	MaximalHumidity    Humidity    `yaml:"maximal-humidity"`
+	MinimalTemperature Temperature `yaml:"minimal-temperature,omitempty"`
+	MaximalTemperature Temperature `yaml:"maximal-temperature,omitempty"`
+	MinimalHumidity    Humidity    `yaml:"minimal-humidity,omitempty"`
+	MaximalHumidity    Humidity    `yaml:"maximal-humidity,omitempty"`
 	States             []State
 	Transitions        []Transition
 }

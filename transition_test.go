@@ -84,7 +84,7 @@ start: 14:00`,
 		{
 			Text: `start: 12:00
 day: foo`,
-			ErrorMatches: "strconv.Atoi: .*",
+			ErrorMatches: "cannot unmarshal !!str `foo` into int",
 		},
 		{
 			Text: `from: a
@@ -108,8 +108,9 @@ start-time-delta: 3m`,
 
 func (s *TransitionSuite) TestFormatting(c *C) {
 	testdata := []struct {
-		Transition Transition
-		Expected   string
+		Transition     Transition
+		ExpectedString string
+		ExpectedYAML   string
 	}{
 		{
 			Transition: Transition{
@@ -119,7 +120,12 @@ func (s *TransitionSuite) TestFormatting(c *C) {
 				Start:    time.Date(0, 1, 1, 12, 30, 0, 0, time.UTC),
 				Duration: 30 * time.Minute,
 			},
-			Expected: "RecurringTransition{From: a, To: b, Start: 12:30, Duration: 30m0s}",
+			ExpectedString: "RecurringTransition{From: a, To: b, Start: 12:30, Duration: 30m0s}",
+			ExpectedYAML: `from: a
+to: b
+start: "12:30"
+duration: 30m0s
+`,
 		},
 		{
 			Transition: Transition{
@@ -129,12 +135,23 @@ func (s *TransitionSuite) TestFormatting(c *C) {
 				Start:    time.Date(0, 1, 1, 10, 30, 0, 0, time.UTC),
 				Duration: 30 * time.Minute,
 			},
-			Expected: "Transition{From: a, To: b, Start: 10:30, OnDay: 2, Duration: 30m0s}",
+			ExpectedString: "Transition{From: a, To: b, Start: 10:30, OnDay: 2, Duration: 30m0s}",
+			ExpectedYAML: `from: a
+to: b
+start: "10:30"
+day: 2
+duration: 30m0s
+`,
 		},
 	}
 
 	for _, d := range testdata {
-		c.Check(d.Transition.String(), Equals, d.Expected)
+		c.Check(d.Transition.String(), Equals, d.ExpectedString)
+		data, err := yaml.Marshal(d.Transition)
+		if c.Check(err, IsNil) == false {
+			continue
+		}
+		c.Check(string(data), Equals, d.ExpectedYAML)
 	}
 
 }
