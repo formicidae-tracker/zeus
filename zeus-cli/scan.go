@@ -16,9 +16,10 @@ func (c *ScanCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	format := " %15s | %-7s | %-11s | %-20s | %-10s \n"
+	fmt.Println("┌──────────────────────┬─────────┬─────────────┬──────────────────────┬────────────┐")
+	format := "│ %20s │ %-7s │ %-11s │ %-20s │ %-10s │\n"
 	fmt.Printf(format, "Node", "Status", "Since", "Version", "Compatible")
-	fmt.Println("-----------------+---------+-------------+----------------------+------------")
+	fmt.Println("├──────────────────────┼─────────┼─────────────┼──────────────────────┼────────────┤")
 
 	for _, node := range nodes {
 		status := zeus.ZeusStatusReply{}
@@ -44,6 +45,8 @@ func (c *ScanCommand) Execute(args []string) error {
 
 		fmt.Printf(format, node.Name, statusValue, sinceValue, status.Version, compatibleValue)
 	}
+	fmt.Println("└──────────────────────┴─────────┴─────────────┴──────────────────────┴────────────┘")
+
 	return nil
 }
 
