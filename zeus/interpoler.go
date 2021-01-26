@@ -11,7 +11,7 @@ import (
 )
 
 type Interpoler interface {
-	Interpolate()
+	Interpolate(chan<- struct{})
 
 	States() <-chan zeus.State
 	Reports() <-chan zeus.StateReport
@@ -63,12 +63,12 @@ func (i *interpoler) sendState(s zeus.State) {
 	i.states <- s
 }
 
-func (i *interpoler) Interpolate() {
+func (i *interpoler) Interpolate(ready chan<- struct{}) {
+	i.quit = make(chan struct{})
 	defer func() {
 		close(i.states)
 		close(i.reports)
 	}()
-	i.quit = make(chan struct{})
 
 	i.logger.Printf("Starting interpolation loop")
 	now := time.Now()
@@ -84,6 +84,7 @@ func (i *interpoler) Interpolate() {
 	timer := time.NewTicker(i.Period)
 	defer timer.Stop()
 
+	close(ready)
 	for {
 		select {
 		case <-i.quit:

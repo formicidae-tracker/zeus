@@ -17,7 +17,7 @@ type DeviceDefinition struct {
 }
 
 type PresenceMonitorer interface {
-	Monitor([]DeviceDefinition, chan<- zeus.Alarm)
+	Monitor([]DeviceDefinition, chan<- zeus.Alarm, chan<- struct{})
 	Ping(class arke.NodeClass, ID arke.NodeID)
 	Close() error
 }
@@ -45,7 +45,7 @@ func (m *presenceMonitorer) Close() error {
 	return nil
 }
 
-func (m *presenceMonitorer) Monitor(devices []DeviceDefinition, alarms chan<- zeus.Alarm) {
+func (m *presenceMonitorer) Monitor(devices []DeviceDefinition, alarms chan<- zeus.Alarm, ready chan<- struct{}) {
 
 	if m.quit != nil {
 		return
@@ -63,6 +63,7 @@ func (m *presenceMonitorer) Monitor(devices []DeviceDefinition, alarms chan<- ze
 	timeout := time.NewTicker(3 * m.HeartBeatPeriod)
 
 	defer timeout.Stop()
+	close(ready)
 	for {
 		select {
 		case <-m.quit:

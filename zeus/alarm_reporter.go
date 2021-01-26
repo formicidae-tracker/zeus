@@ -18,7 +18,8 @@ type fileAlarmReporter struct {
 	events chan zeus.AlarmEvent
 }
 
-func (r *fileAlarmReporter) Report() {
+func (r *fileAlarmReporter) Report(ready chan<- struct{}) {
+	close(ready)
 	for event := range r.events {
 		r.logger.Printf("%+v", event)
 

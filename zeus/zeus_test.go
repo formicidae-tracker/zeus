@@ -1,33 +1,40 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
+	"github.com/adrg/xdg"
 	socketcan "github.com/atuleu/golang-socketcan"
 	"github.com/formicidae-tracker/zeus"
 	. "gopkg.in/check.v1"
 )
 
 type ZeusSuite struct {
-	interfaces map[string][]*StubRawInterface
-	oldmux     *http.ServeMux
-	zeus       *Zeus
+	interfaces          map[string][]*StubRawInterface
+	oldmux              *http.ServeMux
+	zeus                *Zeus
+	dataDir, oldDataDir string
 }
 
 var _ = Suite(&ZeusSuite{})
 
 func (s *ZeusSuite) SetUpTest(c *C) {
+	s.oldDataDir = xdg.DataHome
+	tmpdir, err := ioutil.TempDir("", "zeus-test-data-dir")
+	c.Assert(err, IsNil)
+	xdg.DataHome = tmpdir
+	s.dataDir = tmpdir
 	s.oldmux = http.DefaultServeMux
 	http.DefaultServeMux = http.NewServeMux()
 	s.interfaces = map[string][]*StubRawInterface{
 		"slcan0": nil,
 		"slcan1": nil,
 	}
-	var err error
 	s.zeus, err = OpenZeus(Config{
 		Interfaces: map[string]string{
 			"slcan0": "foo",
@@ -49,11 +56,16 @@ func (s *ZeusSuite) SetUpTest(c *C) {
 	})
 	c.Check(err, IsNil)
 	s.zeus.intfFactory = s.interfaceFactory()
-	s.zeus.logger.SetOutput(bytes.NewBuffer(nil))
+	//	s.zeus.logger.SetOutput(bytes.NewBuffer(nil))
 }
 
 func (s *ZeusSuite) TearDownTest(c *C) {
 	http.DefaultServeMux = s.oldmux
+	xdg.DataHome = s.oldDataDir
+	if len(s.dataDir) > 0 {
+		os.RemoveAll(s.dataDir)
+		s.dataDir = ""
+	}
 }
 
 func (s *ZeusSuite) interfaceFactory() func(string) (socketcan.RawInterface, error) {

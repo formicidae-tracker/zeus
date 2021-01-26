@@ -34,10 +34,12 @@ func (s *InterpolationManagerSuite) TestInterpolationReportsSanitized(c *C) {
 	i.(*interpoler).Period = 1 * time.Millisecond
 	wg := sync.WaitGroup{}
 	wg.Add(1)
+	ready := make(chan struct{})
 	go func() {
-		i.Interpolate()
+		i.Interpolate(ready)
 		wg.Done()
 	}()
+	<-ready
 
 	r, ok := <-i.Reports()
 	c.Assert(r.Current, Not(IsNil))

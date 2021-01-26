@@ -30,7 +30,9 @@ func (s *PresenceMonitorerSuite) TearDownTest(c *C) {
 
 func (s *PresenceMonitorerSuite) TestClose(c *C) {
 	c.Check(s.m.Close(), ErrorMatches, "Already closed")
-	go s.m.Monitor(nil, nil)
+	ready := make(chan struct{})
+	go s.m.Monitor(nil, nil, ready)
+	<-ready
 	time.Sleep(1 * time.Millisecond)
 	c.Check(s.m.Close(), IsNil)
 }
@@ -47,7 +49,9 @@ func (s *PresenceMonitorerSuite) TestAlarmsMissingDevices(c *C) {
 		s.m.Ping(arke.CelaenoClass, 2)
 		s.m.Ping(arke.HeliosClass, 1)
 	}()
-	go s.m.Monitor(devices, alarms)
+	ready := make(chan struct{})
+	go s.m.Monitor(devices, alarms, ready)
+	<-ready
 	a, ok := <-alarms
 	c.Check(ok, Equals, true)
 	c.Check(a, DeepEquals, zeus.NewMissingDeviceAlarm("test-can", arke.CelaenoClass, 1))

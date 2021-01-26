@@ -71,13 +71,14 @@ func (r *RPCReporter) reconnect() error {
 	return r.Conn.Call("Olympus.ReportState", r.LastStateReport, &unused)
 }
 
-func (r *RPCReporter) Report() {
+func (r *RPCReporter) Report(ready chan<- struct{}) {
 	var rerr error
 	trials := 0
 	var resetConnection <-chan time.Time = nil
 	var resetTimer *time.Timer = nil
 	unused := 0
 	r.log.Printf("started")
+	close(ready)
 	for {
 		if rerr != nil && resetConnection == nil {
 			if trials < r.MaxAttempts {

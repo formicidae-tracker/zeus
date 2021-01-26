@@ -19,7 +19,7 @@ type StampedMessage struct {
 }
 
 type ArkeDispatcher interface {
-	Dispatch()
+	Dispatch(chan<- struct{})
 	Register(devicesID arke.NodeID) <-chan *StampedMessage
 	Name() string
 	Interface() socketcan.RawInterface
@@ -70,10 +70,12 @@ func (d *arkeDispatcher) dispatchMessage(m *StampedMessage) {
 	}
 }
 
-func (d *arkeDispatcher) Dispatch() {
+func (d *arkeDispatcher) Dispatch(ready chan<- struct{}) {
 	d.done = make(chan struct{})
+
 	defer close(d.done)
 	d.logger.Printf("started")
+	close(ready)
 	for {
 		f, err := d.intf.Receive()
 		if err != nil {

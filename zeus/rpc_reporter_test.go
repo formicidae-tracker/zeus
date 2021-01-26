@@ -138,10 +138,12 @@ func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
+	ready := make(chan struct{})
 	go func() {
-		n.Report()
+		n.Report(ready)
 		wg.Done()
 	}()
+	<-ready
 
 	wg.Add(1)
 	go func() {
@@ -187,7 +189,7 @@ func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 	}
 
 	time.Sleep(time.Duration(n.MaxAttempts+100) * n.ReconnectionWindow)
-	ready := make(chan struct{})
+	ready = make(chan struct{})
 	go s.listen(true, ready)
 	<-ready
 	wg.Add(1)

@@ -48,10 +48,12 @@ func (s *FileClimateReporterSuite) TestFileNameWriting(c *C) {
 	}
 	wg := sync.WaitGroup{}
 	wg.Add(1)
+	ready := make(chan struct{})
 	go func() {
-		fn.Report()
+		fn.Report(ready)
 		wg.Done()
 	}()
+	<-ready
 
 	for i := 0; i < 4; i++ {
 		cr.Time = fn.(*fileClimateReporter).Start.Add(time.Duration(i*333) * time.Millisecond)

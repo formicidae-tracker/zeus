@@ -28,8 +28,9 @@ func (r *slackReporter) formatEvent(e zeus.AlarmEvent) string {
 	return fmt.Sprintf("%s %s.%s : '%s' %s", icon, r.hostName, e.Zone, e.Reason, alarmText)
 }
 
-func (r *slackReporter) Report() {
+func (r *slackReporter) Report(ready chan<- struct{}) {
 	r.c.PostMessage(r.userID, slack.MsgOptionText(fmt.Sprintf(":ok: climate control on %s.%s started.", r.hostName, r.zoneName), true))
+	close(ready)
 	for e := range r.events {
 		if e.Flags&zeus.InstantNotification == 0 {
 			continue

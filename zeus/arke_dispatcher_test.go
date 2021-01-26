@@ -32,10 +32,12 @@ func (s *ArkeDispatcherSuite) TestClosesInterface(c *C) {
 
 	s.SetUpTest(c)
 	done := make(chan struct{})
+	ready := make(chan struct{})
 	go func() {
-		s.d.Dispatch()
+		s.d.Dispatch(ready)
 		close(done)
 	}()
+	<-ready
 	c.Check(s.d.Close(), IsNil)
 	<-done
 }
@@ -43,8 +45,9 @@ func (s *ArkeDispatcherSuite) TestClosesInterface(c *C) {
 func (s *ArkeDispatcherSuite) TestDispatchMessages(c *C) {
 	cOne := s.d.Register(1)
 	cTwo := s.d.Register(2)
-	go s.d.Dispatch()
-
+	ready := make(chan struct{})
+	go s.d.Dispatch(ready)
+	<-ready
 	go func() { s.intf.enqueue(&arke.CelaenoSetPoint{}, 1) }()
 	go func() { s.intf.enqueue(&arke.CelaenoSetPoint{}, 2) }()
 	go func() { s.intf.enqueue(&arke.CelaenoSetPoint{}, 3) }()
@@ -58,8 +61,9 @@ func (s *ArkeDispatcherSuite) TestDispatchMessages(c *C) {
 func (s *ArkeDispatcherSuite) TestDoesNotHangUp(c *C) {
 	cOne := s.d.Register(1)
 	cTwo := s.d.Register(2)
-	go s.d.Dispatch()
-
+	ready := make(chan struct{})
+	go s.d.Dispatch(ready)
+	<-ready
 	go func() {
 		for i := 0; i < 11; i++ {
 			s.intf.enqueue(&arke.CelaenoSetPoint{}, 2)

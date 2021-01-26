@@ -1,5 +1,5 @@
 package main
 
 type Reporter interface {
-	Report()
+	Report(chan<- struct{})
 }

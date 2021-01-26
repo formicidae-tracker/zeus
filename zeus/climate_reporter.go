@@ -9,7 +9,7 @@ import (
 )
 
 type ClimateReporter interface {
-	Report()
+	Reporter
 	ReportChannel() chan<- zeus.ClimateReport
 }
 
@@ -23,7 +23,8 @@ func (n *fileClimateReporter) ReportChannel() chan<- zeus.ClimateReport {
 	return n.Chan
 }
 
-func (n *fileClimateReporter) Report() {
+func (n *fileClimateReporter) Report(ready chan<- struct{}) {
+	close(ready)
 	for cr := range n.Chan {
 		fmt.Fprintf(n.File,
 			"%d %.2f %.2f %.2f %.2f %.2f\n",

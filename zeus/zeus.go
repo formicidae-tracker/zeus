@@ -224,7 +224,9 @@ func (z *Zeus) startClimate(season zeus.SeasonFile) (rerr error) {
 	z.logger.Printf("Starting climate")
 
 	for _, d := range z.dispatchers {
-		go d.Dispatch()
+		ready := make(chan struct{})
+		go d.Dispatch(ready)
+		<-ready
 	}
 
 	for _, r := range z.runners {
@@ -264,8 +266,10 @@ func (z *Zeus) stopClimate() error {
 		return fmt.Errorf("Not running")
 	}
 
-	z.logger.Printf("Stopping climate")
 	z.clearStaticState()
+
+	z.logger.Printf("Stopping climate")
+
 	z.closeRunners()
 	z.closeDispatchers()
 	z.reset()

@@ -63,7 +63,6 @@ func (r *zoneClimateRunner) spawnAlarmMonitor(wg *sync.WaitGroup) {
 			for _, reporter := range r.alarmReporters {
 				reporter.AlarmChannel() <- event
 			}
-
 		}
 		for _, reporter := range r.alarmReporters {
 			close(reporter.AlarmChannel())
@@ -75,19 +74,23 @@ func (r *zoneClimateRunner) spawnAlarmMonitor(wg *sync.WaitGroup) {
 func (r *zoneClimateRunner) spawnReporters(wg *sync.WaitGroup) {
 	for _, reporter := range r.reporters {
 		wg.Add(1)
+		ready := make(chan struct{})
 		go func(reporter Reporter) {
-			reporter.Report()
+			reporter.Report(ready)
 			wg.Done()
 		}(reporter)
+		<-ready
 	}
 }
 
 func (r *zoneClimateRunner) spawnInterpoler(wg *sync.WaitGroup) {
 	wg.Add(1)
+	ready := make(chan struct{})
 	go func() {
-		r.interpoler.Interpolate()
+		r.interpoler.Interpolate(ready)
 		wg.Done()
 	}()
+	<-ready
 
 	wg.Add(1)
 	go func() {
@@ -123,10 +126,12 @@ func (r *zoneClimateRunner) spawnPresenceMonitor(wg *sync.WaitGroup) {
 		})
 	}
 	wg.Add(1)
+	ready := make(chan struct{})
 	go func() {
-		r.presenceMonitor.Monitor(devices, r.alarmMonitor.Inbound())
+		r.presenceMonitor.Monitor(devices, r.alarmMonitor.Inbound(), ready)
 		wg.Done()
 	}()
+	<-ready
 }
 
 func (r *zoneClimateRunner) spawnTasks(wg *sync.WaitGroup) {
