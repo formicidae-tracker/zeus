@@ -337,14 +337,24 @@ func (z *Zeus) restoreStaticStateUnsafe() error {
 	if err != nil {
 		return err
 	}
-	season, err := zeus.ReadSeasonFile(filename, bytes.NewBuffer(nil))
+	defer func() {
+		if err == nil {
+			return
+		}
+		z.logger.Printf("clearing invalid state")
+		z.clearStaticState()
+	}()
+	var season *zeus.SeasonFile = nil
+	season, err = zeus.ReadSeasonFile(filename, bytes.NewBuffer(nil))
 	if err != nil {
 		if os.IsNotExist(err) {
+			err = nil
 			return nil
 		}
 		return err
 	}
-	return z.startClimate(*season)
+	err = z.startClimate(*season)
+	return err
 }
 
 func (z *Zeus) restoreStaticState() {
