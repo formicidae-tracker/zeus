@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"path"
 	"time"
@@ -27,9 +28,17 @@ func (m *alarmMonitor) Name() string {
 
 type deadlineMeeter struct {
 	deadlines map[string]time.Time
+	timer     *time.Timer
 }
 
-func (d *deadlineMeeter) next(now time.Time) *time.Timer {
+func newDeadLineMeeter() *deadlineMeeter {
+	return &deadlineMeeter{
+		deadlines: make(map[string]time.Time),
+		timer:     time.NewTimer(0),
+	}
+}
+
+func (d *deadlineMeeter) next(now time.Time) <-chan time.Time {
 	if len(d.deadlines) == 0 {
 		return nil
 	}
@@ -41,17 +50,29 @@ func (d *deadlineMeeter) next(now time.Time) *time.Timer {
 			set = true
 		}
 	}
+	wait := minTime.Sub(now)
+	if !d.timer.Stop() {
+		//since we are waiting concurrently for popping, it may block
+		//forever. So we must poll to drain the channel without
+		//blocking, which may make a spurious fire. However pop will
+		//just return an empty list.
+		select {
+		case <-d.timer.C:
+		default:
+		}
+	}
+	d.timer.Reset(wait)
 
-	return time.NewTimer(minTime.Sub(now))
+	return d.timer.C
 }
 
-func (d *deadlineMeeter) pushDeadline(reason string, after time.Duration) *time.Timer {
+func (d *deadlineMeeter) pushDeadline(reason string, after time.Duration) <-chan time.Time {
 	now := time.Now()
 	d.deadlines[reason] = now.Add(after)
 	return d.next(now)
 }
 
-func (d *deadlineMeeter) pop(now time.Time) ([]string, *time.Timer) {
+func (d *deadlineMeeter) pop(now time.Time) ([]string, <-chan time.Time) {
 	res := make([]string, 0, len(d.deadlines))
 	for reason, when := range d.deadlines {
 		if when.After(now) == true {
@@ -74,22 +95,9 @@ func (m *alarmMonitor) Monitor() {
 
 	quit := make(chan struct{})
 
-	meeter := &deadlineMeeter{make(map[string]time.Time)}
+	meeter := newDeadLineMeeter()
 
-	var wakeUpTimer *time.Timer = nil
 	var wakeUpChan <-chan time.Time = nil
-
-	pushTimer := func(newTimer *time.Timer) {
-		if wakeUpTimer != nil {
-			wakeUpTimer.Stop()
-		}
-		wakeUpTimer = newTimer
-		if wakeUpTimer == nil {
-			wakeUpChan = nil
-		} else {
-			wakeUpChan = wakeUpTimer.C
-		}
-	}
 
 	for {
 		select {
@@ -111,10 +119,14 @@ func (m *alarmMonitor) Monitor() {
 
 			}
 			alarms[a.Reason()] = a
-			pushTimer(meeter.pushDeadline(a.Reason(), a.DeadLine()))
+			wakeUpChan = meeter.pushDeadline(a.Reason(), a.DeadLine())
 		case now := <-wakeUpChan:
-			expired, newTimer := meeter.pop(now)
-			pushTimer(newTimer)
+			var expired []string = nil
+			expired, wakeUpChan = meeter.pop(now)
+
+			if len(expired) == 0 {
+				log.Printf("spurious pop")
+			}
 
 			for _, r := range expired {
 				a, ok := alarms[r]
