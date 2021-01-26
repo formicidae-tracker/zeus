@@ -1,15 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"net/rpc"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
+	"github.com/adrg/xdg"
 	socketcan "github.com/atuleu/golang-socketcan"
 	"github.com/formicidae-tracker/zeus"
 	"github.com/grandcat/zeroconf"
@@ -27,6 +30,7 @@ type Zeus struct {
 
 	dispatchers map[string]ArkeDispatcher
 	runners     map[string]ZoneClimateRunner
+	since       time.Time
 
 	mx               sync.RWMutex
 	quit, done, idle chan struct{}
@@ -35,6 +39,10 @@ type Zeus struct {
 func OpenZeus(c Config) (*Zeus, error) {
 	if err := c.Check(); err != nil {
 		return nil, fmt.Errorf("Invalid config: %s", err)
+	}
+	err := os.MkdirAll(filepath.Join(xdg.DataHome, "fort-experiments/climate"), 0755)
+	if err != nil {
+		return nil, err
 	}
 	z := &Zeus{
 		intfFactory: socketcan.NewRawInterface,
@@ -48,6 +56,9 @@ func OpenZeus(c Config) (*Zeus, error) {
 		z.logger.Printf("Slack notification are enabled")
 		z.slackClient = slack.New(c.SlackToken)
 	}
+
+	z.restoreStaticState()
+
 	return z, nil
 }
 
@@ -190,8 +201,8 @@ func (z *Zeus) startClimate(season zeus.SeasonFile) (rerr error) {
 	if err := z.checkSeason(season); err != nil {
 		return fmt.Errorf("invalid season file: %s", err)
 	}
-
-	suffix := time.Now().Format("2006-01-02T150405")
+	z.since = time.Now()
+	suffix := z.since.Format("2006-01-02T150405")
 	userID := ""
 
 	if z.slackClient != nil && len(season.SlackUser) > 0 {
@@ -219,6 +230,8 @@ func (z *Zeus) startClimate(season zeus.SeasonFile) (rerr error) {
 	for _, r := range z.runners {
 		go r.Run()
 	}
+
+	z.saveStaticState(season)
 
 	return nil
 }
@@ -252,7 +265,7 @@ func (z *Zeus) stopClimate() error {
 	}
 
 	z.logger.Printf("Stopping climate")
-
+	z.clearStaticState()
 	z.closeRunners()
 	z.closeDispatchers()
 	z.reset()
@@ -285,4 +298,57 @@ func (z *Zeus) Running(ignored int, reply *bool) error {
 
 	*reply = z.isRunning()
 	return nil
+}
+
+func (z *Zeus) stateFilePath() (string, error) {
+	return xdg.DataFile("fort-experiments/climate/current.season")
+}
+
+func (z *Zeus) saveStaticStateUnsafe(season zeus.SeasonFile) error {
+	fpath, err := z.stateFilePath()
+	if err != nil {
+		return err
+	}
+	return season.WriteFile(fpath)
+}
+
+func (z *Zeus) saveStaticState(season zeus.SeasonFile) {
+	if err := z.saveStaticStateUnsafe(season); err != nil {
+		z.logger.Printf("could not save state: %s", err)
+	}
+}
+
+func (z *Zeus) clearStaticStateUnsafe() error {
+	filename, err := z.stateFilePath()
+	if err != nil {
+		return err
+	}
+	return os.RemoveAll(filename)
+}
+
+func (z *Zeus) clearStaticState() {
+	if err := z.clearStaticStateUnsafe(); err != nil {
+		z.logger.Printf("could not clear state: %s", err)
+	}
+}
+
+func (z *Zeus) restoreStaticStateUnsafe() error {
+	filename, err := z.stateFilePath()
+	if err != nil {
+		return err
+	}
+	season, err := zeus.ReadSeasonFile(filename, bytes.NewBuffer(nil))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	return z.startClimate(*season)
+}
+
+func (z *Zeus) restoreStaticState() {
+	if err := z.restoreStaticStateUnsafe(); err != nil {
+		z.logger.Printf("could not restore state: %s", err)
+	}
 }

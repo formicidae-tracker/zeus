@@ -116,3 +116,11 @@ func ReadSeasonFile(filename string, writer io.Writer) (*SeasonFile, error) {
 
 	return s, nil
 }
+
+func (f SeasonFile) WriteFile(filename string) error {
+	data, err := yaml.Marshal(f)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(filename, data, 0644)
+}
