@@ -5,6 +5,8 @@ go 1.13
 require (
 	github.com/adrg/xdg v0.3.0
 	github.com/atuleu/golang-socketcan v0.2.0
+	github.com/blang/semver v3.5.1+incompatible
+	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cenkalti/backoff v2.1.1+incompatible // indirect
 	github.com/dgryski/go-lttb v0.0.0-20180810165845-318fcdf10a77
 	github.com/formicidae-tracker/libarke/src-go/arke v1.0.0
