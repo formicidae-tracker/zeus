@@ -1,9 +1,11 @@
 package main
 
 import (
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"path"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -129,4 +131,51 @@ func (s *AlarmMonitorSuite) TestMonitor(c *C) {
 
 	close(quit)
 	wg.Wait()
+}
+
+func (s *AlarmMonitorSuite) TestReadAlarmLogFile(c *C) {
+	testdata := [][]zeus.AlarmEvent{
+		nil,
+		[]zeus.AlarmEvent{
+			zeus.AlarmEvent{
+				Zone:   "foo/zone/box",
+				Reason: "Ouch `truc`",
+				Flags:  zeus.Warning | zeus.InstantNotification,
+				Status: zeus.AlarmOn,
+				Time:   time.Now().Round(0),
+			},
+			zeus.AlarmEvent{
+				Zone:   "foo/zone/box",
+				Reason: "Ouch `truc`",
+				Flags:  zeus.Warning | zeus.InstantNotification,
+				Status: zeus.AlarmOff,
+				Time:   time.Now().Round(0),
+			},
+		},
+	}
+	tmpdir, err := ioutil.TempDir("", "read-alarm-file-log")
+	c.Assert(err, IsNil)
+	defer os.RemoveAll(tmpdir)
+	filename := filepath.Join(tmpdir, "log.txt")
+	for _, alarms := range testdata {
+		am, err := NewFileAlarmReporter(filename)
+		if c.Check(err, IsNil) == false {
+			continue
+		}
+		ready := make(chan struct{})
+		done := make(chan struct{})
+		go func() {
+			am.Report(ready)
+			close(done)
+		}()
+		<-ready
+		for _, a := range alarms {
+			am.AlarmChannel() <- a
+		}
+		close(am.AlarmChannel())
+		<-done
+		result, err := ReadAlarmLogFile(filename)
+		c.Check(err, IsNil)
+		c.Check(result, DeepEquals, alarms)
+	}
 }
