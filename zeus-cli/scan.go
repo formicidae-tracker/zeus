@@ -1,13 +1,22 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"time"
 
+	"github.com/atuleu/go-tablifier"
 	"github.com/formicidae-tracker/zeus"
 )
 
 type ScanCommand struct {
+}
+
+type resultTableLine struct {
+	Node       string
+	Status     string
+	Since      string
+	Version    string
+	Compatible string
 }
 
 func (c *ScanCommand) Execute(args []string) error {
@@ -16,36 +25,39 @@ func (c *ScanCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("┌──────────────────────┬─────────┬─────────────┬──────────────────────┬────────────┐")
-	format := "│ %20s │ %-7s │ %-11s │ %-20s │ %-10s │\n"
-	fmt.Printf(format, "Node", "Status", "Since", "Version", "Compatible")
-	fmt.Println("├──────────────────────┼─────────┼─────────────┼──────────────────────┼────────────┤")
+	lines := make([]resultTableLine, 0, len(nodes))
 
 	for _, node := range nodes {
 		status := zeus.ZeusStatusReply{}
 		ignored := 0
 		err := node.RunMethod("Zeus.Status", ignored, &status)
+		line := resultTableLine{
+			Node:       node.Name,
+			Status:     "n.a.",
+			Since:      "n.a.",
+			Version:    "<0.3.0",
+			Compatible: "✗",
+		}
 		if err != nil {
-			fmt.Printf(format, node.Name, "n.a.", "n.a.", "<v0.3.0", "✗")
+			log.Printf("Could not fetch %s status: %s", node.Name, err)
+			lines = append(lines, line)
 			continue
 		}
-		statusValue := "Idle"
-		sinceValue := "n.a."
+		line.Status = "Idle"
 		if status.Running == true {
-			statusValue = "Running"
+			line.Status = "Running"
 			ellapsed := now.Sub(status.Since).Truncate(time.Second)
-			sinceValue = ellapsed.String()
+			line.Since = ellapsed.String()
 		}
-
-		compatibleValue := "✓"
+		line.Version = status.Version
 		compatible, err := zeus.VersionAreCompatible(zeus.ZEUS_VERSION, status.Version)
-		if err != nil || compatible == false {
-			compatibleValue = "✗"
+		if err == nil && compatible == true {
+			line.Compatible = "✓"
 		}
-
-		fmt.Printf(format, node.Name, statusValue, sinceValue, status.Version, compatibleValue)
+		lines = append(lines, line)
 	}
-	fmt.Println("└──────────────────────┴─────────┴─────────────┴──────────────────────┴────────────┘")
+
+	tablifier.Tablify(lines)
 
 	return nil
 }
