@@ -17,6 +17,7 @@ type ZoneRegistration struct {
 	MaxTemperature *float64
 	MinHumidity    *float64
 	MaxHumidity    *float64
+	WillLog        bool
 }
 
 type StateReport struct {
@@ -44,4 +45,11 @@ type BatchReport struct {
 	Zone     string
 	Climates []ClimateReport
 	Alarms   []AlarmEvent
+	Last     bool
+}
+
+func (r *BatchReport) Strip() {
+	for _, e := range r.Alarms {
+		e.Zone = ""
+	}
 }

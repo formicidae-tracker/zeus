@@ -2,6 +2,7 @@ package main
 
 import (
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"os"
 	"path"
@@ -169,11 +170,18 @@ func (s *AlarmMonitorSuite) TestReadAlarmLogFile(c *C) {
 			close(done)
 		}()
 		<-ready
+
 		for _, a := range alarms {
 			am.AlarmChannel() <- a
 		}
 		close(am.AlarmChannel())
 		<-done
+
+		cnt, err := ioutil.ReadFile(filename)
+		if err == nil {
+			log.Printf("file content:\n%s", cnt)
+		}
+
 		result, err := ReadAlarmLogFile(filename)
 		c.Check(err, IsNil)
 		c.Check(result, DeepEquals, alarms)

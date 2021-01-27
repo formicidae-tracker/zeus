@@ -235,7 +235,15 @@ func (r *zoneClimateRunner) setUpRPC(o ZoneClimateRunnerOptions) error {
 	if len(o.OlympusHost) == 0 {
 		return nil
 	}
-	rpc, err := NewRPCReporter(o.Name, o.OlympusHost, o.Climate)
+	climateLog, err := r.fileName(o.Name, o.FileSuffix, "climate")
+	if err != nil {
+		return err
+	}
+	alarmLog, err := r.fileName(o.Name, o.FileSuffix, "alarms")
+	if err != nil {
+		return err
+	}
+	rpc, err := NewRPCReporter(o.Name, o.OlympusHost, o.Climate, climateLog, alarmLog)
 	if err != nil {
 		return err
 	}
