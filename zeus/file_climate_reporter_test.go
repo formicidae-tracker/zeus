@@ -30,21 +30,21 @@ func (s *FileClimateReporterSuite) TearDownSuite(c *C) {
 var _ = Suite(&FileClimateReporterSuite{})
 
 func (s *FileClimateReporterSuite) TestFileNameDoesNotOverwite(c *C) {
-	_, name1, err := NewFileClimateReporter(filepath.Join(s.TmpDir, "test.txt"))
+	_, name1, err := NewFileClimateReporter(filepath.Join(s.TmpDir, "test.txt"), 0)
 	c.Check(err, IsNil)
-	_, name2, err := NewFileClimateReporter(filepath.Join(s.TmpDir, "test.txt"))
+	_, name2, err := NewFileClimateReporter(filepath.Join(s.TmpDir, "test.txt"), 0)
 
 	c.Check(name1, Equals, filepath.Join(s.TmpDir, "test.txt"))
 	c.Check(name2, Equals, filepath.Join(s.TmpDir, "test.1.txt"))
 }
 
 func (s *FileClimateReporterSuite) TestFileNameWriting(c *C) {
-	fn, fname, err := NewFileClimateReporter(filepath.Join(s.TmpDir, "test.txt"))
+	fn, fname, err := NewFileClimateReporter(filepath.Join(s.TmpDir, "test.txt"), 3)
 	c.Assert(err, IsNil)
 
 	cr := zeus.ClimateReport{
 		Humidity:     50,
-		Temperatures: [4]zeus.Temperature{21, 21, 21, 21},
+		Temperatures: []zeus.Temperature{21, 21, 21, 21},
 	}
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -66,7 +66,7 @@ func (s *FileClimateReporterSuite) TestFileNameWriting(c *C) {
 	c.Assert(err, IsNil)
 
 	c.Check(string(data), Equals, fmt.Sprintf(`# Starting date %s
-# Time(ms) Relative Humidity (%%) Temperature (°C) Temperature (°C) Temperature (°C) Temperature (°C)
+# Time (ms) Relative Humidity (%%) Temperature (°C) Aux 1 (°C) Aux 2 (°C) Aux 3 (°C)
 0 50.00 21.00 21.00 21.00 21.00
 333 50.00 21.00 21.00 21.00 21.00
 666 50.00 21.00 21.00 21.00 21.00

@@ -150,7 +150,7 @@ func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 		s.H.C <- c
 		wg.Done()
 	}()
-	n.ReportChannel() <- zeus.ClimateReport{Humidity: 50, Temperatures: [4]zeus.Temperature{21, 21, 21, 21}}
+	n.ReportChannel() <- zeus.ClimateReport{Humidity: 50, Temperatures: []zeus.Temperature{21, 21, 21, 21}}
 
 	wg.Add(1)
 	go func() {

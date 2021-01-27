@@ -11,8 +11,9 @@ import (
 )
 
 type ZoneDefinition struct {
-	CANInterface string `yaml:"can-interface"`
-	DevicesID    uint   `yaml:"devices-id"`
+	CANInterface   string `yaml:"can-interface"`
+	DevicesID      uint   `yaml:"devices-id"`
+	TemperatureAux int    `yaml:"temperature-aux"`
 }
 
 func (d ZoneDefinition) ID() string {

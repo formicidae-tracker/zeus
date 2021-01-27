@@ -201,15 +201,17 @@ type ClimateRecordable struct {
 	MaxTemperature zeus.Temperature
 	MinHumidity    zeus.Humidity
 	MaxHumidity    zeus.Humidity
+	NumAux         int
 	Notifiers      []chan<- zeus.ClimateReport
 }
 
-func NewClimateRecordableCapability(minT, maxT zeus.Temperature, minH, maxH zeus.Humidity, notifiers []chan<- zeus.ClimateReport) capability {
+func NewClimateRecordableCapability(minT, maxT zeus.Temperature, minH, maxH zeus.Humidity, numAux int, notifiers []chan<- zeus.ClimateReport) capability {
 	res := &ClimateRecordable{
 		MinTemperature: minT,
 		MaxTemperature: maxT,
 		MinHumidity:    minH,
 		MaxHumidity:    maxH,
+		NumAux:         numAux,
 		Notifiers:      notifiers,
 	}
 
@@ -259,18 +261,18 @@ func (r *ClimateRecordable) Callbacks() map[arke.MessageClass]callback {
 				alarms <- zeus.TemperatureOutOfBound
 			}
 
-			creport := zeus.ClimateReport{
-				Time:     mm.T,
-				Humidity: zeus.Humidity(report.Humidity),
-				Temperatures: [4]zeus.Temperature{
-					zeus.Temperature(report.Temperature[0]),
-					zeus.Temperature(report.Temperature[1]),
-					zeus.Temperature(report.Temperature[2]),
-					zeus.Temperature(report.Temperature[3]),
-				},
+			temperatures := make([]zeus.Temperature, 0, r.NumAux+1)
+			for i := 0; i < r.NumAux+1; i++ {
+				temperatures = append(temperatures, zeus.Temperature(report.Temperature[i]))
 			}
 
-			if creport.Good() == true {
+			creport := zeus.ClimateReport{
+				Time:         mm.T,
+				Humidity:     zeus.Humidity(report.Humidity),
+				Temperatures: temperatures,
+			}
+
+			if creport.Check() == nil {
 				for _, n := range r.Notifiers {
 					n <- creport
 				}
@@ -282,14 +284,14 @@ func (r *ClimateRecordable) Callbacks() map[arke.MessageClass]callback {
 
 }
 
-func ComputeClimateRequirements(z *zeus.ZoneClimate, reporters []ClimateReporter) []capability {
+func ComputeClimateRequirements(climate zeus.ZoneClimate, definition ZoneDefinition, reporters []ClimateReporter) []capability {
 	res := []capability{}
 
 	needClimateReport := len(reporters) > 0
-	if zeus.IsUndefined(z.MinimalTemperature) == false || zeus.IsUndefined(z.MaximalTemperature) == false {
+	if zeus.IsUndefined(climate.MinimalTemperature) == false || zeus.IsUndefined(climate.MaximalTemperature) == false {
 		needClimateReport = true
 	}
-	if zeus.IsUndefined(z.MinimalHumidity) == false || zeus.IsUndefined(z.MaximalHumidity) == false {
+	if zeus.IsUndefined(climate.MinimalHumidity) == false || zeus.IsUndefined(climate.MaximalHumidity) == false {
 		needClimateReport = true
 	}
 
@@ -299,10 +301,11 @@ func ComputeClimateRequirements(z *zeus.ZoneClimate, reporters []ClimateReporter
 			chans = append(chans, n.ReportChannel())
 		}
 
-		res = append(res, NewClimateRecordableCapability(z.MinimalTemperature,
-			z.MaximalTemperature,
-			z.MinimalHumidity,
-			z.MaximalHumidity,
+		res = append(res, NewClimateRecordableCapability(climate.MinimalTemperature,
+			climate.MaximalTemperature,
+			climate.MinimalHumidity,
+			climate.MaximalHumidity,
+			definition.TemperatureAux,
 			chans))
 	}
 
@@ -311,7 +314,7 @@ func ComputeClimateRequirements(z *zeus.ZoneClimate, reporters []ClimateReporter
 	controlHumidity := false
 	controlWind := false
 
-	for _, s := range z.States {
+	for _, s := range climate.States {
 		if zeus.IsUndefined(s.Humidity) == false {
 			controlHumidity = true
 		}

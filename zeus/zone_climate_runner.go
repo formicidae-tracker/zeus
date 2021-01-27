@@ -255,7 +255,7 @@ func (r *zoneClimateRunner) setUpFileReporters(o ZoneClimateRunnerOptions) error
 	if err != nil {
 		return err
 	}
-	cr, _, err := NewFileClimateReporter(climateFileName)
+	cr, _, err := NewFileClimateReporter(climateFileName, o.Definition.TemperatureAux)
 	if err != nil {
 		return err
 	}
@@ -285,7 +285,7 @@ func (r *zoneClimateRunner) setUpAlarmMonitor(o ZoneClimateRunnerOptions) error 
 }
 
 func (r *zoneClimateRunner) setUpCapabilities(o ZoneClimateRunnerOptions) error {
-	r.capabilities = ComputeClimateRequirements(&o.Climate, r.climateReporters)
+	r.capabilities = ComputeClimateRequirements(o.Climate, o.Definition, r.climateReporters)
 	return nil
 }
 

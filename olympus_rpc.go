@@ -39,3 +39,9 @@ func (zr ZoneUnregistration) Fullname() string {
 func (zr ZoneRegistration) Fullname() string {
 	return ZoneIdentifier(zr.Host, zr.Name)
 }
+
+type BatchReport struct {
+	Zone     string
+	Climates []ClimateReport
+	Alarms   []AlarmEvent
+}
