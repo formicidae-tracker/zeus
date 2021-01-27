@@ -1,4 +1,5 @@
 # -*- mode: yaml -*-
+slack-user:
 zones:
   box:
     minimal-temperature: 20.0
