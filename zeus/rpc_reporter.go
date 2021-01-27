@@ -213,7 +213,7 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 	r.Conn.Close()
 }
 
-func NewRPCReporter(name, address string, zone zeus.ZoneClimate, climateLog, alarmLog string) (*RPCReporter, error) {
+func NewRPCReporter(name, address string, zone zeus.ZoneClimate, numAux int, climateLog, alarmLog string) (*RPCReporter, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, err
@@ -248,6 +248,7 @@ func NewRPCReporter(name, address string, zone zeus.ZoneClimate, climateLog, ala
 	reg.MaxHumidity = cast(zone.MaximalHumidity)
 	reg.MinTemperature = cast(zone.MinimalTemperature)
 	reg.MaxTemperature = cast(zone.MaximalTemperature)
+	reg.NumAux = numAux
 
 	rerr := conn.Call("Olympus.RegisterZone", reg, &unused)
 	if rerr != nil {

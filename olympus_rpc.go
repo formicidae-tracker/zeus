@@ -17,6 +17,7 @@ type ZoneRegistration struct {
 	MaxTemperature *float64
 	MinHumidity    *float64
 	MaxHumidity    *float64
+	NumAux         int
 	WillLog        bool
 }
 
