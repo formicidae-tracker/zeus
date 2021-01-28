@@ -318,6 +318,38 @@ func (z *Zeus) Status(ignored int, reply *zeus.ZeusStatusReply) error {
 	return nil
 }
 
+func (z *Zeus) climateLog(zoneName string, start, end int) ([]zeus.ClimateReport, error) {
+	r, ok := z.runners[zoneName]
+	if ok == false {
+		return nil, fmt.Errorf("unknown zone '%s'", zoneName)
+	}
+	return r.ClimateLog(start, end)
+}
+
+func (z *Zeus) alarmLog(zoneName string, start, end int) ([]zeus.AlarmEvent, error) {
+	r, ok := z.runners[zoneName]
+	if ok == false {
+		return nil, fmt.Errorf("unknown zone '%s'", zoneName)
+	}
+	return r.AlarmLog(start, end)
+}
+
+func (z *Zeus) ClimateLog(args zeus.ZeusLogArgs, reply *zeus.ZeusClimateLogReply) error {
+	z.mx.Lock()
+	defer z.mx.Unlock()
+	var err error
+	reply.Data, err = z.climateLog(args.ZoneName, args.Start, args.End)
+	return err
+}
+
+func (z *Zeus) AlarmLog(args zeus.ZeusLogArgs, reply *zeus.ZeusAlarmLogReply) error {
+	z.mx.Lock()
+	defer z.mx.Unlock()
+	var err error
+	reply.Data, err = z.alarmLog(args.ZoneName, args.Start, args.End)
+	return err
+}
+
 func (z *Zeus) stateFilePath() (string, error) {
 	return xdg.DataFile("fort-experiments/climate/current.season")
 }

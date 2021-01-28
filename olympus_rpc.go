@@ -11,14 +11,15 @@ type ZoneUnregistration struct {
 }
 
 type ZoneRegistration struct {
-	Host           string
-	Name           string
-	MinTemperature *float64
-	MaxTemperature *float64
-	MinHumidity    *float64
-	MaxHumidity    *float64
-	NumAux         int
-	RPCAddress     string
+	Host                         string
+	Name                         string
+	MinTemperature               *float64
+	MaxTemperature               *float64
+	MinHumidity                  *float64
+	MaxHumidity                  *float64
+	NumAux                       int
+	RPCAddress                   string
+	SizeClimateLog, SizeAlarmLog int
 }
 
 type StateReport struct {

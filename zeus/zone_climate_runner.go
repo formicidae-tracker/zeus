@@ -16,6 +16,8 @@ import (
 type ZoneClimateRunner interface {
 	Run()
 	Close() error
+	ClimateLog(start, end int) ([]zeus.ClimateReport, error)
+	AlarmLog(start, end int) ([]zeus.AlarmEvent, error)
 }
 
 type ZoneClimateRunnerOptions struct {
@@ -49,6 +51,10 @@ type zoneClimateRunner struct {
 
 	devices   map[arke.NodeClass]*Device
 	callbacks map[arke.MessageClass][]callback
+
+	climateLog, alarmLog string
+	climateLogData       []zeus.ClimateReport
+	alarmLogData         []zeus.AlarmEvent
 }
 
 func (r *zoneClimateRunner) spawnAlarmMonitor(wg *sync.WaitGroup) {
@@ -251,22 +257,14 @@ func (r *zoneClimateRunner) fileName(name, suffix, ftype string) (string, error)
 }
 
 func (r *zoneClimateRunner) setUpFileReporters(o ZoneClimateRunnerOptions) error {
-	climateFileName, err := r.fileName(o.Name, o.FileSuffix, "climate")
-	if err != nil {
-		return err
-	}
-	cr, _, err := NewFileClimateReporter(climateFileName, o.Definition.TemperatureAux)
+	cr, _, err := NewFileClimateReporter(r.climateLog, o.Definition.TemperatureAux)
 	if err != nil {
 		return err
 	}
 	r.reporters = append(r.reporters, cr)
 	r.climateReporters = append(r.climateReporters, cr)
 
-	alarmFileName, err := r.fileName(o.Name, o.FileSuffix, "alarms")
-	if err != nil {
-		return err
-	}
-	ar, err := NewFileAlarmReporter(alarmFileName)
+	ar, err := NewFileAlarmReporter(r.alarmLog)
 	if err != nil {
 		return err
 	}
@@ -333,6 +331,72 @@ func (r *zoneClimateRunner) setUpSlackReporter(o ZoneClimateRunnerOptions) error
 	return nil
 }
 
+func (r *zoneClimateRunner) checkRange(start, end int) error {
+	if end > 0 && start > end || start < 0 {
+		return fmt.Errorf("invalid range [%d;%d[", start, end)
+	}
+	return nil
+}
+
+func (r *zoneClimateRunner) clampRange(start, end, len int) (int, int, error) {
+	if end > 0 {
+		if end > len {
+			return 0, 0, fmt.Errorf("unsufficient data size %d for [%d;%d[", len, start, end)
+		}
+		return start, end, nil
+	}
+	if start >= len {
+		return 0, 0, fmt.Errorf("unsufficient data size %d for [%d;%d[", len, start, len)
+	}
+	return start, len, nil
+}
+
+func (r *zoneClimateRunner) ClimateLog(start, end int) ([]zeus.ClimateReport, error) {
+	err := r.checkRange(start, end)
+	if err != nil {
+		return nil, err
+	}
+
+	if end > 0 && len(r.climateLogData) <= end {
+		return r.climateLogData[start:end], nil
+	}
+
+	r.climateLogData, err = ReadClimateFile(r.climateLog)
+	if err != nil {
+		return nil, err
+	}
+	start, end, err = r.clampRange(start, end, len(r.climateLogData))
+	if err != nil {
+		return nil, err
+	}
+	return r.climateLogData[start:end], nil
+}
+
+func (r *zoneClimateRunner) AlarmLog(start, end int) ([]zeus.AlarmEvent, error) {
+	err := r.checkRange(start, end)
+	if err != nil {
+		return nil, err
+	}
+
+	if end > 0 && len(r.alarmLogData) <= end {
+		return r.alarmLogData[start:end], nil
+	}
+
+	r.alarmLogData, err = ReadAlarmLogFile(r.alarmLog)
+	if err != nil {
+		return nil, err
+	}
+	for _, ae := range r.alarmLogData {
+		ae.Zone = ""
+	}
+
+	start, end, err = r.clampRange(start, end, len(r.alarmLogData))
+	if err != nil {
+		return nil, err
+	}
+	return r.alarmLogData[start:end], nil
+}
+
 func NewZoneClimateRunner(o ZoneClimateRunnerOptions) (r ZoneClimateRunner, err error) {
 	res := &zoneClimateRunner{
 		logger:          log.New(os.Stderr, "[zone/"+o.Name+"] ", 0),
@@ -341,6 +405,15 @@ func NewZoneClimateRunner(o ZoneClimateRunnerOptions) (r ZoneClimateRunner, err 
 		presenceMonitor: NewPresenceMonitorer(o.Dispatcher.Name(), o.Dispatcher.Interface()),
 		devices:         make(map[arke.NodeClass]*Device),
 		callbacks:       make(map[arke.MessageClass][]callback),
+	}
+
+	res.climateLog, err = res.fileName(o.Name, o.FileSuffix, "climate")
+	if err != nil {
+		return nil, err
+	}
+	res.alarmLog, err = res.fileName(o.Name, o.FileSuffix, "alarms")
+	if err != nil {
+		return nil, err
 	}
 
 	setups := []func(ZoneClimateRunnerOptions) error{

@@ -12,3 +12,16 @@ type ZeusStatusReply struct {
 	Since   time.Time
 	Version string
 }
+
+type ZeusLogArgs struct {
+	ZoneName   string
+	Start, End int
+}
+
+type ZeusClimateLogReply struct {
+	Data []ClimateReport
+}
+
+type ZeusAlarmLogReply struct {
+	Data []AlarmEvent
+}

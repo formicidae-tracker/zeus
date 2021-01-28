@@ -11,17 +11,16 @@ import (
 )
 
 type RPCReporter struct {
-	Registration         zeus.ZoneRegistration
-	Addr                 string
-	Conn                 *rpc.Client
-	LastStateReport      *zeus.StateReport
-	ClimateReports       chan zeus.ClimateReport
-	AlarmReports         chan zeus.AlarmEvent
-	StateReports         chan zeus.StateReport
-	log                  *log.Logger
-	ReconnectionWindow   time.Duration
-	MaxAttempts          int
-	ClimateLog, AlarmLog string
+	Registration       zeus.ZoneRegistration
+	Addr               string
+	Conn               *rpc.Client
+	LastStateReport    *zeus.StateReport
+	ClimateReports     chan zeus.ClimateReport
+	AlarmReports       chan zeus.AlarmEvent
+	StateReports       chan zeus.StateReport
+	log                *log.Logger
+	ReconnectionWindow time.Duration
+	MaxAttempts        int
 }
 
 func (r *RPCReporter) ReportChannel() chan<- zeus.ClimateReport {
@@ -106,6 +105,7 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 			if ok == false {
 				r.ClimateReports = nil
 			} else {
+				r.Registration.SizeClimateLog++
 				ncr := zeus.NamedClimateReport{cr, r.Registration.Fullname()}
 				if rerr == nil && trials <= r.MaxAttempts && resetConnection == nil {
 					rerr = r.Conn.Call("Olympus.ReportClimate", ncr, &unused)
@@ -118,6 +118,7 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 			if ok == false {
 				r.AlarmReports = nil
 			} else {
+				r.Registration.SizeAlarmLog++
 				if rerr == nil && trials <= r.MaxAttempts && resetConnection == nil {
 					rerr = r.Conn.Call("Olympus.ReportAlarm", ae, &unused)
 					if rerr != nil {
@@ -200,7 +201,7 @@ func NewRPCReporter(name, address string, zone zeus.ZoneClimate, numAux int) (*R
 	reg.MinTemperature = cast(zone.MinimalTemperature)
 	reg.MaxTemperature = cast(zone.MaximalTemperature)
 	reg.NumAux = numAux
-
+	reg.RPCAddress = fmt.Sprintf("%s:%d", hostname, zeus.ZEUS_PORT)
 	rerr := conn.Call("Olympus.RegisterZone", reg, &unused)
 	if rerr != nil {
 		return nil, fmt.Errorf("rpc: Olympus.RegisterZone: %s", rerr)
