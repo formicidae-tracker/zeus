@@ -18,7 +18,7 @@ type ZoneRegistration struct {
 	MinHumidity    *float64
 	MaxHumidity    *float64
 	NumAux         int
-	WillLog        bool
+	RPCAddress     string
 }
 
 type StateReport struct {
@@ -40,17 +40,4 @@ func (zr ZoneUnregistration) Fullname() string {
 
 func (zr ZoneRegistration) Fullname() string {
 	return ZoneIdentifier(zr.Host, zr.Name)
-}
-
-type BatchReport struct {
-	Zone     string
-	Climates []ClimateReport
-	Alarms   []AlarmEvent
-	Last     bool
-}
-
-func (r *BatchReport) Strip() {
-	for _, e := range r.Alarms {
-		e.Zone = ""
-	}
 }

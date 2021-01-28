@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/rpc"
 	"os"
-	"path"
 	"time"
 
 	"github.com/formicidae-tracker/zeus"
@@ -61,17 +60,9 @@ func (r *RPCReporter) reconnect() error {
 	}
 	unused := 0
 
-	climates, errClimate := ReadClimateFile(r.ClimateLog)
-	alarms, errAlarms := ReadAlarmLogFile(r.AlarmLog)
-
-	r.Registration.WillLog = errClimate == nil && errAlarms == nil
 	err = r.Conn.Call("Olympus.RegisterZone", r.Registration, &unused)
 	if err != nil {
 		return err
-	}
-
-	if r.Registration.WillLog == true {
-		r.SendLogs(climates, alarms)
 	}
 
 	if r.LastStateReport == nil {
@@ -79,46 +70,6 @@ func (r *RPCReporter) reconnect() error {
 	}
 
 	return r.Conn.Call("Olympus.ReportState", r.LastStateReport, &unused)
-}
-
-func (r *RPCReporter) SendLogs(climates []zeus.ClimateReport, alarms []zeus.AlarmEvent) {
-	maxLines := len(climates)
-	if len(alarms) > maxLines {
-		maxLines = len(alarms)
-	}
-
-	last := 0
-	for i := 200; i < maxLines; i += 200 {
-		alarmDone := i >= len(alarms)
-		climateDone := i >= len(climates)
-		var sendClimates []zeus.ClimateReport
-		var sendAlarms []zeus.AlarmEvent
-		if alarmDone == true {
-			if len(alarms) < last {
-				sendAlarms = alarms[last:]
-			}
-		} else {
-			sendAlarms = alarms[last:i]
-		}
-		if climateDone == true {
-			if len(climates) < last {
-				sendClimates = climates[last:]
-			}
-		} else {
-			sendClimates = climates[last:i]
-		}
-		batch := zeus.BatchReport{
-			Zone:     path.Join(r.Registration.Host, "zone", r.Registration.Name),
-			Alarms:   sendAlarms,
-			Climates: sendClimates,
-			Last:     alarmDone && climateDone,
-		}
-		batch.Strip()
-		unused := 0
-		r.Conn.Call("Olympus.BatchReport", batch, &unused)
-		last = i
-	}
-
 }
 
 func (r *RPCReporter) Report(ready chan<- struct{}) {
@@ -213,7 +164,7 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 	r.Conn.Close()
 }
 
-func NewRPCReporter(name, address string, zone zeus.ZoneClimate, numAux int, climateLog, alarmLog string) (*RPCReporter, error) {
+func NewRPCReporter(name, address string, zone zeus.ZoneClimate, numAux int) (*RPCReporter, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, err
@@ -265,7 +216,5 @@ func NewRPCReporter(name, address string, zone zeus.ZoneClimate, numAux int, cli
 		log:                logger,
 		ReconnectionWindow: 5 * time.Second,
 		MaxAttempts:        1000,
-		ClimateLog:         climateLog,
-		AlarmLog:           alarmLog,
 	}, nil
 }

@@ -114,7 +114,7 @@ func (s *FileClimateReporterSuite) TestFileReading(c *C) {
 0 50.0 21.23 13.2
 502 51.3 24.5 15.7
 `,
-			Error: "parsing time \".*\": extra text: fo",
+			Error: "parsing time \".*\": extra text: .*",
 		},
 		{
 			Content: "# Starting date " + startString + `
