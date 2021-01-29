@@ -159,11 +159,11 @@ const (
 )
 
 type AlarmEvent struct {
-	Zone   string
-	Reason string
-	Flags  AlarmFlags
-	Status AlarmStatus
-	Time   time.Time
+	ZoneIdentifier string
+	Reason         string
+	Flags          AlarmFlags
+	Status         AlarmStatus
+	Time           time.Time
 }
 
 func MapPriority(f AlarmFlags) int {

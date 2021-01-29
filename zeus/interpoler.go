@@ -32,9 +32,9 @@ type interpoler struct {
 
 func (i *interpoler) stateReport(current, next zeus.Interpolation, now time.Time, nextTime time.Time) zeus.StateReport {
 	report := zeus.StateReport{
-		Zone:       i.name,
-		Current:    zeus.SanitizeState(current.State(now)),
-		CurrentEnd: nil,
+		ZoneIdentifier: i.name,
+		Current:        zeus.SanitizeState(current.State(now)),
+		CurrentEnd:     nil,
 
 		NextTime: nil,
 		Next:     nil,

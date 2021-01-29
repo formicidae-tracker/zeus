@@ -17,7 +17,7 @@ func (s *OlympusRPCSuite) TestZoneIdentifier(c *C) {
 
 	for _, d := range testdata {
 		c.Check(ZoneIdentifier(d.Host, d.Name), Equals, d.Expected)
-		c.Check(ZoneRegistration{Host: d.Host, Name: d.Name}.Fullname(), Equals, d.Expected)
-		c.Check(ZoneUnregistration{Host: d.Host, Name: d.Name}.Fullname(), Equals, d.Expected)
+		c.Check(ZoneRegistration{Host: d.Host, Name: d.Name}.ZoneIdentifier(), Equals, d.Expected)
+		c.Check(ZoneUnregistration{Host: d.Host, Name: d.Name}.ZoneIdentifer(), Equals, d.Expected)
 	}
 }

@@ -23,22 +23,22 @@ type ZoneRegistration struct {
 }
 
 type StateReport struct {
-	Zone       string
-	Current    State
-	CurrentEnd *State
-	Next       *State
-	NextEnd    *State
-	NextTime   *time.Time
+	ZoneIdentifier string
+	Current        State
+	CurrentEnd     *State
+	Next           *State
+	NextEnd        *State
+	NextTime       *time.Time
 }
 
 func ZoneIdentifier(host, name string) string {
 	return path.Join(host, "zone", name)
 }
 
-func (zr ZoneUnregistration) Fullname() string {
+func (zr ZoneUnregistration) ZoneIdentifer() string {
 	return ZoneIdentifier(zr.Host, zr.Name)
 }
 
-func (zr ZoneRegistration) Fullname() string {
+func (zr ZoneRegistration) ZoneIdentifier() string {
 	return ZoneIdentifier(zr.Host, zr.Name)
 }

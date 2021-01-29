@@ -139,18 +139,18 @@ func (s *AlarmMonitorSuite) TestReadAlarmLogFile(c *C) {
 		nil,
 		[]zeus.AlarmEvent{
 			zeus.AlarmEvent{
-				Zone:   "foo/zone/box",
-				Reason: "Ouch `truc`",
-				Flags:  zeus.Warning | zeus.InstantNotification,
-				Status: zeus.AlarmOn,
-				Time:   time.Now().Round(0),
+				ZoneIdentifier: "foo/zone/box",
+				Reason:         "Ouch `truc`",
+				Flags:          zeus.Warning | zeus.InstantNotification,
+				Status:         zeus.AlarmOn,
+				Time:           time.Now().Round(0),
 			},
 			zeus.AlarmEvent{
-				Zone:   "foo/zone/box",
-				Reason: "Ouch `truc`",
-				Flags:  zeus.Warning | zeus.InstantNotification,
-				Status: zeus.AlarmOff,
-				Time:   time.Now().Round(0),
+				ZoneIdentifier: "foo/zone/box",
+				Reason:         "Ouch `truc`",
+				Flags:          zeus.Warning | zeus.InstantNotification,
+				Status:         zeus.AlarmOff,
+				Time:           time.Now().Round(0),
 			},
 		},
 	}

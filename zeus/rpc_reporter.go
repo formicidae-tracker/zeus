@@ -106,7 +106,7 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 				r.ClimateReports = nil
 			} else {
 				r.Registration.SizeClimateLog++
-				ncr := zeus.NamedClimateReport{cr, r.Registration.Fullname()}
+				ncr := zeus.NamedClimateReport{cr, r.Registration.ZoneIdentifier()}
 				if rerr == nil && trials <= r.MaxAttempts && resetConnection == nil {
 					rerr = r.Conn.Call("Olympus.ReportClimate", ncr, &unused)
 					if rerr != nil {

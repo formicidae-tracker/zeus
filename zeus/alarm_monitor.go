@@ -139,11 +139,11 @@ func (m *alarmMonitor) Monitor() {
 			if _, ok := alarms[a.Reason()]; ok == false {
 				go func() {
 					m.outbound <- zeus.AlarmEvent{
-						Reason: a.Reason(),
-						Flags:  a.Flags(),
-						Status: zeus.AlarmOn,
-						Time:   time.Now(),
-						Zone:   m.name,
+						Reason:         a.Reason(),
+						Flags:          a.Flags(),
+						Status:         zeus.AlarmOn,
+						Time:           time.Now(),
+						ZoneIdentifier: m.name,
 					}
 				}()
 
@@ -166,11 +166,11 @@ func (m *alarmMonitor) Monitor() {
 				}
 				go func() {
 					m.outbound <- zeus.AlarmEvent{
-						Reason: a.Reason(),
-						Flags:  a.Flags(),
-						Status: zeus.AlarmOff,
-						Time:   now,
-						Zone:   m.name,
+						Reason:         a.Reason(),
+						Flags:          a.Flags(),
+						Status:         zeus.AlarmOff,
+						Time:           now,
+						ZoneIdentifier: m.name,
 					}
 				}()
 				delete(alarms, r)

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
 	"strings"
 
 	"github.com/formicidae-tracker/zeus"
@@ -25,7 +24,7 @@ func (r *slackReporter) formatEvent(e zeus.AlarmEvent) string {
 		icon = ":warning:"
 		alarmText = "alarm is on!"
 	}
-	return fmt.Sprintf("%s %s.%s : '%s' %s", icon, r.hostName, e.Zone, e.Reason, alarmText)
+	return fmt.Sprintf("%s %s.%s : '%s' %s", icon, r.hostName, e.ZoneIdentifier, e.Reason, alarmText)
 }
 
 func (r *slackReporter) Report(ready chan<- struct{}) {
@@ -35,7 +34,7 @@ func (r *slackReporter) Report(ready chan<- struct{}) {
 		if e.Flags&zeus.InstantNotification == 0 {
 			continue
 		}
-		if e.Zone != path.Join(r.hostName, "zone", r.zoneName) {
+		if e.ZoneIdentifier != zeus.ZoneIdentifier(r.hostName, r.zoneName) {
 			continue
 		}
 

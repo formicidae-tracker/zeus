@@ -387,7 +387,7 @@ func (r *zoneClimateRunner) AlarmLog(start, end int) ([]zeus.AlarmEvent, error) 
 		return nil, err
 	}
 	for _, ae := range r.alarmLogData {
-		ae.Zone = ""
+		ae.ZoneIdentifier = ""
 	}
 
 	start, end, err = r.clampRange(start, end, len(r.alarmLogData))

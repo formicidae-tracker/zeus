@@ -48,14 +48,14 @@ func (h *Olympus) ReportClimate(cr *zeus.NamedClimateReport, unused *int) error 
 
 func (h *Olympus) ReportAlarm(ae *zeus.AlarmEvent, unused *int) error {
 	c := <-h.C
-	c.Check(ae.Zone, Equals, zeus.ZoneIdentifier(h.hostname, "test-zone"))
+	c.Check(ae.ZoneIdentifier, Equals, zeus.ZoneIdentifier(h.hostname, "test-zone"))
 	*unused = 0
 	return nil
 }
 
 func (h *Olympus) ReportState(ae *zeus.StateReport, unused *int) error {
 	c := <-h.C
-	c.Check(ae.Zone, Equals, zeus.ZoneIdentifier(h.hostname, "test-zone"))
+	c.Check(ae.ZoneIdentifier, Equals, zeus.ZoneIdentifier(h.hostname, "test-zone"))
 	*unused = 0
 	return nil
 }
@@ -158,11 +158,11 @@ func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 		wg.Done()
 	}()
 	n.AlarmChannel() <- zeus.AlarmEvent{
-		Zone:   zeus.ZoneIdentifier(s.H.hostname, "test-zone"),
-		Reason: "foo",
-		Flags:  zeus.Warning,
-		Status: zeus.AlarmOn,
-		Time:   time.Now(),
+		ZoneIdentifier: zeus.ZoneIdentifier(s.H.hostname, "test-zone"),
+		Reason:         "foo",
+		Flags:          zeus.Warning,
+		Status:         zeus.AlarmOn,
+		Time:           time.Now(),
 	}
 
 	wg.Add(1)
@@ -171,7 +171,7 @@ func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 		wg.Done()
 	}()
 	n.StateChannel() <- zeus.StateReport{
-		Zone: zeus.ZoneIdentifier(s.H.hostname, "test-zone"),
+		ZoneIdentifier: zeus.ZoneIdentifier(s.H.hostname, "test-zone"),
 	}
 
 	s.Http.Shutdown(context.Background())
@@ -185,7 +185,7 @@ func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 		wg.Done()
 	}()
 	n.StateChannel() <- zeus.StateReport{
-		Zone: zeus.ZoneIdentifier(s.H.hostname, "test-zone"),
+		ZoneIdentifier: zeus.ZoneIdentifier(s.H.hostname, "test-zone"),
 	}
 
 	time.Sleep(time.Duration(n.MaxAttempts+100) * n.ReconnectionWindow)
