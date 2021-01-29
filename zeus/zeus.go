@@ -319,6 +319,9 @@ func (z *Zeus) Status(ignored int, reply *zeus.ZeusStatusReply) error {
 }
 
 func (z *Zeus) climateLog(zoneName string, start, end int) ([]zeus.ClimateReport, error) {
+	if z.isRunning() == false {
+		return nil, fmt.Errorf("not running")
+	}
 	r, ok := z.runners[zoneName]
 	if ok == false {
 		return nil, fmt.Errorf("unknown zone '%s'", zoneName)
@@ -327,6 +330,10 @@ func (z *Zeus) climateLog(zoneName string, start, end int) ([]zeus.ClimateReport
 }
 
 func (z *Zeus) alarmLog(zoneName string, start, end int) ([]zeus.AlarmEvent, error) {
+	if z.isRunning() == false {
+		return nil, fmt.Errorf("not running")
+	}
+
 	r, ok := z.runners[zoneName]
 	if ok == false {
 		return nil, fmt.Errorf("unknown zone '%s'", zoneName)
