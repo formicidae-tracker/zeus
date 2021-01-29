@@ -40,7 +40,7 @@ You should be able to scan node over the network with
 zeus-cli scan
 ```
 
-you may run into a tcp lookup error. This is due to a limitation of
+you may run into a `tcp lookup error`. This is due to a limitation of
 snap regarding `.local` network addresses. It can be solved using the
 following commands once.
 
@@ -48,6 +48,8 @@ following commands once.
 sudo apt install nscd
 sudo service snapd restart
 ```
+
+In some cases you will also need to restart your system to clear the errors.
 
 ## Testing a season file
 
