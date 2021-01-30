@@ -17,6 +17,7 @@ type ZeusSimulator struct {
 	stop, idle chan struct{}
 	mx         sync.RWMutex
 	zones      map[string]ZoneClimateRunner
+	server     http.Server
 }
 
 type ZeusSimulatorArgs struct {
@@ -34,14 +35,15 @@ func NewZeusSimulator(a ZeusSimulatorArgs) (s *ZeusSimulator, err error) {
 		zones: make(map[string]ZoneClimateRunner),
 	}
 	address := fmt.Sprintf(":%d", a.rpcPort)
-	l, err := net.Listen("tcp", address)
+	l, err := res.setUpServer(address)
 	if err != nil {
 		return nil, err
 	}
-	go res.serve(l, address)
+	go res.serve(l)
+
 	defer func() {
 		if err != nil {
-			s.Close()
+			res.shutdown()
 		}
 	}()
 
@@ -60,7 +62,7 @@ func NewZeusSimulator(a ZeusSimulatorArgs) (s *ZeusSimulator, err error) {
 			if err != nil {
 				return err
 			}
-			s.zones[zoneName] = runner
+			res.zones[zoneName] = runner
 			go runner.Run()
 			return nil
 		}(); err != nil {
@@ -70,7 +72,7 @@ func NewZeusSimulator(a ZeusSimulatorArgs) (s *ZeusSimulator, err error) {
 	return res, nil
 }
 
-func (s *ZeusSimulator) Close() (err error) {
+func (s *ZeusSimulator) shutdown() (err error) {
 	s.mx.Lock()
 	defer func() {
 		s.mx.Unlock()
@@ -84,26 +86,38 @@ func (s *ZeusSimulator) Close() (err error) {
 	}
 	s.zones = make(map[string]ZoneClimateRunner)
 	close(s.stop)
+
 	return nil
 }
 
-func (s *ZeusSimulator) serve(l net.Listener, address string) {
+func (s *ZeusSimulator) setUpServer(address string) (net.Listener, error) {
+	l, err := net.Listen("tcp", address)
+	if err != nil {
+		return nil, err
+	}
+
 	router := rpc.NewServer()
 	router.RegisterName("Zeus", s)
-	router.HandleHTTP(rpc.DefaultRPCPath, rpc.DefaultRPCPath)
-	server := http.Server{
-		Addr:    address,
-		Handler: router,
-	}
+
+	mux := http.NewServeMux()
+
+	mux.Handle(rpc.DefaultRPCPath, router)
+	s.server.Addr = address
+	s.server.Handler = mux
+
+	return l, nil
+}
+
+func (s *ZeusSimulator) serve(l net.Listener) {
 	go func() {
 		<-s.stop
-		err := server.Shutdown(context.Background())
-		if err != nil {
-			log.Printf("shutdown not graceful: %s", err)
+		if err := s.server.Shutdown(context.Background()); err != nil {
+			log.Printf("shutdown error: %s", err)
 		}
 		close(s.idle)
 	}()
-	err := server.Serve(l)
+
+	err := s.server.Serve(l)
 	if err == http.ErrServerClosed {
 		return
 	}
