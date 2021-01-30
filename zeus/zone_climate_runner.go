@@ -241,7 +241,12 @@ func (r *zoneClimateRunner) setUpRPC(o ZoneClimateRunnerOptions) error {
 	if len(o.OlympusHost) == 0 {
 		return nil
 	}
-	rpc, err := NewRPCReporter(o.Name, o.OlympusHost, o.Climate, o.Definition.TemperatureAux)
+	rpc, err := NewRPCReporter(RPCReporterOptions{
+		zoneName:       o.Name,
+		olympusAddress: o.OlympusHost,
+		climate:        o.Climate,
+		numAux:         o.Definition.TemperatureAux,
+	})
 	if err != nil {
 		return err
 	}
@@ -331,55 +336,42 @@ func (r *zoneClimateRunner) setUpSlackReporter(o ZoneClimateRunnerOptions) error
 	return nil
 }
 
-func (r *zoneClimateRunner) checkRange(start, end int) error {
-	if end > 0 && start > end || start < 0 {
-		return fmt.Errorf("invalid range [%d;%d[", start, end)
-	}
-	return nil
-}
-
-func (r *zoneClimateRunner) clampRange(start, end, len int) (int, int, error) {
-	if end > 0 {
-		if end > len {
-			return 0, 0, fmt.Errorf("unsufficient data size %d for [%d;%d[", len, start, end)
-		}
-		return start, end, nil
-	}
-	if start >= len {
-		return 0, 0, fmt.Errorf("unsufficient data size %d for [%d;%d[", len, start, len)
-	}
-	return start, len, nil
-}
-
 func (r *zoneClimateRunner) ClimateLog(start, end int) ([]zeus.ClimateReport, error) {
-	err := r.checkRange(start, end)
+	err := checkRange(start, end)
 	if err != nil {
 		return nil, err
 	}
 
 	if end > 0 && len(r.climateLogData) <= end {
-		return r.climateLogData[start:end], nil
+		res := make([]zeus.ClimateReport, end-start)
+		copy(res, r.climateLogData[start:end])
+
+		return res, nil
 	}
 
 	r.climateLogData, err = ReadClimateFile(r.climateLog)
 	if err != nil {
 		return nil, err
 	}
-	start, end, err = r.clampRange(start, end, len(r.climateLogData))
+	start, end, err = clampRange(start, end, len(r.climateLogData))
 	if err != nil {
 		return nil, err
 	}
-	return r.climateLogData[start:end], nil
+	res := make([]zeus.ClimateReport, end-start)
+	copy(res, r.climateLogData[start:end])
+	return res, nil
 }
 
 func (r *zoneClimateRunner) AlarmLog(start, end int) ([]zeus.AlarmEvent, error) {
-	err := r.checkRange(start, end)
+	err := checkRange(start, end)
 	if err != nil {
 		return nil, err
 	}
 
 	if end > 0 && len(r.alarmLogData) <= end {
-		return r.alarmLogData[start:end], nil
+		res := make([]zeus.AlarmEvent, end-start)
+		copy(res, r.alarmLogData[start:end])
+		return res, nil
 	}
 
 	r.alarmLogData, err = ReadAlarmLogFile(r.alarmLog)
@@ -390,11 +382,15 @@ func (r *zoneClimateRunner) AlarmLog(start, end int) ([]zeus.AlarmEvent, error) 
 		ae.ZoneIdentifier = ""
 	}
 
-	start, end, err = r.clampRange(start, end, len(r.alarmLogData))
+	start, end, err = clampRange(start, end, len(r.alarmLogData))
 	if err != nil {
 		return nil, err
 	}
-	return r.alarmLogData[start:end], nil
+
+	res := make([]zeus.AlarmEvent, end-start)
+	copy(res, r.alarmLogData[start:end])
+
+	return res, nil
 }
 
 func NewZoneClimateRunner(o ZoneClimateRunnerOptions) (r ZoneClimateRunner, err error) {

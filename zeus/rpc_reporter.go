@@ -165,23 +165,43 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 	r.Conn.Close()
 }
 
-func NewRPCReporter(name, address string, zone zeus.ZoneClimate, numAux int) (*RPCReporter, error) {
+type RPCReporterOptions struct {
+	zoneName       string
+	olympusAddress string
+	climate        zeus.ZoneClimate
+	numAux         int
+	wantedHostname string
+	rpcPort        int
+}
+
+func (o *RPCReporterOptions) sanitize(hostname string) {
+	if len(o.wantedHostname) == 0 {
+		o.wantedHostname = hostname
+	}
+	if o.rpcPort <= 0 {
+		o.rpcPort = zeus.ZEUS_PORT
+	}
+}
+
+func NewRPCReporter(o RPCReporterOptions) (*RPCReporter, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, err
 	}
-	logger := log.New(os.Stderr, "[zone/"+name+"/rpc] ", 0)
+	o.sanitize(hostname)
 
-	logger.Printf("Opening connection to '%s'", address)
-	conn, err := rpc.DialHTTP("tcp", address)
+	logger := log.New(os.Stderr, "[zone/"+o.zoneName+"/rpc] ", 0)
+
+	logger.Printf("Opening connection to '%s'", o.olympusAddress)
+	conn, err := rpc.DialHTTP("tcp", o.olympusAddress)
 	if err != nil {
 		return nil, fmt.Errorf("rpc: conn: %s", err)
 	}
 
 	unused := 0
 	reg := zeus.ZoneRegistration{
-		Host: hostname,
-		Name: name,
+		Host: o.wantedHostname,
+		Name: o.zoneName,
 	}
 
 	cast := func(from zeus.BoundedUnit) *float64 {
@@ -194,14 +214,14 @@ func NewRPCReporter(name, address string, zone zeus.ZoneClimate, numAux int) (*R
 		}
 	}
 
-	reg.Host = hostname
-	reg.Name = name
-	reg.MinHumidity = cast(zone.MinimalHumidity)
-	reg.MaxHumidity = cast(zone.MaximalHumidity)
-	reg.MinTemperature = cast(zone.MinimalTemperature)
-	reg.MaxTemperature = cast(zone.MaximalTemperature)
-	reg.NumAux = numAux
-	reg.RPCAddress = fmt.Sprintf("%s:%d", hostname, zeus.ZEUS_PORT)
+	reg.Host = o.wantedHostname
+	reg.Name = o.zoneName
+	reg.MinHumidity = cast(o.climate.MinimalHumidity)
+	reg.MaxHumidity = cast(o.climate.MaximalHumidity)
+	reg.MinTemperature = cast(o.climate.MinimalTemperature)
+	reg.MaxTemperature = cast(o.climate.MaximalTemperature)
+	reg.NumAux = o.numAux
+	reg.RPCAddress = fmt.Sprintf("%s.local:%d", hostname, o.rpcPort)
 	rerr := conn.Call("Olympus.RegisterZone", reg, &unused)
 	if rerr != nil {
 		return nil, fmt.Errorf("rpc: Olympus.RegisterZone: %s", rerr)
@@ -210,7 +230,7 @@ func NewRPCReporter(name, address string, zone zeus.ZoneClimate, numAux int) (*R
 	return &RPCReporter{
 		Registration:       reg,
 		Conn:               conn,
-		Addr:               address,
+		Addr:               o.olympusAddress,
 		ClimateReports:     make(chan zeus.ClimateReport, 20),
 		AlarmReports:       make(chan zeus.AlarmEvent, 20),
 		StateReports:       make(chan zeus.StateReport, 20),

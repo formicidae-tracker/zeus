@@ -129,7 +129,12 @@ func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 	go func() { s.H.C <- c }()
 	zone := zeus.ZoneClimate{}
 
-	n, err := NewRPCReporter("test-zone", testAddress, zone, 0)
+	n, err := NewRPCReporter(RPCReporterOptions{
+		zoneName:       "test-zone",
+		olympusAddress: testAddress,
+		climate:        zone,
+		numAux:         0,
+	})
 	n.log.SetOutput(bytes.NewBuffer(nil))
 	c.Assert(err, IsNil)
 	n.MaxAttempts = 2
