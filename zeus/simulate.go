@@ -15,8 +15,8 @@ type SimulateCommand struct {
 	} `positional-args:"yes" required:"yes"`
 
 	TimeRatio      float64 `long:"time-ratio" description:"time ratio for the simulation" default:"1.0"`
-	OlympusAddress string  `long:"olympus" default:"localhost:3001"`
-	RPCPort        int     `long:"rpc-port" default:"5011"`
+	OlympusAddress string  `long:"olympus" description:"olympus address to connect to" default:"localhost:3001"`
+	RPCPort        int     `long:"rpc-port" description:"the rpc port to use" default:"5011"`
 }
 
 func (c *SimulateCommand) Execute(args []string) error {
@@ -42,14 +42,14 @@ func (c *SimulateCommand) Execute(args []string) error {
 
 	<-sigint
 
-	return s.Close()
+	return s.shutdown()
 }
 
 func init() {
 	_, err := parser.AddCommand("simulate-climate-control",
 		"simulate climate control",
 		"simulate climate control from this computer. Will connect to an olympus host and generate stub climate and alarm data",
-		&ServeCommand{})
+		&SimulateCommand{})
 	if err != nil {
 		panic(err.Error())
 	}

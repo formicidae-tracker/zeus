@@ -68,7 +68,13 @@ func NewZoneClimateStub(args ZoneClimateStubArgs) (ZoneClimateRunner, error) {
 func (s *zoneClimateStub) Run() {
 	s.done = make(chan struct{})
 	s.stop = make(chan struct{})
-	defer close(s.done)
+	ready := make(chan struct{})
+	go func() { s.rpcReporter.Report(ready); close(s.done) }()
+	defer func() {
+		close(s.rpcReporter.ReportChannel())
+		close(s.rpcReporter.StateChannel())
+		close(s.rpcReporter.AlarmChannel())
+	}()
 
 	now := time.Now()
 	period := time.Duration(500.0/s.timeRatio) * time.Millisecond
@@ -76,6 +82,7 @@ func (s *zoneClimateStub) Run() {
 	s.step(now)
 
 	defer ticker.Stop()
+	<-ready
 	for {
 		select {
 		case <-s.stop:
@@ -144,7 +151,7 @@ func (s *zoneClimateStub) simulateClimate(now time.Time) {
 	new, nextTime, next := s.interpoler.CurrentInterpolation(now)
 	s.next = next
 	sendReport := false
-	if s.current.String() != new.String() {
+	if s.current == nil || s.current.String() != new.String() {
 		s.current = new
 		sendReport = true
 	}
@@ -162,8 +169,8 @@ func (s *zoneClimateStub) simulateAlarms(now time.Time) {
 
 func (s *zoneClimateStub) sendState(state zeus.State, now time.Time) {
 	cr := zeus.ClimateReport{
-		Humidity:     zeus.Humidity(state.Humidity.Value() * rand.NormFloat64() * 1.0),
-		Temperatures: []zeus.Temperature{zeus.Temperature(state.Temperature.Value() * rand.NormFloat64() * 0.01)},
+		Humidity:     zeus.Humidity(state.Humidity.Value() + rand.NormFloat64()*1.0),
+		Temperatures: []zeus.Temperature{zeus.Temperature(state.Temperature.Value() + rand.NormFloat64()*0.01)},
 		Time:         now,
 	}
 
