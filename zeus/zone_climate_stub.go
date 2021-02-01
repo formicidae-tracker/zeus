@@ -10,9 +10,10 @@ import (
 )
 
 type stubAlarm struct {
-	Alarm zeus.Alarm
-	Last  time.Time
-	On    bool
+	Alarm  zeus.Alarm
+	Period time.Duration
+	Next   time.Time
+	On     bool
 }
 
 type zoneClimateStub struct {
@@ -23,8 +24,9 @@ type zoneClimateStub struct {
 	interpoler    zeus.ClimateInterpoler
 	current, next zeus.Interpolation
 
-	alarms  []zeus.AlarmEvent
-	reports []zeus.ClimateReport
+	stubAlarms []stubAlarm
+	alarms     []zeus.AlarmEvent
+	reports    []zeus.ClimateReport
 
 	done, stop chan struct{}
 	mx         sync.Mutex
@@ -79,6 +81,22 @@ func (s *zoneClimateStub) Run() {
 	now := time.Now()
 	period := time.Duration(500.0/s.timeRatio) * time.Millisecond
 	ticker := time.NewTicker(period)
+
+	s.stubAlarms = []stubAlarm{
+		stubAlarm{
+			Alarm:  zeus.WaterLevelCritical,
+			Period: 20 * time.Minute,
+			Next:   now.Add(3 * time.Minute),
+			On:     false,
+		},
+		stubAlarm{
+			Alarm:  zeus.HumidityUnreachable,
+			Period: 30 * time.Minute,
+			Next:   now.Add(1 * time.Minute),
+			On:     false,
+		},
+	}
+
 	s.step(now)
 
 	defer ticker.Stop()
@@ -164,7 +182,35 @@ func (s *zoneClimateStub) simulateClimate(now time.Time) {
 	}
 }
 
+func (s *zoneClimateStub) sendAlarm(ae zeus.AlarmEvent) {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+	s.rpcReporter.AlarmChannel() <- ae
+	ae.ZoneIdentifier = ""
+	s.alarms = append(s.alarms, ae)
+}
+
 func (s *zoneClimateStub) simulateAlarms(now time.Time) {
+	for _, a := range s.stubAlarms {
+		if now.Before(a.Next) {
+			continue
+		}
+		ae := zeus.AlarmEvent{
+			Flags:          a.Alarm.Flags(),
+			Reason:         a.Alarm.Reason(),
+			ZoneIdentifier: zeus.ZoneIdentifier(s.host, s.zone),
+			Time:           now,
+		}
+		a.Next = a.Next.Add(a.Period + time.Duration(rand.NormFloat64()*a.Period.Seconds())*time.Second)
+		if a.On == true {
+			a.On = false
+			ae.Status = zeus.AlarmOff
+		} else {
+			a.On = true
+			ae.Status = zeus.AlarmOn
+		}
+		s.sendAlarm(ae)
+	}
 }
 
 func (s *zoneClimateStub) sendState(state zeus.State, now time.Time) {
