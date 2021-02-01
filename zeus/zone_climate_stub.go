@@ -24,7 +24,7 @@ type zoneClimateStub struct {
 	interpoler    zeus.ClimateInterpoler
 	current, next zeus.Interpolation
 
-	stubAlarms []stubAlarm
+	stubAlarms []*stubAlarm
 	alarms     []zeus.AlarmEvent
 	reports    []zeus.ClimateReport
 
@@ -79,17 +79,18 @@ func (s *zoneClimateStub) Run() {
 	}()
 
 	now := time.Now()
-	period := time.Duration(500.0/s.timeRatio) * time.Millisecond
+	basePeriod := 500 * time.Millisecond
+	period := time.Duration(basePeriod.Seconds()*1000.0/s.timeRatio) * time.Millisecond
 	ticker := time.NewTicker(period)
 
-	s.stubAlarms = []stubAlarm{
-		stubAlarm{
+	s.stubAlarms = []*stubAlarm{
+		&stubAlarm{
 			Alarm:  zeus.WaterLevelCritical,
 			Period: 20 * time.Minute,
 			Next:   now.Add(3 * time.Minute),
 			On:     false,
 		},
-		stubAlarm{
+		&stubAlarm{
 			Alarm:  zeus.HumidityUnreachable,
 			Period: 30 * time.Minute,
 			Next:   now.Add(1 * time.Minute),
@@ -106,7 +107,7 @@ func (s *zoneClimateStub) Run() {
 		case <-s.stop:
 			return
 		case <-ticker.C:
-			now = now.Add(period)
+			now = now.Add(basePeriod)
 			s.step(now)
 		}
 	}
@@ -202,6 +203,7 @@ func (s *zoneClimateStub) simulateAlarms(now time.Time) {
 			Time:           now,
 		}
 		a.Next = a.Next.Add(a.Period + time.Duration(rand.NormFloat64()*a.Period.Seconds())*time.Second)
+
 		if a.On == true {
 			a.On = false
 			ae.Status = zeus.AlarmOff
@@ -214,11 +216,23 @@ func (s *zoneClimateStub) simulateAlarms(now time.Time) {
 }
 
 func (s *zoneClimateStub) sendState(state zeus.State, now time.Time) {
-	state = zeus.SanitizeState(state)
+	noData := true
 	cr := zeus.ClimateReport{
-		Humidity:     zeus.Humidity(state.Humidity.Value() + rand.NormFloat64()*1.0),
-		Temperatures: []zeus.Temperature{zeus.Temperature(state.Temperature.Value() + rand.NormFloat64()*0.01)},
+		Humidity:     zeus.UndefinedHumidity,
+		Temperatures: []zeus.Temperature{zeus.UndefinedTemperature},
 		Time:         now,
+	}
+	if zeus.IsUndefined(state.Humidity) == false {
+		cr.Humidity = zeus.Humidity(state.Humidity.Value() + rand.NormFloat64()*1.0)
+		noData = false
+	}
+	if zeus.IsUndefined(state.Temperature) == false {
+		cr.Temperatures[0] = zeus.Temperature(state.Temperature.Value() + rand.NormFloat64()*0.01)
+		noData = false
+	}
+
+	if noData == true {
+		return
 	}
 
 	s.mx.Lock()
