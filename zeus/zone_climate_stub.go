@@ -168,6 +168,7 @@ func (s *zoneClimateStub) simulateAlarms(now time.Time) {
 }
 
 func (s *zoneClimateStub) sendState(state zeus.State, now time.Time) {
+	state = zeus.SanitizeState(state)
 	cr := zeus.ClimateReport{
 		Humidity:     zeus.Humidity(state.Humidity.Value() + rand.NormFloat64()*1.0),
 		Temperatures: []zeus.Temperature{zeus.Temperature(state.Temperature.Value() + rand.NormFloat64()*0.01)},
