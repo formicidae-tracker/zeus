@@ -222,7 +222,17 @@ func NewRPCReporter(o RPCReporterOptions) (*RPCReporter, error) {
 	reg.MaxTemperature = cast(o.climate.MaximalTemperature)
 	reg.NumAux = o.numAux
 	reg.RPCAddress = fmt.Sprintf("%s.local:%d", hostname, o.rpcPort)
-	rerr := conn.Call("Olympus.RegisterZone", reg, &unused)
+
+	rerr := conn.Call("Olympus.UnregisterZone", &zeus.ZoneUnregistration{
+		Host: o.wantedHostname,
+		Name: o.zoneName,
+	}, &unused)
+
+	if rerr != nil {
+		logger.Printf("could not unregister zone: %s", rerr)
+	}
+
+	rerr = conn.Call("Olympus.RegisterZone", reg, &unused)
 	if rerr != nil {
 		return nil, fmt.Errorf("rpc: Olympus.RegisterZone: %s", rerr)
 	}
