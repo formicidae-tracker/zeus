@@ -352,7 +352,7 @@ func (r *zoneClimateRunner) ClimateLog(start, end int) ([]zeus.ClimateReport, er
 		return nil, err
 	}
 
-	if end > 0 && len(r.climateLogData) <= end {
+	if end > 0 && end <= len(r.climateLogData) {
 		res := make([]zeus.ClimateReport, end-start)
 		copy(res, r.climateLogData[start:end])
 
@@ -378,7 +378,7 @@ func (r *zoneClimateRunner) AlarmLog(start, end int) ([]zeus.AlarmEvent, error) 
 		return nil, err
 	}
 
-	if end > 0 && len(r.alarmLogData) <= end {
+	if end > 0 && end <= len(r.alarmLogData) {
 		res := make([]zeus.AlarmEvent, end-start)
 		copy(res, r.alarmLogData[start:end])
 		return res, nil
