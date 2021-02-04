@@ -161,6 +161,10 @@ func (s *zoneClimateStub) AlarmLog(start, end int) ([]zeus.AlarmEvent, error) {
 	return res, nil
 }
 
+func (s *zoneClimateStub) Last() zeus.ZeusZoneStatus {
+	return zeus.ZeusZoneStatus{}
+}
+
 func (s *zoneClimateStub) step(now time.Time) {
 	s.simulateClimate(now)
 	s.simulateAlarms(now)

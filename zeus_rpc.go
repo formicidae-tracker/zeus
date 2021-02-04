@@ -7,10 +7,17 @@ type ZeusStartArgs struct {
 	Version string
 }
 
+type ZeusZoneStatus struct {
+	State       State
+	Temperature float64
+	Humidity    float64
+}
+
 type ZeusStatusReply struct {
 	Running bool
 	Since   time.Time
 	Version string
+	Zones   map[string]ZeusZoneStatus
 }
 
 type ZeusLogArgs struct {

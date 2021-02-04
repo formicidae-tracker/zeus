@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"sort"
 	"time"
 
 	"github.com/atuleu/go-tablifier"
@@ -12,7 +14,7 @@ type ScanCommand struct {
 }
 
 type resultTableLine struct {
-	Node       string
+	Zone       string
 	Status     string
 	Since      string
 	Version    string
@@ -32,7 +34,7 @@ func (c *ScanCommand) Execute(args []string) error {
 		ignored := 0
 		err := node.RunMethod("Zeus.Status", ignored, &status)
 		line := resultTableLine{
-			Node:       node.Name,
+			Zone:       node.Name,
 			Status:     "n.a.",
 			Since:      "n.a.",
 			Version:    "<0.3.0",
@@ -44,18 +46,39 @@ func (c *ScanCommand) Execute(args []string) error {
 			continue
 		}
 		line.Status = "Idle"
-		if status.Running == true {
-			line.Status = "Running"
-			ellapsed := now.Sub(status.Since).Truncate(time.Second)
-			line.Since = ellapsed.String()
-		}
 		line.Version = status.Version
 		compatible, err := zeus.VersionAreCompatible(zeus.ZEUS_VERSION, status.Version)
 		if err == nil && compatible == true {
 			line.Compatible = "✓"
 		}
-		lines = append(lines, line)
+		if status.Running == false {
+			lines = append(lines, line)
+			continue
+		}
+		ellapsed := now.Sub(status.Since).Truncate(time.Second)
+		line.Since = ellapsed.String()
+		if len(status.Zones) == 0 {
+			line.Status = "Running"
+			lines = append(lines, line)
+			continue
+		}
+
+		for n, s := range status.Zones {
+			line.Zone = node.Name + "." + n
+			line.Status = fmt.Sprintf("'%s' %.2f / %.2f °C %.2f / %.2f %% R.H.", s.State.Name, s.Temperature, s.State.Temperature, s.Humidity, s.State.Humidity)
+
+			lines = append(lines, line)
+		}
 	}
+
+	sort.Slice(lines, func(i, j int) bool {
+		iOn := lines[i].Status != "Idle" && lines[i].Status != "n.a."
+		jOn := lines[j].Status != "Idle" && lines[j].Status != "n.a."
+		if iOn == jOn {
+			return lines[i].Zone < lines[j].Zone
+		}
+		return iOn
+	})
 
 	tablifier.Tablify(lines)
 

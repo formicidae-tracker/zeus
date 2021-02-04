@@ -311,10 +311,16 @@ func (z *Zeus) Status(ignored int, reply *zeus.ZeusStatusReply) error {
 
 	reply.Running = z.isRunning()
 	reply.Version = zeus.ZEUS_VERSION
+
 	if reply.Running == false {
 		return nil
 	}
 	reply.Since = z.since
+	reply.Zones = make(map[string]zeus.ZeusZoneStatus)
+	for n, r := range z.runners {
+		reply.Zones[n] = r.Last()
+	}
+
 	return nil
 }
 

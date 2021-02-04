@@ -18,6 +18,7 @@ type ZoneClimateRunner interface {
 	Close() error
 	ClimateLog(start, end int) ([]zeus.ClimateReport, error)
 	AlarmLog(start, end int) ([]zeus.AlarmEvent, error)
+	Last() zeus.ZeusZoneStatus
 }
 
 type ZoneClimateRunnerOptions struct {
@@ -48,6 +49,7 @@ type zoneClimateRunner struct {
 	climateReporters []ClimateReporter
 	stateReporters   []StateReporter
 	alarmReporters   []AlarmReporter
+	last             *lastStateReporter
 
 	devices   map[arke.NodeClass]*Device
 	callbacks map[arke.MessageClass][]callback
@@ -336,6 +338,14 @@ func (r *zoneClimateRunner) setUpSlackReporter(o ZoneClimateRunnerOptions) error
 	return nil
 }
 
+func (r *zoneClimateRunner) setUpLastReporter(o ZoneClimateRunnerOptions) error {
+	r.last = NewLastStateReporter()
+	r.reporters = append(r.reporters, r.last)
+	r.stateReporters = append(r.stateReporters, r.last)
+	r.climateReporters = append(r.climateReporters, r.last)
+	return nil
+}
+
 func (r *zoneClimateRunner) ClimateLog(start, end int) ([]zeus.ClimateReport, error) {
 	err := checkRange(start, end)
 	if err != nil {
@@ -393,6 +403,10 @@ func (r *zoneClimateRunner) AlarmLog(start, end int) ([]zeus.AlarmEvent, error) 
 	return res, nil
 }
 
+func (r *zoneClimateRunner) Last() zeus.ZeusZoneStatus {
+	return r.last.Last()
+}
+
 func NewZoneClimateRunner(o ZoneClimateRunnerOptions) (r ZoneClimateRunner, err error) {
 	res := &zoneClimateRunner{
 		logger:          log.New(os.Stderr, "[zone/"+o.Name+"] ", 0),
@@ -418,6 +432,7 @@ func NewZoneClimateRunner(o ZoneClimateRunnerOptions) (r ZoneClimateRunner, err 
 		func(o ZoneClimateRunnerOptions) error { return res.setUpAlarmMonitor(o) },
 		func(o ZoneClimateRunnerOptions) error { return res.setUpRPC(o) },
 		func(o ZoneClimateRunnerOptions) error { return res.setUpFileReporters(o) },
+		func(o ZoneClimateRunnerOptions) error { return res.setUpLastReporter(o) },
 		func(o ZoneClimateRunnerOptions) error { return res.setUpCapabilities(o) },
 		func(o ZoneClimateRunnerOptions) error { return res.setUpDevices(o) },
 	}
