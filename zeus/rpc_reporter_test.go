@@ -127,8 +127,8 @@ func (s *RPCClimateReporterSuite) TearDownSuite(c *C) {
 
 func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 	go func() { s.H.C <- c }()
+	go func() { s.H.C <- c }()
 	zone := zeus.ZoneClimate{}
-
 	n, err := NewRPCReporter(RPCReporterOptions{
 		zoneName:       "test-zone",
 		olympusAddress: testAddress,
