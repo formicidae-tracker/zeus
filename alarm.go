@@ -56,6 +56,9 @@ type MissingDeviceAlarm struct {
 }
 
 func (a MissingDeviceAlarm) Flags() AlarmFlags {
+	if a.class == arke.ZeusClass {
+		return Emergency
+	}
 	return Emergency | InstantNotification
 }
 

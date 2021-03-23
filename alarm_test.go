@@ -45,7 +45,8 @@ func (s *AlarmSuite) TestData(c *C) {
 		{NewFanAlarm("foo", arke.FanStalled), "Fan foo is stalled", Emergency},
 		{NewFanAlarm("bar", arke.FanAging), "Fan bar is aging", Warning},
 		{NewFanAlarm("baz", arke.FanOK), "Fan baz is aging", Warning},
-		{NewMissingDeviceAlarm("vcan0", arke.ZeusClass, 1), "Device vcan0.Zeus.1 is missing", Emergency | InstantNotification},
+		{NewMissingDeviceAlarm("vcan0", arke.ZeusClass, 1), "Device vcan0.Zeus.1 is missing", Emergency},
+		{NewMissingDeviceAlarm("vcan0", arke.CelaenoClass, 1), "Device vcan0.Celaeno.1 is missing", Emergency | InstantNotification},
 		{NewDeviceInternalError("vcan0", arke.ZeusClass, 1, 0x42), "Device vcan0.Zeus.1 internal error 0x0042", Warning},
 	}
 
