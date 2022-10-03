@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"math"
 	"sync"
 	"time"
 
@@ -14,18 +15,16 @@ type InterpolationManagerSuite struct {
 
 var _ = Suite(&InterpolationManagerSuite{})
 
-func (s *InterpolationManagerSuite) TestInterpolationReportsSanitized(c *C) {
+func (s *InterpolationManagerSuite) TestInterpolationReportsUndefined(c *C) {
 
-	states := []zeus.State{
-		zeus.State{
-			Name:         "single and only one",
-			Temperature:  22.0,
-			Humidity:     50.0,
-			Wind:         100.0,
-			VisibleLight: zeus.UndefinedLight,
-			UVLight:      zeus.UndefinedLight,
-		},
-	}
+	states := []zeus.State{{
+		Name:         "single and only one",
+		Temperature:  22.0,
+		Humidity:     50.0,
+		Wind:         100.0,
+		VisibleLight: zeus.UndefinedLight,
+		UVLight:      zeus.UndefinedLight,
+	}}
 
 	i, err := NewInterpoler("test-zone", states, []zeus.Transition{})
 	c.Assert(err, IsNil)
@@ -47,8 +46,8 @@ func (s *InterpolationManagerSuite) TestInterpolationReportsSanitized(c *C) {
 	c.Check(r.Current.Temperature, Equals, states[0].Temperature)
 	c.Check(r.Current.Humidity, Equals, states[0].Humidity)
 	c.Check(r.Current.Wind, Equals, states[0].Wind)
-	c.Check(r.Current.VisibleLight, Equals, zeus.Light(-1000.0))
-	c.Check(r.Current.UVLight, Equals, zeus.Light(-1000.0))
+	c.Check(r.Current.VisibleLight, Equals, zeus.Light(math.Inf(-1)))
+	c.Check(r.Current.UVLight, Equals, zeus.Light(math.Inf(-1)))
 	c.Check(r.Next, IsNil)
 	c.Check(r.NextTime, IsNil)
 

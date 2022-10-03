@@ -47,7 +47,7 @@ type zoneClimateRunner struct {
 
 	reporters        []Reporter
 	climateReporters []ClimateReporter
-	stateReporters   []StateReporter
+	targetReporters  []TargetReporter
 	alarmReporters   []AlarmReporter
 	last             *lastStateReporter
 
@@ -113,12 +113,12 @@ func (r *zoneClimateRunner) spawnInterpoler(wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
 		for report := range r.interpoler.Reports() {
-			for _, reporters := range r.stateReporters {
-				reporters.StateChannel() <- report
+			for _, reporters := range r.targetReporters {
+				reporters.TargetChannel() <- report
 			}
 		}
-		for _, reporters := range r.stateReporters {
-			close(reporters.StateChannel())
+		for _, reporters := range r.targetReporters {
+			close(reporters.TargetChannel())
 		}
 		wg.Done()
 	}()
@@ -252,7 +252,7 @@ func (r *zoneClimateRunner) setUpRPC(o ZoneClimateRunnerOptions) error {
 		return err
 	}
 	r.reporters = append(r.reporters, rpc)
-	r.stateReporters = append(r.stateReporters, rpc)
+	r.targetReporters = append(r.targetReporters, rpc)
 	r.climateReporters = append(r.climateReporters, rpc)
 	r.alarmReporters = append(r.alarmReporters, rpc)
 	return nil
@@ -340,7 +340,7 @@ func (r *zoneClimateRunner) setUpSlackReporter(o ZoneClimateRunnerOptions) error
 func (r *zoneClimateRunner) setUpLastReporter(o ZoneClimateRunnerOptions) error {
 	r.last = NewLastStateReporter()
 	r.reporters = append(r.reporters, r.last)
-	r.stateReporters = append(r.stateReporters, r.last)
+	r.targetReporters = append(r.targetReporters, r.last)
 	r.climateReporters = append(r.climateReporters, r.last)
 	return nil
 }

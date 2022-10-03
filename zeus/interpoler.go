@@ -33,7 +33,7 @@ type interpoler struct {
 func (i *interpoler) stateReport(current, next zeus.Interpolation, now time.Time, nextTime time.Time) zeus.ClimateTarget {
 	report := zeus.ClimateTarget{
 		ZoneIdentifier: i.name,
-		Current:        zeus.SanitizeState(current.State(now)),
+		Current:        current.State(now),
 		CurrentEnd:     nil,
 
 		NextTime: nil,
@@ -46,7 +46,7 @@ func (i *interpoler) stateReport(current, next zeus.Interpolation, now time.Time
 		report.NextTime = &time.Time{}
 		*report.NextTime = nextTime
 		report.Next = &zeus.State{}
-		*report.Next = zeus.SanitizeState(next.State(nextTime))
+		*report.Next = next.State(nextTime)
 		report.NextEnd = next.End()
 	}
 	return report

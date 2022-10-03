@@ -20,7 +20,7 @@ func (r *lastStateReporter) Report(ready chan<- struct{}) {
 			if ok == false {
 				r.states = nil
 			} else {
-				r.last.State = zeus.SanitizeState(s.Current)
+				r.last.State = s.Current
 			}
 		case report, ok := <-r.climates:
 			if ok == false {
@@ -35,7 +35,7 @@ func (r *lastStateReporter) Report(ready chan<- struct{}) {
 			req <- zeus.ZeusZoneStatus{
 				Temperature: r.last.Temperature,
 				Humidity:    r.last.Humidity,
-				State:       zeus.SanitizeState(r.last.State),
+				State:       r.last.State,
 			}
 		}
 
@@ -57,7 +57,7 @@ func (r *lastStateReporter) ReportChannel() chan<- zeus.ClimateReport {
 	return r.climates
 }
 
-func (r *lastStateReporter) StateChannel() chan<- zeus.ClimateTarget {
+func (r *lastStateReporter) TargetChannel() chan<- zeus.ClimateTarget {
 	return r.states
 }
 

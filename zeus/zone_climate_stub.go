@@ -74,7 +74,7 @@ func (s *zoneClimateStub) Run() {
 	go func() { s.rpcReporter.Report(ready); close(s.done) }()
 	defer func() {
 		close(s.rpcReporter.ReportChannel())
-		close(s.rpcReporter.StateChannel())
+		close(s.rpcReporter.TargetChannel())
 		close(s.rpcReporter.AlarmChannel())
 	}()
 
@@ -247,17 +247,17 @@ func (s *zoneClimateStub) sendState(state zeus.State, now time.Time) {
 }
 
 func (s *zoneClimateStub) sendReport(now, next time.Time) {
-	report := zeus.ClimateTarget{
+	target := zeus.ClimateTarget{
 		ZoneIdentifier: zeus.ZoneIdentifier(s.host, s.zone),
-		Current:        zeus.SanitizeState(s.current.State(now)),
+		Current:        s.current.State(now),
 		CurrentEnd:     s.current.End(),
 	}
 	if s.next != nil {
-		report.NextTime = &time.Time{}
-		*report.NextTime = next
-		report.Next = &zeus.State{}
-		*report.Next = zeus.SanitizeState(s.next.State(next))
-		report.NextEnd = s.next.End()
+		target.NextTime = &time.Time{}
+		*target.NextTime = next
+		target.Next = &zeus.State{}
+		*target.Next = s.next.State(next)
+		target.NextEnd = s.next.End()
 	}
-	s.rpcReporter.StateChannel() <- report
+	s.rpcReporter.TargetChannel() <- target
 }

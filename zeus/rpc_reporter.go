@@ -44,7 +44,7 @@ func (r *RPCReporter) AlarmChannel() chan<- zeus.AlarmEvent {
 	return r.AlarmReports
 }
 
-func (r *RPCReporter) StateChannel() chan<- zeus.ClimateTarget {
+func (r *RPCReporter) TargetChannel() chan<- zeus.ClimateTarget {
 	return r.ClimateTargets
 }
 

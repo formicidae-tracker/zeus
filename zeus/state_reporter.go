@@ -2,7 +2,7 @@ package main
 
 import "github.com/formicidae-tracker/zeus"
 
-type StateReporter interface {
+type TargetReporter interface {
 	Reporter
-	StateChannel() chan<- zeus.ClimateTarget
+	TargetChannel() chan<- zeus.ClimateTarget
 }

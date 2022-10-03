@@ -7,24 +7,6 @@ import (
 	"time"
 )
 
-func SanitizeUnit(u BoundedUnit) float64 {
-	if IsUndefined(u) || math.IsNaN(u.Value()) {
-		return -1000.0
-	}
-	return u.Value()
-}
-
-func SanitizeState(s State) State {
-	return State{
-		Name:         s.Name,
-		Temperature:  Temperature(SanitizeUnit(s.Temperature)),
-		Humidity:     Humidity(SanitizeUnit(s.Humidity)),
-		Wind:         Wind(SanitizeUnit(s.Wind)),
-		VisibleLight: Light(SanitizeUnit(s.VisibleLight)),
-		UVLight:      Light(SanitizeUnit(s.UVLight)),
-	}
-}
-
 type Interpolation interface {
 	State(t time.Time) State
 	String() string
@@ -91,7 +73,7 @@ func (i *climateTransition) String() string {
 }
 
 func (t *climateTransition) End() *State {
-	state := SanitizeState(t.to)
+	state := t.to
 	return &state
 }
 
