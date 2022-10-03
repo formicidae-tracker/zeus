@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+option go_package = ".;zeuspb";
+package fort.zeus.proto;
+
+
+import "google/protobuf/timestamp.proto";
+
+message Empty {
+}
+
+message Target {
+	string         name          = 1;
+	optional float temperature   = 2;
+	optional float humidity      = 3;
+	optional float wind          = 4;
+	optional float visible_light = 5;
+	optional float uv_light      = 6;
+}
+
+message StartRequest {
+	string season_file = 1;
+	string version     = 2;
+}
+
+message ZoneStatus {
+	string         name        = 1;
+	optional float temperature = 2;
+	optional float humidity    = 3;
+	Target         target      = 4;
+}
+
+message Status {
+	bool                      running = 1;
+	google.protobuf.Timestamp since   = 2;
+	string                    version = 3;
+	repeated ZoneStatus       zones   = 4;
+}
+
+service Zeus {
+	rpc StartClimate(StartRequest) returns ( Empty );
+	rpc GetStatus(Empty) returns ( Status );
+	rpc StopClimate(Empty) returns ( Empty );
+}
