@@ -54,8 +54,8 @@ func NewZoneClimateStub(args ZoneClimateStubArgs) (ZoneClimateRunner, error) {
 	}
 
 	res.rpcReporter, err = NewRPCReporter(RPCReporterOptions{
-		wantedHostname: args.hostname,
-		zoneName:       args.zoneName,
+		host:           args.hostname,
+		zone:           args.zoneName,
 		climate:        args.climate,
 		olympusAddress: args.olympusAddress,
 		rpcPort:        args.rpcPort,
