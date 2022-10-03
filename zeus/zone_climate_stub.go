@@ -247,7 +247,7 @@ func (s *zoneClimateStub) sendState(state zeus.State, now time.Time) {
 }
 
 func (s *zoneClimateStub) sendReport(now, next time.Time) {
-	report := zeus.StateReport{
+	report := zeus.ClimateTarget{
 		ZoneIdentifier: zeus.ZoneIdentifier(s.host, s.zone),
 		Current:        zeus.SanitizeState(s.current.State(now)),
 		CurrentEnd:     s.current.End(),

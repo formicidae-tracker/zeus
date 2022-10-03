@@ -5,7 +5,7 @@ import "github.com/formicidae-tracker/zeus"
 type lastStateReporter struct {
 	requests chan chan zeus.ZeusZoneStatus
 
-	states   chan zeus.StateReport
+	states   chan zeus.ClimateTarget
 	climates chan zeus.ClimateReport
 
 	last zeus.ZeusZoneStatus
@@ -49,7 +49,7 @@ func NewLastStateReporter() *lastStateReporter {
 	return &lastStateReporter{
 		requests: make(chan chan zeus.ZeusZoneStatus),
 		climates: make(chan zeus.ClimateReport, 10),
-		states:   make(chan zeus.StateReport, 1),
+		states:   make(chan zeus.ClimateTarget, 1),
 	}
 }
 
@@ -57,7 +57,7 @@ func (r *lastStateReporter) ReportChannel() chan<- zeus.ClimateReport {
 	return r.climates
 }
 
-func (r *lastStateReporter) StateChannel() chan<- zeus.StateReport {
+func (r *lastStateReporter) StateChannel() chan<- zeus.ClimateTarget {
 	return r.states
 }
 

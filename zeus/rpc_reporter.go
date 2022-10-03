@@ -14,10 +14,10 @@ type RPCReporter struct {
 	Registration       zeus.ZoneRegistration
 	Addr               string
 	Conn               *rpc.Client
-	LastStateReport    *zeus.StateReport
+	LastStateReport    *zeus.ClimateTarget
 	ClimateReports     chan zeus.ClimateReport
 	AlarmReports       chan zeus.AlarmEvent
-	StateReports       chan zeus.StateReport
+	ClimateTargets     chan zeus.ClimateTarget
 	log                *log.Logger
 	ReconnectionWindow time.Duration
 	MaxAttempts        int
@@ -31,8 +31,8 @@ func (r *RPCReporter) AlarmChannel() chan<- zeus.AlarmEvent {
 	return r.AlarmReports
 }
 
-func (r *RPCReporter) StateChannel() chan<- zeus.StateReport {
-	return r.StateReports
+func (r *RPCReporter) StateChannel() chan<- zeus.ClimateTarget {
+	return r.ClimateTargets
 }
 
 func (r *RPCReporter) reconnect() error {
@@ -126,9 +126,9 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 					}
 				}
 			}
-		case sr, ok := <-r.StateReports:
+		case sr, ok := <-r.ClimateTargets:
 			if ok == false {
-				r.StateReports = nil
+				r.ClimateTargets = nil
 			} else {
 				r.LastStateReport = &sr
 				if rerr == nil && trials <= r.MaxAttempts && resetConnection == nil {
@@ -139,7 +139,7 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 				}
 			}
 		}
-		if r.AlarmReports == nil && r.ClimateReports == nil && r.StateReports == nil {
+		if r.AlarmReports == nil && r.ClimateReports == nil && r.ClimateTargets == nil {
 			break
 		}
 
@@ -243,7 +243,7 @@ func NewRPCReporter(o RPCReporterOptions) (*RPCReporter, error) {
 		Addr:               o.olympusAddress,
 		ClimateReports:     make(chan zeus.ClimateReport, 20),
 		AlarmReports:       make(chan zeus.AlarmEvent, 20),
-		StateReports:       make(chan zeus.StateReport, 20),
+		ClimateTargets:     make(chan zeus.ClimateTarget, 20),
 		log:                logger,
 		ReconnectionWindow: 5 * time.Second,
 		MaxAttempts:        1000,

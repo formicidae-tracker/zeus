@@ -14,7 +14,7 @@ type Interpoler interface {
 	Interpolate(chan<- struct{})
 
 	States() <-chan zeus.State
-	Reports() <-chan zeus.StateReport
+	Reports() <-chan zeus.ClimateTarget
 
 	Close() error
 }
@@ -27,11 +27,11 @@ type interpoler struct {
 	interpoler zeus.ClimateInterpoler
 	quit       chan struct{}
 	states     chan zeus.State
-	reports    chan zeus.StateReport
+	reports    chan zeus.ClimateTarget
 }
 
-func (i *interpoler) stateReport(current, next zeus.Interpolation, now time.Time, nextTime time.Time) zeus.StateReport {
-	report := zeus.StateReport{
+func (i *interpoler) stateReport(current, next zeus.Interpolation, now time.Time, nextTime time.Time) zeus.ClimateTarget {
+	report := zeus.ClimateTarget{
 		ZoneIdentifier: i.name,
 		Current:        zeus.SanitizeState(current.State(now)),
 		CurrentEnd:     nil,
@@ -52,7 +52,7 @@ func (i *interpoler) stateReport(current, next zeus.Interpolation, now time.Time
 	return report
 }
 
-func (i *interpoler) sendReport(r zeus.StateReport) {
+func (i *interpoler) sendReport(r zeus.ClimateTarget) {
 	select {
 	case i.reports <- r:
 	default:
@@ -125,7 +125,7 @@ func NewInterpoler(name string, states []zeus.State, transitions []zeus.Transiti
 		name:       path.Join(hostname, "zone", name),
 		interpoler: i,
 		logger:     logger,
-		reports:    make(chan zeus.StateReport, 1),
+		reports:    make(chan zeus.ClimateTarget, 1),
 		states:     make(chan zeus.State, 1),
 		Period:     5 * time.Second,
 	}, nil
@@ -135,7 +135,7 @@ func (i *interpoler) States() <-chan zeus.State {
 	return i.states
 }
 
-func (i *interpoler) Reports() <-chan zeus.StateReport {
+func (i *interpoler) Reports() <-chan zeus.ClimateTarget {
 	return i.reports
 }
 

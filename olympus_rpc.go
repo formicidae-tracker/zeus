@@ -22,7 +22,7 @@ type ZoneRegistration struct {
 	SizeClimateLog, SizeAlarmLog int
 }
 
-type StateReport struct {
+type ClimateTarget struct {
 	ZoneIdentifier string
 	Current        State
 	CurrentEnd     *State

@@ -53,7 +53,7 @@ func (h *Olympus) ReportAlarm(ae *zeus.AlarmEvent, unused *int) error {
 	return nil
 }
 
-func (h *Olympus) ReportState(ae *zeus.StateReport, unused *int) error {
+func (h *Olympus) ReportState(ae *zeus.ClimateTarget, unused *int) error {
 	c := <-h.C
 	c.Check(ae.ZoneIdentifier, Equals, zeus.ZoneIdentifier(h.hostname, "test-zone"))
 	*unused = 0
@@ -175,7 +175,7 @@ func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 		s.H.C <- c
 		wg.Done()
 	}()
-	n.StateChannel() <- zeus.StateReport{
+	n.StateChannel() <- zeus.ClimateTarget{
 		ZoneIdentifier: zeus.ZoneIdentifier(s.H.hostname, "test-zone"),
 	}
 
@@ -189,7 +189,7 @@ func (s *RPCClimateReporterSuite) TestClimateReport(c *C) {
 		s.H.C <- c
 		wg.Done()
 	}()
-	n.StateChannel() <- zeus.StateReport{
+	n.StateChannel() <- zeus.ClimateTarget{
 		ZoneIdentifier: zeus.ZoneIdentifier(s.H.hostname, "test-zone"),
 	}
 
