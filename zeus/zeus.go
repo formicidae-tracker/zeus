@@ -5,8 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
-	"net/rpc"
+	"net"
 	"os"
 	"path/filepath"
 	"sync"
@@ -18,10 +17,12 @@ import (
 	"github.com/formicidae-tracker/zeus/zeuspb"
 	"github.com/grandcat/zeroconf"
 	"github.com/slack-go/slack"
+	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Zeus struct {
+	zeuspb.UnimplementedZeusServer
 	intfFactory func(ifname string) (socketcan.RawInterface, error)
 
 	logger      *log.Logger
@@ -82,25 +83,24 @@ func (z *Zeus) spawnZeroconf() {
 }
 
 func (z *Zeus) runRPC() error {
-	rpcRouter := rpc.NewServer()
-	rpcRouter.Register(z)
-	rpcRouter.HandleHTTP(rpc.DefaultRPCPath, rpc.DefaultDebugPath)
-	rpcServer := http.Server{
-		Addr:    fmt.Sprintf(":%d", zeus.ZEUS_PORT),
-		Handler: rpcRouter,
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", zeus.ZEUS_PORT))
+	if err != nil {
+		return err
 	}
+
+	server := grpc.NewServer()
+	zeuspb.RegisterZeusServer(server, z)
 
 	go func() {
 		<-z.quit
-		if err := rpcServer.Shutdown(context.Background()); err != nil {
-			z.logger.Printf("rpc shutdown error: %s", err)
-		}
+		server.GracefulStop()
 		close(z.idle)
 	}()
 
-	if err := rpcServer.ListenAndServe(); err != http.ErrServerClosed {
+	if err := server.Serve(lis); err != nil {
 		return err
 	}
+
 	<-z.idle
 	z.quit = nil
 	z.idle = nil
@@ -280,38 +280,45 @@ func (z *Zeus) stopClimate() error {
 	return nil
 }
 
-func (z *Zeus) StartClimate(request *zeuspb.StartRequest) error {
+func (z *Zeus) StartClimate(c context.Context, request *zeuspb.StartRequest) (*zeuspb.Empty, error) {
 	z.mx.Lock()
 	defer z.mx.Unlock()
 
 	compatible, err := zeus.VersionAreCompatible(zeus.ZEUS_VERSION, request.Version)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if compatible == false {
-		return fmt.Errorf("client version (%s) is incompatible with service version (%s)", request.Version, zeus.ZEUS_VERSION)
+		return nil, fmt.Errorf("client version (%s) is incompatible with service version (%s)", request.Version, zeus.ZEUS_VERSION)
 	}
 
 	seasonFile, err := zeus.ParseSeasonFile([]byte(request.SeasonFile))
 	if err != nil {
-		return fmt.Errorf("could not read season file: %w", err)
+		return nil, fmt.Errorf("could not read season file: %w", err)
 	}
-	return z.startClimate(*seasonFile)
+	err = z.startClimate(*seasonFile)
+	if err != nil {
+		return nil, err
+	}
+	return &zeuspb.Empty{}, nil
 }
 
-func (z *Zeus) StopClimate(*zeuspb.Empty) error {
+func (z *Zeus) StopClimate(c context.Context, e *zeuspb.Empty) (*zeuspb.Empty, error) {
 	z.mx.Lock()
 	defer z.mx.Unlock()
 
-	return z.stopClimate()
+	if err := z.stopClimate(); err != nil {
+		return nil, err
+	}
+	return &zeuspb.Empty{}, nil
 }
 
 func (z *Zeus) isRunning() bool {
 	return len(z.runners) != 0
 }
 
-func (z *Zeus) Status(*zeuspb.Empty) *zeuspb.Status {
+func (z *Zeus) GetStatus(c context.Context, e *zeuspb.Empty) (*zeuspb.Status, error) {
 	z.mx.Lock()
 	defer z.mx.Unlock()
 
@@ -320,7 +327,7 @@ func (z *Zeus) Status(*zeuspb.Empty) *zeuspb.Status {
 		Version: zeus.ZEUS_VERSION,
 	}
 	if res.Running == false {
-		return res
+		return res, nil
 	}
 	res.Since = timestamppb.New(z.since)
 	for name, runner := range z.runners {
@@ -331,7 +338,7 @@ func (z *Zeus) Status(*zeuspb.Empty) *zeuspb.Status {
 		status.Name = name
 		res.Zones = append(res.Zones, status)
 	}
-	return res
+	return res, nil
 }
 
 func (z *Zeus) stateFilePath() (string, error) {
