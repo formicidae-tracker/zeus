@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/formicidae-tracker/zeus"
+	"github.com/formicidae-tracker/zeus/zeuspb"
 )
 
 type stubAlarm struct {
@@ -161,8 +162,8 @@ func (s *zoneClimateStub) AlarmLog(start, end int) ([]zeus.AlarmEvent, error) {
 	return res, nil
 }
 
-func (s *zoneClimateStub) Last() zeus.ZeusZoneStatus {
-	return zeus.ZeusZoneStatus{}
+func (s *zoneClimateStub) Last() *zeuspb.ZoneStatus {
+	return &zeuspb.ZoneStatus{}
 }
 
 func (s *zoneClimateStub) step(now time.Time) {

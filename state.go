@@ -1,5 +1,7 @@
 package zeus
 
+import "github.com/formicidae-tracker/zeus/zeuspb"
+
 type State struct {
 	Name         string
 	Temperature  Temperature
@@ -63,4 +65,15 @@ func (s State) MarshalYAML() (interface{}, error) {
 		res.Values["uv-light"] = float64(s.UVLight)
 	}
 	return res, nil
+}
+
+func (s State) AsPbTarget() *zeuspb.Target {
+	return &zeuspb.Target{
+		Name:         s.Name,
+		Temperature:  AsFloat32Pointer(s.Temperature),
+		Humidity:     AsFloat32Pointer(s.Humidity),
+		Wind:         AsFloat32Pointer(s.Wind),
+		VisibleLight: AsFloat32Pointer(s.VisibleLight),
+		UvLight:      AsFloat32Pointer(s.UVLight),
+	}
 }

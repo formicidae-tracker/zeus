@@ -1,14 +1,18 @@
 package main
 
-import "github.com/formicidae-tracker/zeus"
+import (
+	"github.com/barkimedes/go-deepcopy"
+	"github.com/formicidae-tracker/zeus"
+	"github.com/formicidae-tracker/zeus/zeuspb"
+)
 
 type lastStateReporter struct {
-	requests chan chan zeus.ZeusZoneStatus
+	requests chan chan *zeuspb.ZoneStatus
 
-	states   chan zeus.ClimateTarget
-	climates chan zeus.ClimateReport
+	targets chan zeus.ClimateTarget
+	reports chan zeus.ClimateReport
 
-	last zeus.ZeusZoneStatus
+	last zeuspb.ZoneStatus
 }
 
 func (r *lastStateReporter) Report(ready chan<- struct{}) {
@@ -16,30 +20,26 @@ func (r *lastStateReporter) Report(ready chan<- struct{}) {
 	close(ready)
 	for {
 		select {
-		case s, ok := <-r.states:
+		case target, ok := <-r.targets:
 			if ok == false {
-				r.states = nil
+				r.targets = nil
 			} else {
-				r.last.State = s.Current
+				r.last.Target = target.Current.AsPbTarget()
 			}
-		case report, ok := <-r.climates:
+		case report, ok := <-r.reports:
 			if ok == false {
-				r.climates = nil
+				r.reports = nil
 			} else {
-				r.last.Humidity = report.Humidity.Value()
+				r.last.Humidity = zeus.AsFloat32Pointer(report.Humidity)
 				if len(report.Temperatures) > 0 {
-					r.last.Temperature = report.Temperatures[0].Value()
+					r.last.Temperature = zeus.AsFloat32Pointer(report.Temperatures[0])
 				}
 			}
 		case req := <-r.requests:
-			req <- zeus.ZeusZoneStatus{
-				Temperature: r.last.Temperature,
-				Humidity:    r.last.Humidity,
-				State:       r.last.State,
-			}
+			req <- deepcopy.MustAnything(&r.last).(*zeuspb.ZoneStatus)
 		}
 
-		if r.states == nil && r.climates == nil {
+		if r.targets == nil && r.reports == nil {
 			return
 		}
 	}
@@ -47,27 +47,27 @@ func (r *lastStateReporter) Report(ready chan<- struct{}) {
 
 func NewLastStateReporter() *lastStateReporter {
 	return &lastStateReporter{
-		requests: make(chan chan zeus.ZeusZoneStatus),
-		climates: make(chan zeus.ClimateReport, 10),
-		states:   make(chan zeus.ClimateTarget, 1),
+		requests: make(chan chan *zeuspb.ZoneStatus),
+		reports:  make(chan zeus.ClimateReport, 10),
+		targets:  make(chan zeus.ClimateTarget, 1),
 	}
 }
 
 func (r *lastStateReporter) ReportChannel() chan<- zeus.ClimateReport {
-	return r.climates
+	return r.reports
 }
 
 func (r *lastStateReporter) TargetChannel() chan<- zeus.ClimateTarget {
-	return r.states
+	return r.targets
 }
 
-func (r *lastStateReporter) Last() (res zeus.ZeusZoneStatus) {
+func (r *lastStateReporter) Last() (res *zeuspb.ZoneStatus) {
 	defer func() {
 		if recover() != nil {
-			res = zeus.ZeusZoneStatus{}
+			res = nil
 		}
 	}()
-	resChannel := make(chan zeus.ZeusZoneStatus)
+	resChannel := make(chan *zeuspb.ZoneStatus)
 	r.requests <- resChannel
 	return <-resChannel
 }

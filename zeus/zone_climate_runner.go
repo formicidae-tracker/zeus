@@ -10,6 +10,7 @@ import (
 	"github.com/adrg/xdg"
 	"github.com/formicidae-tracker/libarke/src-go/arke"
 	"github.com/formicidae-tracker/zeus"
+	"github.com/formicidae-tracker/zeus/zeuspb"
 	"github.com/slack-go/slack"
 )
 
@@ -18,7 +19,7 @@ type ZoneClimateRunner interface {
 	Close() error
 	ClimateLog(start, end int) ([]zeus.ClimateReport, error)
 	AlarmLog(start, end int) ([]zeus.AlarmEvent, error)
-	Last() zeus.ZeusZoneStatus
+	Last() *zeuspb.ZoneStatus
 }
 
 type ZoneClimateRunnerOptions struct {
@@ -402,7 +403,7 @@ func (r *zoneClimateRunner) AlarmLog(start, end int) ([]zeus.AlarmEvent, error) 
 	return res, nil
 }
 
-func (r *zoneClimateRunner) Last() zeus.ZeusZoneStatus {
+func (r *zoneClimateRunner) Last() *zeuspb.ZoneStatus {
 	return r.last.Last()
 }
 

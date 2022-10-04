@@ -324,10 +324,13 @@ func (z *Zeus) Status(*zeuspb.Empty) *zeuspb.Status {
 	}
 	res.Since = timestamppb.New(z.since)
 	for name, runner := range z.runners {
-		res.Zones = append(res.Zones,
-			nil)
+		status := runner.Last()
+		if status == nil {
+			continue
+		}
+		status.Name = name
+		res.Zones = append(res.Zones, status)
 	}
-
 	return res
 }
 

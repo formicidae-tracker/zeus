@@ -22,7 +22,7 @@ func (s *VersionSuite) TestParsing(c *C) {
 				Minor: 2,
 				Patch: 0,
 				Pre: []semver.PRVersion{
-					semver.PRVersion{VersionStr: "15-g123559f"},
+					{VersionStr: "15-g123559f"},
 				},
 			},
 		},

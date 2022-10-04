@@ -16,6 +16,16 @@ func IsUndefined(u BoundedUnit) bool {
 	return math.IsInf(u.Value(), -1)
 }
 
+func AsFloat32Pointer(u BoundedUnit) *float32 {
+	v := u.Value()
+	if IsUndefined(u) || math.IsNaN(v) || math.IsInf(v, 1) {
+		return nil
+	}
+	res := new(float32)
+	*res = float32(v)
+	return res
+}
+
 type Temperature float64
 
 func (t Temperature) Value() float64    { return float64(t) }
