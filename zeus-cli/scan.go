@@ -30,9 +30,7 @@ func (c *ScanCommand) Execute(args []string) error {
 	lines := make([]resultTableLine, 0, len(nodes))
 
 	for _, node := range nodes {
-		status := zeus.ZeusStatusReply{}
-		ignored := 0
-		err := node.RunMethod("Zeus.Status", ignored, &status)
+		status, err := node.Status()
 		line := resultTableLine{
 			Zone:       node.Name,
 			Status:     "n.a.",
@@ -55,7 +53,7 @@ func (c *ScanCommand) Execute(args []string) error {
 			lines = append(lines, line)
 			continue
 		}
-		ellapsed := now.Sub(status.Since).Truncate(time.Second)
+		ellapsed := now.Sub(status.Since.AsTime()).Truncate(time.Second)
 		line.Since = ellapsed.String()
 		if len(status.Zones) == 0 {
 			line.Status = "Running"
@@ -63,9 +61,14 @@ func (c *ScanCommand) Execute(args []string) error {
 			continue
 		}
 
-		for n, s := range status.Zones {
-			line.Zone = node.Name + "." + n
-			line.Status = fmt.Sprintf("'%s' %.2f / %.2f °C %.2f / %.2f %% R.H.", s.State.Name, s.Temperature, s.State.Temperature, s.Humidity, s.State.Humidity)
+		for _, s := range status.Zones {
+			line.Zone = node.Name + "." + s.Name
+			line.Status = fmt.Sprintf("'%s' %.2f / %.2f °C %.2f / %.2f %% R.H.",
+				s.Target.Name,
+				s.Temperature,
+				s.Target.Temperature,
+				s.Humidity,
+				s.Target.Humidity)
 
 			lines = append(lines, line)
 		}

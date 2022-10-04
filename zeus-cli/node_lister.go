@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"net/rpc"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,21 +15,6 @@ import (
 )
 
 const CACHE_TTL = 5 * time.Second
-
-type Node struct {
-	Name    string
-	Address string
-	Port    int
-}
-
-func (n Node) RunMethod(name string, args, reply interface{}) error {
-	c, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", n.Address, n.Port))
-	if err != nil {
-		return fmt.Errorf("Could not connect to '%s': %s", n.Name, err)
-	}
-	defer c.Close()
-	return c.Call(name, args, reply)
-}
 
 type NodeLister struct {
 	CacheDate time.Time       `yaml:"date"`

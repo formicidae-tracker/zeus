@@ -1,7 +1,8 @@
 package main
 
 import (
-	"os"
+	"fmt"
+	"io/ioutil"
 
 	"github.com/formicidae-tracker/zeus"
 	"github.com/jessevdk/go-flags"
@@ -15,20 +16,21 @@ type StartCommand struct {
 }
 
 func (c *StartCommand) Execute(args []string) error {
-	season, err := zeus.ReadSeasonFile(string(c.Args.SeasonFile), os.Stderr)
+	seasonContent, err := ioutil.ReadFile(string(c.Args.SeasonFile))
 	if err != nil {
-		return err
+		return fmt.Errorf("could not read '%s': %w", c.Args.SeasonFile, err)
 	}
+	_, err = zeus.ParseSeasonFile(seasonContent)
+	if err != nil {
+		return fmt.Errorf("invalid season file: %w", err)
+	}
+
 	node, err := GetNode(c.Args.Node)
 	if err != nil {
 		return err
 	}
-	unused := 0
-	return node.RunMethod("Zeus.StartClimate",
-		zeus.ZeusStartArgs{
-			Version: zeus.ZEUS_VERSION,
-			Season:  *season,
-		}, &unused)
+
+	return node.StartClimate(seasonContent)
 }
 
 type StopCommand struct {
@@ -42,8 +44,7 @@ func (c *StopCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	unused := 0
-	return node.RunMethod("Zeus.StopClimate", 0, &unused)
+	return node.StopClimate()
 }
 
 func init() {

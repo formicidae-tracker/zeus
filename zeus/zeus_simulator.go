@@ -1,23 +1,23 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log"
 	"net"
-	"net/http"
-	"net/rpc"
 	"sync"
 
 	"github.com/formicidae-tracker/zeus"
+	"github.com/formicidae-tracker/zeus/zeuspb"
+	"google.golang.org/grpc"
 )
 
 type ZeusSimulator struct {
+	zeuspb.UnimplementedZeusServer
 	stop, idle chan struct{}
 	mx         sync.RWMutex
 	zones      map[string]ZoneClimateRunner
-	server     http.Server
+	server     *grpc.Server
 }
 
 type ZeusSimulatorArgs struct {
@@ -96,14 +96,8 @@ func (s *ZeusSimulator) setUpServer(address string) (net.Listener, error) {
 		return nil, err
 	}
 
-	router := rpc.NewServer()
-	router.RegisterName("Zeus", s)
-
-	mux := http.NewServeMux()
-
-	mux.Handle(rpc.DefaultRPCPath, router)
-	s.server.Addr = address
-	s.server.Handler = mux
+	s.server = grpc.NewServer()
+	zeuspb.RegisterZeusServer(s.server, s)
 
 	return l, nil
 }
@@ -111,50 +105,12 @@ func (s *ZeusSimulator) setUpServer(address string) (net.Listener, error) {
 func (s *ZeusSimulator) serve(l net.Listener) {
 	go func() {
 		<-s.stop
-		if err := s.server.Shutdown(context.Background()); err != nil {
-			log.Printf("shutdown error: %s", err)
-		}
+		s.server.GracefulStop()
 		close(s.idle)
 	}()
 
 	err := s.server.Serve(l)
-	if err == http.ErrServerClosed {
-		return
-	}
 	if err != nil {
 		log.Printf("server error: %s", err)
 	}
-}
-
-func (s *ZeusSimulator) ClimateLog(args zeus.ZeusLogArgs, reply *zeus.ZeusClimateLogReply) error {
-	s.mx.RLock()
-	defer s.mx.RUnlock()
-	var err error
-	reply.Data, err = s.climateLog(args.ZoneName, args.Start, args.End)
-	return err
-}
-
-func (s *ZeusSimulator) AlarmLog(args zeus.ZeusLogArgs, reply *zeus.ZeusAlarmLogReply) error {
-	s.mx.RLock()
-	defer s.mx.RUnlock()
-	var err error
-	reply.Data, err = s.alarmLog(args.ZoneName, args.Start, args.End)
-	return err
-
-}
-
-func (s *ZeusSimulator) climateLog(zoneName string, start, end int) ([]zeus.ClimateReport, error) {
-	r, ok := s.zones[zoneName]
-	if ok == false {
-		return nil, fmt.Errorf("unknown zone '%s'", zoneName)
-	}
-	return r.ClimateLog(start, end)
-}
-
-func (s *ZeusSimulator) alarmLog(zoneName string, start, end int) ([]zeus.AlarmEvent, error) {
-	r, ok := s.zones[zoneName]
-	if ok == false {
-		return nil, fmt.Errorf("unknown zone '%s'", zoneName)
-	}
-	return r.AlarmLog(start, end)
 }
