@@ -271,6 +271,17 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 	r.log.Printf("started")
 	close(ready)
 	for {
+		if conn.stream == nil && connectionResult == nil {
+			r.log.Printf("reconnecting gRPC")
+			m := &olympuspb.ZoneUpStream{
+				Declaration: r.declaration,
+				Target:      r.lastTarget,
+			}
+			if r.lastReport != nil {
+				m.Reports = []*olympuspb.ClimateReport{r.lastReport}
+			}
+			connectionResult = r.connectAsync(conn.conn, m)
+		}
 		select {
 		case d, ok := <-connectionResult:
 			if ok == false {
@@ -322,18 +333,6 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 				r.log.Printf("gRPC CloseSend() failure: %s", err)
 			}
 			conn.stream = nil
-		}
-
-		if conn.stream == nil && connectionResult == nil {
-			r.log.Printf("reconnecting gRPC")
-			m := &olympuspb.ZoneUpStream{
-				Declaration: r.declaration,
-				Target:      r.lastTarget,
-			}
-			if r.lastReport != nil {
-				m.Reports = []*olympuspb.ClimateReport{r.lastReport}
-			}
-			connectionResult = r.connectAsync(conn.conn, m)
 		}
 	}
 }
