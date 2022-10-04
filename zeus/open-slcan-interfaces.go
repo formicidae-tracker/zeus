@@ -38,7 +38,7 @@ func (c *OpenSlcanInterfacesCommand) Execute(args []string) error {
 		}
 		managers[ifname] = manager
 	}
-	sigint := make(chan os.Signal)
+	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
 	return nil

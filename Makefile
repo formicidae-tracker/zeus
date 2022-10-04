@@ -1,38 +1,31 @@
-all: zeus zeus/zeus tools/arke-change-device-id/arke-change-device-id tools/arkedump/arkedump tools/arke-zeus-config/arke-zeus-config tools/zeus-calibrator/zeus-calibrator zeus-cli/zeus-cli
+all: zeus zeus/zeus zeus-cli/zeus-cli tools check
 
-.PHONY: zeus clean
+.PHONY: zeus clean check tools
 
-zeus: *.go
+zeus: *.go zeuspb/*.go zeuspb/*.proto
 	go generate
 	go build
+
+tools:
+	make -C tools
+
+check:
 	go test
 	go vet
+	make -C zeus check
+	make -C zeus-cli check
+	make -C tools check
+
+zeus/zeus: *.go zeus/*.go zeuspb/*.go zeuspb/*.proto
+	make -C zeus
+
+zeus-cli/zeus-cli: *.go zeus-cli/*.go zeuspb/*.go zeuspb/*.proto
+	make -C zeus-cli
 
 clean:
-	rm -f zeus/zeus
-	rm -f tools/arke-change-device-id/arke-change-device-id
-	rm -f tools/arkedump/arkedump
-	rm -f tools/arke-zeus-config/arke-zeus-config
-	rm -f tools/zeus-calibrator/zeus-calibrator
-	rm -f zeus-cli/zeus-cli
-
-zeus/zeus: zeus/*.go *.go
-	cd zeus && go build $(LDFLAGS) && go test
-
-tools/arke-change-device-id/arke-change-device-id: tools/arke-change-device-id/*.go
-	cd tools/arke-change-device-id && go build $(LDFLAGS)
-
-tools/arkedump/arkedump: tools/arkedump/*.go
-	cd tools/arkedump && go build $(LDFLAGS)
-
-tools/arke-zeus-config/arke-zeus-config: tools/arke-zeus-config/*.go
-	cd tools/arke-zeus-config && go build $(LDFLAGS)
-
-tools/zeus-calibrator/zeus-calibrator: tools/zeus-calibrator/*.go
-	cd tools/zeus-calibrator && go build $(LDFLAGS)
-
-zeus-cli/zeus-cli: zeus-cli/*.go *.go
-	cd zeus-cli && go build $(LDFLAGS)
+	make -C zeus clean
+	make -C zeus-cli clean
+	make -C tools clean
 
 INSTALL_PREFIX=/usr/local
 

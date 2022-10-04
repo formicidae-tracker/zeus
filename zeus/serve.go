@@ -23,7 +23,7 @@ func (c *ServeCommand) Execute(args []string) error {
 		return err
 	}
 
-	sigint := make(chan os.Signal)
+	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	go z.run()
 	<-sigint

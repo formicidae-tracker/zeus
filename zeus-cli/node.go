@@ -26,6 +26,10 @@ func closeAndLogError(closer io.Closer) {
 	}
 }
 
+func (n Node) DialAddress() string {
+	return fmt.Sprintf("%s:%d", n.Address, n.Port)
+}
+
 func (n Node) Connect() (conn *grpc.ClientConn, client zeuspb.ZeusClient, err error) {
 	defer func() {
 		if err == nil || conn == nil {
@@ -34,7 +38,7 @@ func (n Node) Connect() (conn *grpc.ClientConn, client zeuspb.ZeusClient, err er
 		closeAndLogError(conn)
 		conn = nil
 	}()
-	conn, err = grpc.Dial(fmt.Sprintf("%s:%d", n.Address, n.Port))
+	conn, err = grpc.Dial(n.DialAddress())
 	if err != nil {
 		return nil, nil, err
 	}

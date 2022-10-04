@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"sort"
 	"time"
 
@@ -61,14 +62,22 @@ func (c *ScanCommand) Execute(args []string) error {
 			continue
 		}
 
+		safeCast := func(v *float32) float32 {
+			if v == nil {
+				return float32(math.NaN())
+			}
+			return *v
+		}
+
 		for _, s := range status.Zones {
 			line.Zone = node.Name + "." + s.Name
 			line.Status = fmt.Sprintf("'%s' %.2f / %.2f °C %.2f / %.2f %% R.H.",
 				s.Target.Name,
-				s.Temperature,
-				s.Target.Temperature,
-				s.Humidity,
-				s.Target.Humidity)
+				safeCast(s.Temperature),
+				safeCast(s.Target.Temperature),
+				safeCast(s.Humidity),
+				safeCast(s.Target.Humidity),
+			)
 
 			lines = append(lines, line)
 		}
