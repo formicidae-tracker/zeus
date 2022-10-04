@@ -1,10 +1,12 @@
-VERSION := $(shell git describe)
-LDFLAGS := -ldflags "-X 'github.com/formicidae-tracker/zeus.ZEUS_VERSION=$(VERSION)'"
+all: zeus zeus/zeus tools/arke-change-device-id/arke-change-device-id tools/arkedump/arkedump tools/arke-zeus-config/arke-zeus-config tools/zeus-calibrator/zeus-calibrator zeus-cli/zeus-cli
 
-all: check-lib zeus/zeus tools/arke-change-device-id/arke-change-device-id tools/arkedump/arkedump tools/arke-zeus-config/arke-zeus-config tools/zeus-calibrator/zeus-calibrator zeus-cli/zeus-cli
+.PHONY: zeus clean
 
-check-lib: *.go
-	go test && touch check-lib
+zeus: *.go
+	go generate
+	go build
+	go test
+	go vet
 
 clean:
 	rm -f zeus/zeus

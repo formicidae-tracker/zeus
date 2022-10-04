@@ -1,11 +1,17 @@
 package zeus
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/blang/semver"
 )
+
+//go:generate go run generate_version.go
+//go:generate protoc --experimental_allow_proto3_optional --go_out=zeuspb --go-grpc_out=zeuspb zeuspb/zeus_service.proto
 
 func filenameWithSuffix(fpath string, iter uint) string {
 	res := strings.TrimSuffix(fpath, filepath.Ext(fpath))
@@ -31,4 +37,23 @@ func CreateFileWithoutOverwrite(fpath string) (*os.File, string, error) {
 		}
 		iter += 1
 	}
+}
+
+// Tests if two version strings are compatible.
+func VersionAreCompatible(a, b string) (bool, error) {
+	if a == "development" || b == "development" {
+		return true, nil
+	}
+	av, err := semver.ParseTolerant(a)
+	if err != nil {
+		return false, fmt.Errorf("Invalid version '%s': %s", a, err)
+	}
+	bv, err := semver.ParseTolerant(b)
+	if err != nil {
+		return false, fmt.Errorf("Invalid version '%s': %s", b, err)
+	}
+	if av.Major == 0 {
+		return bv.Major == 0 && av.Minor == bv.Minor, nil
+	}
+	return av.Major == bv.Major, nil
 }

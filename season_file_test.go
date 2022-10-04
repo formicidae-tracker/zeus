@@ -125,6 +125,7 @@ func (s *SeasonFileSuite) TestWritingShouldBeReadable(c *C) {
 		c.Assert(err, IsNil)
 		log.Printf("written file:\n%s", content)
 	}()
+
 	result, err := ReadSeasonFile(filename, bytes.NewBuffer(nil))
 	c.Check(err, IsNil)
 	c.Check(*result, DeepEquals, season)

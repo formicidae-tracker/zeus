@@ -15,8 +15,10 @@ import (
 	"github.com/adrg/xdg"
 	socketcan "github.com/atuleu/golang-socketcan"
 	"github.com/formicidae-tracker/zeus"
+	"github.com/formicidae-tracker/zeus/zeuspb"
 	"github.com/grandcat/zeroconf"
 	"github.com/slack-go/slack"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Zeus struct {
@@ -278,23 +280,27 @@ func (z *Zeus) stopClimate() error {
 	return nil
 }
 
-func (z *Zeus) StartClimate(args zeus.ZeusStartArgs, unused *int) error {
+func (z *Zeus) StartClimate(request *zeuspb.StartRequest) error {
 	z.mx.Lock()
 	defer z.mx.Unlock()
 
-	compatible, err := zeus.VersionAreCompatible(zeus.ZEUS_VERSION, args.Version)
+	compatible, err := zeus.VersionAreCompatible(zeus.ZEUS_VERSION, request.Version)
 	if err != nil {
 		return err
 	}
 
 	if compatible == false {
-		return fmt.Errorf("client version (%s) is incompatible with service version (%s)", args.Version, zeus.ZEUS_VERSION)
+		return fmt.Errorf("client version (%s) is incompatible with service version (%s)", request.Version, zeus.ZEUS_VERSION)
 	}
 
-	return z.startClimate(args.Season)
+	seasonFile, err := zeus.ParseSeasonFile([]byte(request.SeasonFile))
+	if err != nil {
+		return fmt.Errorf("could not read season file: %w", err)
+	}
+	return z.startClimate(*seasonFile)
 }
 
-func (z *Zeus) StopClimate(ignored int, unused *int) error {
+func (z *Zeus) StopClimate(*zeuspb.Empty) error {
 	z.mx.Lock()
 	defer z.mx.Unlock()
 
@@ -305,62 +311,24 @@ func (z *Zeus) isRunning() bool {
 	return len(z.runners) != 0
 }
 
-func (z *Zeus) Status(ignored int, reply *zeus.ZeusStatusReply) error {
+func (z *Zeus) Status(*zeuspb.Empty) *zeuspb.Status {
 	z.mx.Lock()
 	defer z.mx.Unlock()
 
-	reply.Running = z.isRunning()
-	reply.Version = zeus.ZEUS_VERSION
-
-	if reply.Running == false {
-		return nil
+	res := &zeuspb.Status{
+		Running: z.isRunning(),
+		Version: zeus.ZEUS_VERSION,
 	}
-	reply.Since = z.since
-	reply.Zones = make(map[string]zeus.ZeusZoneStatus)
-	for n, r := range z.runners {
-		reply.Zones[n] = r.Last()
+	if res.Running == false {
+		return res
 	}
-
-	return nil
-}
-
-func (z *Zeus) climateLog(zoneName string, start, end int) ([]zeus.ClimateReport, error) {
-	if z.isRunning() == false {
-		return nil, fmt.Errorf("not running")
-	}
-	r, ok := z.runners[zoneName]
-	if ok == false {
-		return nil, fmt.Errorf("unknown zone '%s'", zoneName)
-	}
-	return r.ClimateLog(start, end)
-}
-
-func (z *Zeus) alarmLog(zoneName string, start, end int) ([]zeus.AlarmEvent, error) {
-	if z.isRunning() == false {
-		return nil, fmt.Errorf("not running")
+	res.Since = timestamppb.New(z.since)
+	for name, runner := range z.runners {
+		res.Zones = append(res.Zones,
+			nil)
 	}
 
-	r, ok := z.runners[zoneName]
-	if ok == false {
-		return nil, fmt.Errorf("unknown zone '%s'", zoneName)
-	}
-	return r.AlarmLog(start, end)
-}
-
-func (z *Zeus) ClimateLog(args zeus.ZeusLogArgs, reply *zeus.ZeusClimateLogReply) error {
-	z.mx.Lock()
-	defer z.mx.Unlock()
-	var err error
-	reply.Data, err = z.climateLog(args.ZoneName, args.Start, args.End)
-	return err
-}
-
-func (z *Zeus) AlarmLog(args zeus.ZeusLogArgs, reply *zeus.ZeusAlarmLogReply) error {
-	z.mx.Lock()
-	defer z.mx.Unlock()
-	var err error
-	reply.Data, err = z.alarmLog(args.ZoneName, args.Start, args.End)
-	return err
+	return res
 }
 
 func (z *Zeus) stateFilePath() (string, error) {

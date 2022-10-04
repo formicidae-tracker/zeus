@@ -23,6 +23,7 @@ message StartRequest {
 	string version     = 2;
 }
 
+
 message ZoneStatus {
 	string         name        = 1;
 	optional float temperature = 2;

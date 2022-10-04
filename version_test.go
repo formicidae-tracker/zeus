@@ -54,13 +54,14 @@ func (s *VersionSuite) TestCompatibility(c *C) {
 	}
 
 	for _, d := range testdata {
+		comment := Commentf("Testing %+v", d)
 		r, err := VersionAreCompatible(d.A, d.B)
 		if len(d.Error) == 0 {
-			c.Check(err, IsNil)
-			c.Check(r, Equals, d.Compatible)
+			c.Check(err, IsNil, comment)
+			c.Check(r, Equals, d.Compatible, comment)
 		} else {
-			c.Check(r, Equals, false)
-			c.Check(err, ErrorMatches, d.Error)
+			c.Check(r, Equals, false, comment)
+			c.Check(err, ErrorMatches, d.Error, comment)
 		}
 	}
 

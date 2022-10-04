@@ -90,14 +90,24 @@ func formatDeprecatedLines(lines []deprecatedLine, writer io.Writer) error {
 	return nil
 }
 
+func ParseSeasonFile(content []byte) (*SeasonFile, error) {
+	s := &SeasonFile{}
+
+	err := yaml.Unmarshal(content, s)
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
+}
+
 func ReadSeasonFile(filename string, writer io.Writer) (*SeasonFile, error) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	s := &SeasonFile{}
 
-	err = yaml.Unmarshal(data, s)
+	s, err := ParseSeasonFile(data)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +116,7 @@ func ReadSeasonFile(filename string, writer io.Writer) (*SeasonFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(lines) == 0 {
+	if len(lines) == 0 || writer == nil {
 		return s, nil
 	}
 	err = formatDeprecatedLines(lines, writer)

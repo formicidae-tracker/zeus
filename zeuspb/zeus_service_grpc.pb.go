@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v3.12.4
-// source: zeus_service.proto
+// source: zeuspb/zeus_service.proto
 
 package zeuspb
 
@@ -173,5 +173,5 @@ var Zeus_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "zeus_service.proto",
+	Metadata: "zeuspb/zeus_service.proto",
 }
