@@ -31,6 +31,8 @@ github.com/formicidae-tracker/olympus v0.4.1-0.20221004101333-7a2a62127f34 h1:0f
 github.com/formicidae-tracker/olympus v0.4.1-0.20221004101333-7a2a62127f34/go.mod h1:lP5rjL8UNp3E315eY0YSDD1ykPIJhrYvumQ96ymuFjs=
 github.com/formicidae-tracker/olympus v0.4.1-0.20221004114820-bbfacc4171f5 h1:SXKTiI5PPNd/25tQAjTHTLrREhp1QwHJtAPHswwhTds=
 github.com/formicidae-tracker/olympus v0.4.1-0.20221004114820-bbfacc4171f5/go.mod h1:lP5rjL8UNp3E315eY0YSDD1ykPIJhrYvumQ96ymuFjs=
+github.com/formicidae-tracker/olympus v0.4.1-0.20221004125918-105d505a355c h1:N2vaSEFxDRilfQT5wvYKvC+GFctuiEjVrREX39Xjsjs=
+github.com/formicidae-tracker/olympus v0.4.1-0.20221004125918-105d505a355c/go.mod h1:lP5rjL8UNp3E315eY0YSDD1ykPIJhrYvumQ96ymuFjs=
 github.com/go-test/deep v1.0.4 h1:u2CU3YKy9I2pmu9pX0eq50wCgjfGIt539SqR7FbHiho=
 github.com/go-test/deep v1.0.4/go.mod h1:wGDj63lr65AM2AQyKZd/NYHGb0R+1RLqB8NKt3aSFNA=
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b/go.mod h1:SBH7ygxi8pfUlaOkMMuAQtPIUF8ecWP5IEl/CR7VP2Q=

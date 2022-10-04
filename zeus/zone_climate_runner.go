@@ -248,6 +248,7 @@ func (r *zoneClimateRunner) setUpRPC(o ZoneClimateRunnerOptions) error {
 		zone:           o.Name,
 		olympusAddress: o.OlympusHost,
 		climate:        o.Climate,
+		runner:         r,
 	})
 	if err != nil {
 		return err

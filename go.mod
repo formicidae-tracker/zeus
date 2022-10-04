@@ -8,7 +8,7 @@ require (
 	github.com/atuleu/golang-socketcan v0.2.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/formicidae-tracker/libarke/src-go/arke v1.0.0
-	github.com/formicidae-tracker/olympus v0.4.1-0.20221004114820-bbfacc4171f5
+	github.com/formicidae-tracker/olympus v0.4.1-0.20221004125918-105d505a355c
 	github.com/golang/mock v1.2.0
 	github.com/golang/protobuf v1.5.2
 	github.com/grandcat/zeroconf v0.0.0-20190118114326-c2d1b4121200

@@ -27,7 +27,6 @@ type RPCReporter struct {
 	alarmReports   chan zeus.AlarmEvent
 	climateTargets chan zeus.ClimateTarget
 	log            *log.Logger
-	backoffDelay   time.Duration
 }
 
 func (r *RPCReporter) ReportChannel() chan<- zeus.ClimateReport {
@@ -127,14 +126,66 @@ func (r *RPCReporter) connect(conn *grpc.ClientConn,
 		return
 	}
 
-	res.err = r.sendBackLogs(res.stream, m.RegistrationConfirmation)
+	res.err = r.sendBackLogs(&res, m.RegistrationConfirmation)
 	return
 }
 
-func (r *RPCReporter) sendBackLogs(stream olympuspb.Olympus_ZoneClient,
-	confirmation *olympuspb.ZoneRegistrationConfirmation) error {
+func (r *RPCReporter) sendBackLogs(conn *connectionData, confirmation *olympuspb.ZoneRegistrationConfirmation) error {
+	if conn.stream == nil || confirmation == nil || confirmation.SendBacklogs == false {
+		return nil
+	}
+	if r.runner == nil {
+		return fmt.Errorf("internal error: runner is not set")
+	}
 
-	return fmt.Errorf("Not yet implemented")
+	climateLog, err := r.runner.ClimateLog(0, 0)
+	if err != nil {
+		return fmt.Errorf("could not get climate log: %w", err)
+	}
+	alarmLog, err := r.runner.AlarmLog(0, 0)
+	if err != nil {
+		return fmt.Errorf("could not get alarm log: %w", err)
+	}
+
+	if confirmation.PageSize == 0 {
+		return conn.send(buildBackLog(climateLog, alarmLog))
+	}
+
+	for i := 0; i < len(climateLog); i += int(confirmation.PageSize) {
+		end := i + int(confirmation.PageSize)
+		if end > len(climateLog) {
+			end = len(climateLog)
+		}
+		if err := conn.send(buildBackLog(climateLog[i:end], nil)); err != nil {
+			return err
+		}
+	}
+
+	for i := 0; i < len(alarmLog); i += int(confirmation.PageSize) {
+		end := i + int(confirmation.PageSize)
+		if end > len(alarmLog) {
+			end = len(alarmLog)
+		}
+		if err := conn.send(buildBackLog(nil, alarmLog[i:end])); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func buildBackLog(reports []zeus.ClimateReport, events []zeus.AlarmEvent) *olympuspb.ZoneUpStream {
+	res := &olympuspb.ZoneUpStream{
+		Reports: make([]*olympuspb.ClimateReport, len(reports)),
+		Alarms:  make([]*olympuspb.AlarmEvent, len(events)),
+	}
+	for i, r := range reports {
+		res.Reports[i] = buildOlympusClimateReport(r)
+	}
+	for i, e := range events {
+		res.Alarms[i] = buildOlympusAlarmEvent(e)
+	}
+	return res
 }
 
 func (r *RPCReporter) connectAsync(conn *grpc.ClientConn,
@@ -293,6 +344,7 @@ type RPCReporterOptions struct {
 	climate        zeus.ZoneClimate
 	host           string
 	rpcPort        int
+	runner         ZoneClimateRunner
 }
 
 func (o *RPCReporterOptions) sanitize(hostname string) {
@@ -329,6 +381,6 @@ func NewRPCReporter(o RPCReporterOptions) (*RPCReporter, error) {
 		alarmReports:   make(chan zeus.AlarmEvent, 20),
 		climateTargets: make(chan zeus.ClimateTarget, 20),
 		log:            logger,
-		backoffDelay:   5 * time.Second,
+		runner:         o.runner,
 	}, nil
 }
