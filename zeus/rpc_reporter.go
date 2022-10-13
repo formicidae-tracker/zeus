@@ -398,6 +398,7 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 				connErrors = nil
 			} else {
 				r.log.Printf("gRPC connection failure: %s", connErr)
+				conn.closeAndLogErrors(r.log)
 			}
 		}
 		if err != nil {
@@ -419,16 +420,12 @@ type RPCReporterOptions struct {
 	olympusAddress string
 	climate        zeus.ZoneClimate
 	host           string
-	rpcPort        int
 	runner         ZoneClimateRunner
 }
 
 func (o *RPCReporterOptions) sanitize(hostname string) {
 	if len(o.host) == 0 {
 		o.host = hostname
-	}
-	if o.rpcPort <= 0 {
-		o.rpcPort = zeus.ZEUS_PORT
 	}
 }
 
@@ -451,7 +448,7 @@ func NewRPCReporter(o RPCReporterOptions) (*RPCReporter, error) {
 	}
 
 	return &RPCReporter{
-		addr:           fmt.Sprintf("%s:%d", o.olympusAddress, o.rpcPort),
+		addr:           o.olympusAddress,
 		declaration:    declaration,
 		climateReports: make(chan zeus.ClimateReport, 20),
 		alarmReports:   make(chan zeus.AlarmEvent, 20),

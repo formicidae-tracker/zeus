@@ -72,9 +72,8 @@ func (s *RPCClimateReporterSuite) TearDownTest(c *C) {
 func (s *RPCClimateReporterSuite) TestEnd2End(c *C) {
 	r, err := NewRPCReporter(RPCReporterOptions{
 		zone:           "box",
-		olympusAddress: "localhost",
+		olympusAddress: "localhost:12345",
 		host:           "myself",
-		rpcPort:        12345,
 		runner:         nil,
 	})
 	r.connected = make(chan bool)
