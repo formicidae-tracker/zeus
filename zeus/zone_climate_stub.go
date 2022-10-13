@@ -59,6 +59,7 @@ func NewZoneClimateStub(args ZoneClimateStubArgs) (ZoneClimateRunner, error) {
 		zone:           args.zoneName,
 		climate:        args.climate,
 		olympusAddress: args.olympusAddress,
+		runner:         res,
 	})
 	if err != nil {
 		return nil, err

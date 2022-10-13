@@ -242,8 +242,8 @@ func paginateAsync(c context.Context, ch chan<- *olympuspb.ZoneUpStream, pageSiz
 		select {
 		case <-c.Done():
 			panic(1)
-		default:
-			ch <- m
+		case ch <- m:
+			time.Sleep(50 * time.Millisecond)
 		}
 	}
 
@@ -255,17 +255,17 @@ func paginateAsync(c context.Context, ch chan<- *olympuspb.ZoneUpStream, pageSiz
 		end := i + pageSize
 		if end > len(reports) {
 			end = len(reports)
-			push(buildBackLog(reports[i:end], nil))
 		}
+		push(buildBackLog(reports[i:end], nil))
 	}
 	for i := 0; i < len(events); i += pageSize {
 		end := i + pageSize
 		if end > len(events) {
 			end = len(events)
-			push(buildBackLog(nil, events[i:end]))
 		}
-	}
+		push(buildBackLog(nil, events[i:end]))
 
+	}
 }
 
 func (r *RPCReporter) paginateBacklogs(c context.Context, confirmation *olympuspb.ZoneRegistrationConfirmation) <-chan *olympuspb.ZoneUpStream {
@@ -449,7 +449,6 @@ func NewRPCReporter(o RPCReporterOptions) (*RPCReporter, error) {
 		MinHumidity:    zeus.AsFloat32Pointer(o.climate.MinimalHumidity),
 		MaxHumidity:    zeus.AsFloat32Pointer(o.climate.MaximalHumidity),
 	}
-
 	return &RPCReporter{
 		addr:           o.olympusAddress,
 		declaration:    declaration,
