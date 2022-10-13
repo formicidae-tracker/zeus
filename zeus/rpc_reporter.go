@@ -205,6 +205,7 @@ func buildOlympusState(s *zeus.State) *olympuspb.ClimateState {
 		return nil
 	}
 	return &olympuspb.ClimateState{
+		Name:         s.Name,
 		Temperature:  zeus.AsFloat32Pointer(s.Temperature),
 		Humidity:     zeus.AsFloat32Pointer(s.Humidity),
 		Wind:         zeus.AsFloat32Pointer(s.Wind),
@@ -390,7 +391,9 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 				if r.connected != nil {
 					r.connected <- true
 				}
-
+				if r.lastTarget != nil {
+					err = conn.send(&olympuspb.ZoneUpStream{Target: r.lastTarget})
+				}
 				backlogs = r.paginateBacklogs(c, conn.confirmation)
 			}
 		case connErr, ok := <-connErrors:
