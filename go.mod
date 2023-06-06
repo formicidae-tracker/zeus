@@ -14,7 +14,6 @@ require (
 	github.com/golang/protobuf v1.5.3
 	github.com/grandcat/zeroconf v0.0.0-20190118114326-c2d1b4121200
 	github.com/jessevdk/go-flags v1.5.0
-	github.com/slack-go/slack v0.8.0
 	google.golang.org/grpc v1.55.0
 	google.golang.org/protobuf v1.30.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
@@ -24,11 +23,10 @@ require (
 require (
 	github.com/atuleu/go-lttb v0.0.0-20220928123602-2585f6369698 // indirect
 	github.com/cenkalti/backoff v2.1.1+incompatible // indirect
-	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/kr/pretty v0.2.1 // indirect
 	github.com/kr/text v0.1.0 // indirect
 	github.com/miekg/dns v1.1.12 // indirect
-	github.com/pkg/errors v0.8.0 // indirect
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9 // indirect
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1 // indirect
 	golang.org/x/net v0.10.0 // indirect

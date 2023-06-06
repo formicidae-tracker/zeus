@@ -53,6 +53,11 @@ func checkDeprecatedLines(data []byte) ([]deprecatedLine, error) {
 			res = append(res, deprecatedLine{name: key, comment: "value ignored", isError: false})
 			continue
 		}
+		if key == "slack-user" {
+			res = append(res, deprecatedLine{name: key, comment: "slack usage is deprecated, value is ignored", isError: false})
+			continue
+		}
+
 		if key == "zones" {
 			for _, zoneItem := range item.Value.(yaml.MapSlice) {
 				zoneName := zoneItem.Key.(string)

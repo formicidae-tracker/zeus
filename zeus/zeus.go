@@ -16,7 +16,6 @@ import (
 	"github.com/formicidae-tracker/zeus"
 	"github.com/formicidae-tracker/zeus/zeuspb"
 	"github.com/grandcat/zeroconf"
-	"github.com/slack-go/slack"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -25,8 +24,7 @@ type Zeus struct {
 	zeuspb.UnimplementedZeusServer
 	intfFactory func(ifname string) (socketcan.RawInterface, error)
 
-	logger      *log.Logger
-	slackClient *slack.Client
+	logger *log.Logger
 
 	olympusHost string
 	definitions map[string]ZoneDefinition
@@ -54,10 +52,6 @@ func OpenZeus(c Config) (*Zeus, error) {
 		definitions: c.Zones,
 		runners:     make(map[string]ZoneClimateRunner),
 		dispatchers: make(map[string]ArkeDispatcher),
-	}
-	if len(c.SlackToken) > 0 {
-		z.logger.Printf("Slack notification are enabled")
-		z.slackClient = slack.New(c.SlackToken)
 	}
 
 	z.restoreStaticState()
