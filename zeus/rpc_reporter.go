@@ -2,12 +2,11 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"time"
 
-	"github.com/barkimedes/go-deepcopy"
 	olympuspb "github.com/formicidae-tracker/olympus/api"
 	"github.com/formicidae-tracker/zeus"
 	"google.golang.org/grpc"
@@ -26,7 +25,9 @@ type RPCReporter struct {
 	climateReports chan zeus.ClimateReport
 	alarmReports   chan zeus.AlarmEvent
 	climateTargets chan zeus.ClimateTarget
-	log            *log.Logger
+	connected      chan bool
+
+	log *log.Logger
 }
 
 func (r *RPCReporter) ReportChannel() chan<- zeus.ClimateReport {
@@ -41,139 +42,6 @@ func (r *RPCReporter) TargetChannel() chan<- zeus.ClimateTarget {
 	return r.climateTargets
 }
 
-type connectionData struct {
-	conn   *grpc.ClientConn
-	stream olympuspb.Olympus_ClimateClient
-	err    error
-}
-
-func (d *connectionData) send(m *olympuspb.ClimateUpStream) error {
-	if d.stream == nil {
-		return nil
-	}
-	err := d.stream.Send(m)
-	if err != nil {
-		return fmt.Errorf("could not send message: %w", err)
-	}
-	_, err = d.stream.Recv()
-	if err != nil {
-		return fmt.Errorf("could not receive ack: %w", err)
-	}
-	return nil
-}
-
-func (d *connectionData) closeAndLogErrors(logger *log.Logger) {
-	if d.stream != nil {
-		err := d.stream.CloseSend()
-		if err != nil {
-			logger.Printf("gRPC CloseSend() failure: %s", err)
-		}
-	}
-	d.stream = nil
-	if d.conn != nil {
-		err := d.conn.Close()
-		if err != nil {
-			logger.Printf("gRPC close() failure: %s", err)
-		}
-	}
-	d.conn = nil
-}
-
-func (r *RPCReporter) connect(conn *grpc.ClientConn,
-	declaration *olympuspb.ClimateUpStream) (res connectionData) {
-	defer func() {
-		if res.err != nil {
-			res.closeAndLogErrors(r.log)
-		}
-	}()
-
-	if conn == nil {
-		dialOptions := append(olympuspb.DefaultDialOptions,
-			grpc.WithConnectParams(
-				grpc.ConnectParams{
-					MinConnectTimeout: 20 * time.Second,
-					Backoff: backoff.Config{
-						BaseDelay:  500 * time.Millisecond,
-						Multiplier: backoff.DefaultConfig.Multiplier,
-						Jitter:     backoff.DefaultConfig.Jitter,
-						MaxDelay:   2 * time.Second,
-					},
-				},
-			))
-		res.conn, res.err = grpc.Dial(r.addr, dialOptions...)
-		if res.err != nil {
-			return
-		}
-	} else {
-		// Ensure that we do not flood the server over the connection
-		time.Sleep(500 * time.Millisecond)
-	}
-
-	client := olympuspb.NewOlympusClient(conn)
-	res.stream, res.err = client.Climate(context.Background(), olympuspb.DefaultCallOptions...)
-	if res.err != nil {
-		return
-	}
-
-	res.err = res.stream.Send(declaration)
-	if res.err != nil {
-		return
-	}
-
-	var m *olympuspb.ClimateDownStream
-	m, res.err = res.stream.Recv()
-	if res.err != nil {
-		return
-	}
-
-	res.err = r.sendBackLogs(&res, m.RegistrationConfirmation)
-	return
-}
-
-func (r *RPCReporter) sendBackLogs(conn *connectionData, confirmation *olympuspb.ClimateRegistrationConfirmation) error {
-	if conn.stream == nil || confirmation == nil || confirmation.SendBacklogs == false {
-		return nil
-	}
-	if r.runner == nil {
-		return fmt.Errorf("internal error: runner is not set")
-	}
-
-	climateLog, err := r.runner.ClimateLog(0, 0)
-	if err != nil {
-		return fmt.Errorf("could not get climate log: %w", err)
-	}
-	alarmLog, err := r.runner.AlarmLog(0, 0)
-	if err != nil {
-		return fmt.Errorf("could not get alarm log: %w", err)
-	}
-
-	if confirmation.PageSize == 0 {
-		return conn.send(buildBackLog(climateLog, alarmLog))
-	}
-
-	for i := 0; i < len(climateLog); i += int(confirmation.PageSize) {
-		end := i + int(confirmation.PageSize)
-		if end > len(climateLog) {
-			end = len(climateLog)
-		}
-		if err := conn.send(buildBackLog(climateLog[i:end], nil)); err != nil {
-			return err
-		}
-	}
-
-	for i := 0; i < len(alarmLog); i += int(confirmation.PageSize) {
-		end := i + int(confirmation.PageSize)
-		if end > len(alarmLog) {
-			end = len(alarmLog)
-		}
-		if err := conn.send(buildBackLog(nil, alarmLog[i:end])); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func buildBackLog(reports []zeus.ClimateReport, events []zeus.AlarmEvent) *olympuspb.ClimateUpStream {
 	res := &olympuspb.ClimateUpStream{
 		Reports: make([]*olympuspb.ClimateReport, len(reports)),
@@ -185,19 +53,6 @@ func buildBackLog(reports []zeus.ClimateReport, events []zeus.AlarmEvent) *olymp
 	for i, e := range events {
 		res.Alarms[i] = buildOlympusAlarmUpdate(e)
 	}
-	return res
-}
-
-func (r *RPCReporter) connectAsync(conn *grpc.ClientConn,
-	declaration *olympuspb.ClimateUpStream) <-chan connectionData {
-
-	res := make(chan connectionData)
-	safeDeclaration := deepcopy.MustAnything(declaration).(*olympuspb.ClimateUpStream)
-	go func() {
-		res <- r.connect(conn, safeDeclaration)
-		close(res)
-	}()
-
 	return res
 }
 
@@ -236,6 +91,7 @@ func buildOlympusState(s *zeus.State) *olympuspb.ClimateState {
 		return nil
 	}
 	return &olympuspb.ClimateState{
+		Name:         s.Name,
 		Temperature:  zeus.AsFloat32Pointer(s.Temperature),
 		Humidity:     zeus.AsFloat32Pointer(s.Humidity),
 		Wind:         zeus.AsFloat32Pointer(s.Wind),
@@ -259,81 +115,206 @@ func buildOlympusClimateTarget(target zeus.ClimateTarget) *olympuspb.ClimateTarg
 	return res
 }
 
-func (r *RPCReporter) Report(ready chan<- struct{}) {
-	connectionResult := r.connectAsync(nil, &olympuspb.ClimateUpStream{
-		Declaration: r.declaration,
-	})
-	var conn connectionData
+func paginateAsync(c context.Context,
+	ch chan<- *olympuspb.ClimateUpStream,
+	pageSize int,
+	reports []zeus.ClimateReport,
+	events []zeus.AlarmEvent) {
+
 	defer func() {
-		conn.closeAndLogErrors(r.log)
+		res := recover()
+		if res != nil && res != 1 {
+			panic(res)
+		}
+		close(ch)
 	}()
 
-	var err error
-	r.log.Printf("started")
-	close(ready)
-	for {
-		if conn.stream == nil && connectionResult == nil {
-			r.log.Printf("reconnecting gRPC")
-			m := &olympuspb.ClimateUpStream{
-				Declaration: r.declaration,
-				Target:      r.lastTarget,
-			}
-			if r.lastReport != nil {
-				m.Reports = []*olympuspb.ClimateReport{r.lastReport}
-			}
-			connectionResult = r.connectAsync(conn.conn, m)
-		}
+	push := func(m *olympuspb.ClimateUpStream) {
 		select {
-		case d, ok := <-connectionResult:
-			if ok == false {
-				connectionResult = nil
-			} else {
-				conn = d
-				if conn.err != nil {
-					r.log.Printf("gRPC could not connect: %s", err)
+		case <-c.Done():
+			panic(1)
+		case ch <- m:
+			time.Sleep(50 * time.Millisecond)
+		}
+	}
+
+	if pageSize == 0 {
+		push(buildBackLog(reports, events))
+		return
+	}
+	for i := 0; i < len(reports); i += pageSize {
+		end := i + pageSize
+		if end > len(reports) {
+			end = len(reports)
+		}
+		push(buildBackLog(reports[i:end], nil))
+	}
+	for i := 0; i < len(events); i += pageSize {
+		end := i + pageSize
+		if end > len(events) {
+			end = len(events)
+		}
+		push(buildBackLog(nil, events[i:end]))
+
+	}
+}
+
+func (r *RPCReporter) paginateBacklogs(c context.Context,
+	confirmation *olympuspb.ClimateRegistrationConfirmation) <-chan *olympuspb.ClimateUpStream {
+	if confirmation == nil || r.runner == nil {
+		return nil
+	}
+	climateLog, err := r.runner.ClimateLog(0, 0)
+	if err != nil {
+		r.log.Printf("could not get climate log: %s", err)
+	}
+
+	eventLog, err := r.runner.AlarmLog(0, 0)
+	if err != nil {
+		r.log.Printf("could not get alarm log")
+	}
+	if eventLog == nil && climateLog == nil {
+		return nil
+	}
+	res := make(chan *olympuspb.ClimateUpStream)
+	go paginateAsync(c, res, int(confirmation.PageSize), climateLog, eventLog)
+	return res
+}
+
+func (r *RPCReporter) buidUpStreamFromInputChannels() <-chan *olympuspb.ClimateUpStream {
+	res := make(chan *olympuspb.ClimateUpStream, 10)
+
+	mayPush := func(m *olympuspb.ClimateUpStream) {
+		select {
+		case res <- m:
+		default:
+		}
+	}
+
+	go func() {
+		defer close(res)
+		for {
+			select {
+			case target, ok := <-r.climateTargets:
+				if ok == false {
+					r.climateTargets = nil
+				} else {
+					mayPush(&olympuspb.ClimateUpStream{
+						Target: buildOlympusClimateTarget(target),
+					})
+				}
+			case report, ok := <-r.climateReports:
+				if ok == false {
+					r.climateReports = nil
+				} else {
+					mayPush(&olympuspb.ClimateUpStream{
+						Reports: []*olympuspb.ClimateReport{buildOlympusClimateReport(report)}})
+				}
+			case event, ok := <-r.alarmReports:
+				if ok == false {
+					r.alarmReports = nil
+				} else {
+					mayPush(&olympuspb.ClimateUpStream{
+						Alarms: []*olympuspb.AlarmUpdate{buildOlympusAlarmUpdate(event)},
+					})
 				}
 			}
-		case report, ok := <-r.climateReports:
-			if ok == false {
-				r.climateReports = nil
-			} else {
-				oReport := buildOlympusClimateReport(report)
-				r.lastReport = oReport
-				err = conn.send(&olympuspb.ClimateUpStream{
-					Reports: []*olympuspb.ClimateReport{oReport},
-				})
-			}
-		case event, ok := <-r.alarmReports:
-			if ok == false {
-				r.alarmReports = nil
-			} else {
-				err = conn.send(&olympuspb.ClimateUpStream{
-					Alarms: []*olympuspb.AlarmUpdate{buildOlympusAlarmUpdate(event)},
-				})
-			}
-		case target, ok := <-r.climateTargets:
-			if ok == false {
-				r.climateTargets = nil
-			} else {
-				oTarget := buildOlympusClimateTarget(target)
-				r.lastTarget = oTarget
-				err = conn.send(&olympuspb.ClimateUpStream{
-					Target: oTarget,
-				})
+			if r.climateReports == nil && r.climateTargets == nil && r.alarmReports == nil {
+				return
 			}
 		}
+	}()
+	return res
+}
 
-		if r.alarmReports == nil && r.climateReports == nil && r.climateTargets == nil {
-			break
+func (r *RPCReporter) Report(ready chan<- struct{}) {
+	c, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	conn := &olympuspb.ClimateConnection{}
+	defer func() {
+		// need to capture the variable, not the method call
+		conn.CloseAll(r.log)
+	}()
+
+	dialOptions := []grpc.DialOption{
+		grpc.WithConnectParams(
+			grpc.ConnectParams{
+				MinConnectTimeout: 20 * time.Second,
+				Backoff: backoff.Config{
+					BaseDelay:  500 * time.Millisecond,
+					Multiplier: backoff.DefaultConfig.Multiplier,
+					Jitter:     backoff.DefaultConfig.Jitter,
+					MaxDelay:   2 * time.Second,
+				},
+			},
+		),
+	}
+
+	connections, connErrors := olympuspb.ConnectClimateAsync(nil, r.addr, r.declaration, r.log, dialOptions...)
+
+	upstream := r.buidUpStreamFromInputChannels()
+	var backlogs <-chan *olympuspb.ClimateUpStream
+	var err error
+
+	close(ready)
+	for {
+		if conn.Established() == false && connections == nil && connErrors == nil {
+			time.Sleep(time.Duration((2.0 + 0.2*rand.Float64()) * float64(time.Second)))
+			r.log.Printf("gRPC reconnection")
+			connections, connErrors = olympuspb.ConnectClimateAsync(conn.ClienConn(),
+				r.addr,
+				r.declaration,
+				r.log,
+				dialOptions...)
+		}
+
+		select {
+		case m, ok := <-upstream:
+			if ok == false {
+				return
+			} else {
+				if len(m.Reports) == 1 {
+					r.lastReport = m.Reports[0]
+				}
+				if m.Target != nil {
+					r.lastTarget = m.Target
+				}
+				_, err = conn.Send(m)
+			}
+		case m, ok := <-backlogs:
+			if ok == false {
+				backlogs = nil
+			} else {
+				_, err = conn.Send(m)
+			}
+		case co, ok := <-connections:
+			if ok == false {
+				connections = nil
+			} else {
+				r.log.Printf("gRPC connected")
+				conn = co
+				if r.connected != nil {
+					r.connected <- true
+				}
+				if r.lastTarget != nil {
+					_, err = conn.Send(&olympuspb.ClimateUpStream{Target: r.lastTarget})
+				}
+				backlogs = r.paginateBacklogs(c, conn.Confirmation().RegistrationConfirmation)
+			}
+		case connErr, ok := <-connErrors:
+			if ok == false {
+				connErrors = nil
+			} else {
+				r.log.Printf("gRPC connection failure: %s", connErr)
+				conn.CloseAll(r.log)
+			}
 		}
 
 		if err != nil {
 			r.log.Printf("gRPC failure: %s", err)
-			err = conn.stream.CloseSend()
-			if err != nil {
-				r.log.Printf("gRPC CloseSend() failure: %s", err)
-			}
-			conn.stream = nil
+			err = nil
+			conn.CloseStream(r.log)
 		}
 	}
 }
@@ -343,16 +324,12 @@ type RPCReporterOptions struct {
 	olympusAddress string
 	climate        zeus.ZoneClimate
 	host           string
-	rpcPort        int
 	runner         ZoneClimateRunner
 }
 
 func (o *RPCReporterOptions) sanitize(hostname string) {
 	if len(o.host) == 0 {
 		o.host = hostname
-	}
-	if o.rpcPort <= 0 {
-		o.rpcPort = zeus.ZEUS_PORT
 	}
 }
 
@@ -373,9 +350,8 @@ func NewRPCReporter(o RPCReporterOptions) (*RPCReporter, error) {
 		MinHumidity:    zeus.AsFloat32Pointer(o.climate.MinimalHumidity),
 		MaxHumidity:    zeus.AsFloat32Pointer(o.climate.MaximalHumidity),
 	}
-
 	return &RPCReporter{
-		addr:           fmt.Sprintf("%s:%d", o.olympusAddress, o.rpcPort),
+		addr:           o.olympusAddress,
 		declaration:    declaration,
 		climateReports: make(chan zeus.ClimateReport, 20),
 		alarmReports:   make(chan zeus.AlarmEvent, 20),

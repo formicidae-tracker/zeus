@@ -241,6 +241,7 @@ func (r *zoneClimateRunner) setUpRPC(o ZoneClimateRunnerOptions) error {
 	if len(o.OlympusHost) == 0 {
 		return nil
 	}
+
 	rpc, err := NewRPCReporter(RPCReporterOptions{
 		zone:           o.Name,
 		olympusAddress: o.OlympusHost,
