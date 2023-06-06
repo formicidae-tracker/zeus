@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/barkimedes/go-deepcopy"
-	"github.com/formicidae-tracker/olympus/olympuspb"
+	olympuspb "github.com/formicidae-tracker/olympus/api"
 	"github.com/formicidae-tracker/zeus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
@@ -16,7 +16,7 @@ import (
 )
 
 type RPCReporter struct {
-	declaration *olympuspb.ZoneDeclaration
+	declaration *olympuspb.ClimateDeclaration
 	addr        string
 	lastReport  *olympuspb.ClimateReport
 	lastTarget  *olympuspb.ClimateTarget
@@ -43,11 +43,11 @@ func (r *RPCReporter) TargetChannel() chan<- zeus.ClimateTarget {
 
 type connectionData struct {
 	conn   *grpc.ClientConn
-	stream olympuspb.Olympus_ZoneClient
+	stream olympuspb.Olympus_ClimateClient
 	err    error
 }
 
-func (d *connectionData) send(m *olympuspb.ZoneUpStream) error {
+func (d *connectionData) send(m *olympuspb.ClimateUpStream) error {
 	if d.stream == nil {
 		return nil
 	}
@@ -80,7 +80,7 @@ func (d *connectionData) closeAndLogErrors(logger *log.Logger) {
 }
 
 func (r *RPCReporter) connect(conn *grpc.ClientConn,
-	declaration *olympuspb.ZoneUpStream) (res connectionData) {
+	declaration *olympuspb.ClimateUpStream) (res connectionData) {
 	defer func() {
 		if res.err != nil {
 			res.closeAndLogErrors(r.log)
@@ -110,7 +110,7 @@ func (r *RPCReporter) connect(conn *grpc.ClientConn,
 	}
 
 	client := olympuspb.NewOlympusClient(conn)
-	res.stream, res.err = client.Zone(context.Background(), olympuspb.DefaultCallOptions...)
+	res.stream, res.err = client.Climate(context.Background(), olympuspb.DefaultCallOptions...)
 	if res.err != nil {
 		return
 	}
@@ -120,7 +120,7 @@ func (r *RPCReporter) connect(conn *grpc.ClientConn,
 		return
 	}
 
-	var m *olympuspb.ZoneDownStream
+	var m *olympuspb.ClimateDownStream
 	m, res.err = res.stream.Recv()
 	if res.err != nil {
 		return
@@ -130,7 +130,7 @@ func (r *RPCReporter) connect(conn *grpc.ClientConn,
 	return
 }
 
-func (r *RPCReporter) sendBackLogs(conn *connectionData, confirmation *olympuspb.ZoneRegistrationConfirmation) error {
+func (r *RPCReporter) sendBackLogs(conn *connectionData, confirmation *olympuspb.ClimateRegistrationConfirmation) error {
 	if conn.stream == nil || confirmation == nil || confirmation.SendBacklogs == false {
 		return nil
 	}
@@ -174,25 +174,25 @@ func (r *RPCReporter) sendBackLogs(conn *connectionData, confirmation *olympuspb
 	return nil
 }
 
-func buildBackLog(reports []zeus.ClimateReport, events []zeus.AlarmEvent) *olympuspb.ZoneUpStream {
-	res := &olympuspb.ZoneUpStream{
+func buildBackLog(reports []zeus.ClimateReport, events []zeus.AlarmEvent) *olympuspb.ClimateUpStream {
+	res := &olympuspb.ClimateUpStream{
 		Reports: make([]*olympuspb.ClimateReport, len(reports)),
-		Alarms:  make([]*olympuspb.AlarmEvent, len(events)),
+		Alarms:  make([]*olympuspb.AlarmUpdate, len(events)),
 	}
 	for i, r := range reports {
 		res.Reports[i] = buildOlympusClimateReport(r)
 	}
 	for i, e := range events {
-		res.Alarms[i] = buildOlympusAlarmEvent(e)
+		res.Alarms[i] = buildOlympusAlarmUpdate(e)
 	}
 	return res
 }
 
 func (r *RPCReporter) connectAsync(conn *grpc.ClientConn,
-	declaration *olympuspb.ZoneUpStream) <-chan connectionData {
+	declaration *olympuspb.ClimateUpStream) <-chan connectionData {
 
 	res := make(chan connectionData)
-	safeDeclaration := deepcopy.MustAnything(declaration).(*olympuspb.ZoneUpStream)
+	safeDeclaration := deepcopy.MustAnything(declaration).(*olympuspb.ClimateUpStream)
 	go func() {
 		res <- r.connect(conn, safeDeclaration)
 		close(res)
@@ -213,7 +213,7 @@ func buildOlympusClimateReport(report zeus.ClimateReport) *olympuspb.ClimateRepo
 	}
 }
 
-func buildOlympusAlarmEvent(event zeus.AlarmEvent) *olympuspb.AlarmEvent {
+func buildOlympusAlarmUpdate(event zeus.AlarmEvent) *olympuspb.AlarmUpdate {
 	status := olympuspb.AlarmStatus_ON
 	if event.Status == zeus.AlarmOff {
 		status = olympuspb.AlarmStatus_OFF
@@ -222,11 +222,11 @@ func buildOlympusAlarmEvent(event zeus.AlarmEvent) *olympuspb.AlarmEvent {
 	if event.Flags&zeus.Emergency != 0x00 {
 		level = olympuspb.AlarmLevel_EMERGENCY
 	}
-	return &olympuspb.AlarmEvent{
-		Reason: event.Reason,
-		Status: status,
-		Time:   timestamppb.New(event.Time),
-		Level:  level,
+	return &olympuspb.AlarmUpdate{
+		Identification: event.Reason,
+		Status:         status,
+		Time:           timestamppb.New(event.Time),
+		Level:          level,
 	}
 }
 
@@ -259,7 +259,7 @@ func buildOlympusClimateTarget(target zeus.ClimateTarget) *olympuspb.ClimateTarg
 }
 
 func (r *RPCReporter) Report(ready chan<- struct{}) {
-	connectionResult := r.connectAsync(nil, &olympuspb.ZoneUpStream{
+	connectionResult := r.connectAsync(nil, &olympuspb.ClimateUpStream{
 		Declaration: r.declaration,
 	})
 	var conn connectionData
@@ -273,7 +273,7 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 	for {
 		if conn.stream == nil && connectionResult == nil {
 			r.log.Printf("reconnecting gRPC")
-			m := &olympuspb.ZoneUpStream{
+			m := &olympuspb.ClimateUpStream{
 				Declaration: r.declaration,
 				Target:      r.lastTarget,
 			}
@@ -298,7 +298,7 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 			} else {
 				oReport := buildOlympusClimateReport(report)
 				r.lastReport = oReport
-				err = conn.send(&olympuspb.ZoneUpStream{
+				err = conn.send(&olympuspb.ClimateUpStream{
 					Reports: []*olympuspb.ClimateReport{oReport},
 				})
 			}
@@ -306,8 +306,8 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 			if ok == false {
 				r.alarmReports = nil
 			} else {
-				err = conn.send(&olympuspb.ZoneUpStream{
-					Alarms: []*olympuspb.AlarmEvent{buildOlympusAlarmEvent(event)},
+				err = conn.send(&olympuspb.ClimateUpStream{
+					Alarms: []*olympuspb.AlarmUpdate{buildOlympusAlarmUpdate(event)},
 				})
 			}
 		case target, ok := <-r.climateTargets:
@@ -316,7 +316,7 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 			} else {
 				oTarget := buildOlympusClimateTarget(target)
 				r.lastTarget = oTarget
-				err = conn.send(&olympuspb.ZoneUpStream{
+				err = conn.send(&olympuspb.ClimateUpStream{
 					Target: oTarget,
 				})
 			}
@@ -364,7 +364,7 @@ func NewRPCReporter(o RPCReporterOptions) (*RPCReporter, error) {
 
 	logger := log.New(os.Stderr, "[zone/"+o.zone+"/rpc] ", 0)
 
-	declaration := &olympuspb.ZoneDeclaration{
+	declaration := &olympuspb.ClimateDeclaration{
 		Host:           o.host,
 		Name:           o.zone,
 		MinTemperature: zeus.AsFloat32Pointer(o.climate.MinimalTemperature),
