@@ -32,7 +32,11 @@ func (s *AlarmMonitorSuite) SetUpSuite(c *C) {
 
 type testAlarm string
 
-func (a testAlarm) Reason() string {
+func (a testAlarm) Identifier() string {
+	return string(a)
+}
+
+func (a testAlarm) Description() string {
 	return string(a)
 }
 
@@ -95,7 +99,7 @@ func (s *AlarmMonitorSuite) TestMonitor(c *C) {
 
 	e, ok := <-m.Outbound()
 	c.Check(ok, Equals, true)
-	c.Check(e.Reason, Equals, alarms[1].Reason())
+	c.Check(e.Identifier, Equals, alarms[1].Identifier())
 	c.Check(e.Flags, Equals, alarms[1].Flags())
 	c.Check(e.Status, Equals, zeus.AlarmOn)
 
@@ -114,14 +118,14 @@ func (s *AlarmMonitorSuite) TestMonitor(c *C) {
 	}()
 	e, ok = <-m.Outbound()
 	c.Check(ok, Equals, true)
-	c.Check(e.Reason, Equals, alarms[0].Reason())
+	c.Check(e.Identifier, Equals, alarms[0].Identifier())
 	c.Check(e.Flags, Equals, alarms[0].Flags())
 	c.Check(e.Status, Equals, zeus.AlarmOn)
 
 	e, ok = <-m.Outbound()
 	end := time.Now()
 	c.Check(ok, Equals, true)
-	c.Check(e.Reason, Equals, alarms[0].Reason())
+	c.Check(e.Identifier, Equals, alarms[0].Identifier())
 	c.Check(e.Flags, Equals, alarms[0].Flags())
 	c.Check(e.Status, Equals, zeus.AlarmOff)
 
@@ -137,18 +141,20 @@ func (s *AlarmMonitorSuite) TestMonitor(c *C) {
 func (s *AlarmMonitorSuite) TestReadAlarmLogFile(c *C) {
 	testdata := [][]zeus.AlarmEvent{
 		nil,
-		[]zeus.AlarmEvent{
-			zeus.AlarmEvent{
+		{
+			{
 				ZoneIdentifier: "foo/zone/box",
-				Reason:         "Ouch `truc`",
-				Flags:          zeus.Warning | zeus.InstantNotification,
+				Identifier:     "climate.something",
+				Description:    "Ouch `truc`",
+				Flags:          zeus.Warning,
 				Status:         zeus.AlarmOn,
 				Time:           time.Now().Round(0),
 			},
-			zeus.AlarmEvent{
+			{
 				ZoneIdentifier: "foo/zone/box",
-				Reason:         "Ouch `truc`",
-				Flags:          zeus.Warning | zeus.InstantNotification,
+				Identifier:     "climate.something",
+				Description:    "Ouch `truc`",
+				Flags:          zeus.Warning,
 				Status:         zeus.AlarmOff,
 				Time:           time.Now().Round(0),
 			},

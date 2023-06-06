@@ -30,7 +30,7 @@ type Temperature float64
 
 func (t Temperature) Value() float64    { return float64(t) }
 func (t Temperature) MaxValue() float64 { return 40 }
-func (t Temperature) MinValue() float64 { return 15 }
+func (t Temperature) MinValue() float64 { return 5 }
 
 var UndefinedTemperature = Temperature(math.Inf(-1))
 

@@ -30,29 +30,102 @@ func (s *AlarmSuite) TestRepeatPeriod(c *C) {
 
 func (s *AlarmSuite) TestData(c *C) {
 	testdata := []struct {
-		Alarm          Alarm
-		ExpectedReason string
-		ExpectedFlags  AlarmFlags
+		Alarm               Alarm
+		ExpectedIdentifier  string
+		ExpectedDescription string
+		ExpectedFlags       AlarmFlags
 	}{
-		{WaterLevelWarning, "Celaeno water level is low", Warning | InstantNotification},
-		{WaterLevelCritical, "Celaeno is empty", Emergency | InstantNotification},
-		{WaterLevelUnreadable, "Celaeno water level is unreadable", Emergency | InstantNotification},
-		{HumidityUnreachable, "Cannot reach desired humidity", Warning},
-		{TemperatureUnreachable, "Cannot reach desired temperature", Warning},
-		{HumidityOutOfBound, "Humidity is outside of boundaries", Emergency | InstantNotification},
-		{TemperatureOutOfBound, "Temperature is outside of boundaries", Emergency | InstantNotification},
-		{SensorReadoutIssue, "Cannot read sensors", Emergency},
-		{NewFanAlarm("foo", arke.FanStalled), "Fan foo is stalled", Emergency},
-		{NewFanAlarm("bar", arke.FanAging), "Fan bar is aging", Warning},
-		{NewFanAlarm("baz", arke.FanOK), "Fan baz is aging", Warning},
-		{NewMissingDeviceAlarm("vcan0", arke.ZeusClass, 1), "Device vcan0.Zeus.1 is missing", Emergency},
-		{NewMissingDeviceAlarm("vcan0", arke.CelaenoClass, 1), "Device vcan0.Celaeno.1 is missing", Emergency | InstantNotification},
-		{NewDeviceInternalError("vcan0", arke.ZeusClass, 1, 0x42), "Device vcan0.Zeus.1 internal error 0x0042", Warning},
+		{
+			Alarm:               WaterLevelWarning,
+			ExpectedIdentifier:  "climate.water_level",
+			ExpectedDescription: "Water tank level is low",
+			ExpectedFlags:       Warning,
+		},
+		{
+			Alarm:               WaterLevelCritical,
+			ExpectedIdentifier:  "climate.water_level",
+			ExpectedDescription: "Water tank is empty",
+			ExpectedFlags:       Emergency,
+		},
+		{
+			Alarm:               WaterLevelUnreadable,
+			ExpectedIdentifier:  "climate.water_sensor",
+			ExpectedDescription: "Celaeno cannot determine water tank level",
+			ExpectedFlags:       Emergency,
+		},
+		{
+			Alarm:               HumidityUnreachable,
+			ExpectedIdentifier:  "climate.humidity.unreachable",
+			ExpectedDescription: "Cannot reach desired humidity",
+			ExpectedFlags:       Warning,
+		},
+		{
+			Alarm:               TemperatureUnreachable,
+			ExpectedIdentifier:  "climate.temperature.unreachable",
+			ExpectedDescription: "Cannot reach desired temperature",
+			ExpectedFlags:       Warning,
+		},
+		{
+			Alarm:               OutOfBound[Humidity](40, 80),
+			ExpectedIdentifier:  "climate.humidity.out_of_bounds",
+			ExpectedDescription: "Humidity is outside of boundaries ( [40.0 ; 80.0] % R.H. )",
+			ExpectedFlags:       Emergency,
+		},
+		{
+			Alarm:               OutOfBound[Temperature](10, 25),
+			ExpectedIdentifier:  "climate.temperature.out_of_bounds",
+			ExpectedDescription: "Temperature is outside of boundaries ( [10.0 ; 25.0] °C )",
+			ExpectedFlags:       Emergency,
+		},
+		{
+			Alarm:               SensorReadoutIssue,
+			ExpectedIdentifier:  "climate.sensor.readout",
+			ExpectedDescription: "Cannot read sensors",
+			ExpectedFlags:       Emergency,
+		},
+		{
+			Alarm:               NewFanAlarm("foo", arke.FanStalled),
+			ExpectedIdentifier:  "climate.fan.foo",
+			ExpectedDescription: "Fan foo is stalled",
+			ExpectedFlags:       Emergency,
+		},
+		{
+			Alarm:               NewFanAlarm("bar", arke.FanAging),
+			ExpectedIdentifier:  "climate.fan.bar",
+			ExpectedDescription: "Fan bar is aging",
+			ExpectedFlags:       Warning,
+		},
+		{
+			Alarm:               NewFanAlarm("baz", arke.FanOK),
+			ExpectedIdentifier:  "climate.fan.baz",
+			ExpectedDescription: "Fan baz is aging",
+			ExpectedFlags:       Warning,
+		},
+		{
+			Alarm:               NewMissingDeviceAlarm("vcan0", arke.ZeusClass, 1),
+			ExpectedIdentifier:  "climate.device_missing.vcan0.Zeus.1",
+			ExpectedDescription: "Device vcan0.Zeus.1 is missing",
+			ExpectedFlags:       Emergency,
+		},
+		{
+			Alarm:               NewMissingDeviceAlarm("vcan0", arke.CelaenoClass, 1),
+			ExpectedIdentifier:  "climate.device_missing.vcan0.Celaeno.1",
+			ExpectedDescription: "Device vcan0.Celaeno.1 is missing",
+			ExpectedFlags:       Emergency,
+		},
+		{
+			Alarm:               NewDeviceInternalError("vcan0", arke.ZeusClass, 1, 0x42),
+			ExpectedIdentifier:  "climate.device_error.vcan0.Zeus.1.66",
+			ExpectedDescription: "Device vcan0.Zeus.1 internal error 0x0042",
+			ExpectedFlags:       Warning,
+		},
 	}
 
 	for _, d := range testdata {
-		c.Check(d.Alarm.Reason(), Equals, d.ExpectedReason)
-		c.Check(d.Alarm.Flags(), Equals, d.ExpectedFlags)
+		comment := Commentf("identifier: %s, description: %s", d.ExpectedIdentifier, d.ExpectedDescription)
+		c.Check(d.Alarm.Identifier(), Equals, d.ExpectedIdentifier, comment)
+		c.Check(d.Alarm.Description(), Equals, d.ExpectedDescription, comment)
+		c.Check(d.Alarm.Flags(), Equals, d.ExpectedFlags, comment)
 	}
 
 }
@@ -101,8 +174,8 @@ func (s *AlarmSuite) TestLevelMapping(c *C) {
 	}{
 		{Warning, 1},
 		{Emergency, 2},
-		{Warning | InstantNotification, 1},
-		{Emergency | InstantNotification, 2},
+		{Warning, 1},
+		{Emergency, 2},
 	}
 
 	for _, d := range testdata {

@@ -68,15 +68,14 @@ WARNING: 'bar' is deprecated (will raise an error in a future release): another 
 
 func (s *SeasonFileSuite) TestWritingShouldBeReadable(c *C) {
 	season := SeasonFile{
-		SlackUser: "@John Doe",
 		Zones: map[string]ZoneClimate{
-			"box": ZoneClimate{
+			"box": {
 				MinimalTemperature: 14.0,
 				MaximalTemperature: 34.0,
 				MinimalHumidity:    40.0,
 				MaximalHumidity:    80.0,
 				States: []State{
-					State{
+					{
 						Name:         "day",
 						Temperature:  16.0,
 						Humidity:     60.0,
@@ -84,7 +83,7 @@ func (s *SeasonFileSuite) TestWritingShouldBeReadable(c *C) {
 						VisibleLight: 20,
 						UVLight:      100,
 					},
-					State{
+					{
 						Name:         "night",
 						Temperature:  16.0,
 						Humidity:     UndefinedHumidity,
@@ -94,12 +93,12 @@ func (s *SeasonFileSuite) TestWritingShouldBeReadable(c *C) {
 					},
 				},
 				Transitions: []Transition{
-					Transition{
+					{
 						From:     "day",
 						To:       "night",
 						Duration: 30 * time.Minute,
 					},
-					Transition{
+					{
 						From:     "night",
 						To:       "day",
 						Duration: 30 * time.Minute,

@@ -254,11 +254,11 @@ func (r *ClimateRecordable) Callbacks() map[arke.MessageClass]callback {
 			}
 
 			if checkBound(zeus.Humidity(report.Humidity), r.MinHumidity, r.MaxHumidity) == false {
-				alarms <- zeus.HumidityOutOfBound
+				alarms <- zeus.OutOfBound[zeus.Humidity](r.MinHumidity, r.MaxHumidity)
 			}
 
 			if checkBound(zeus.Temperature(report.Temperature[0]), r.MinTemperature, r.MaxTemperature) == false {
-				alarms <- zeus.TemperatureOutOfBound
+				alarms <- zeus.OutOfBound[zeus.Temperature](r.MinTemperature, r.MaxTemperature)
 			}
 
 			temperatures := make([]zeus.Temperature, 0, r.NumAux+1)

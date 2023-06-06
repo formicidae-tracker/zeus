@@ -203,7 +203,8 @@ func (s *zoneClimateStub) simulateAlarms(now time.Time) {
 		}
 		ae := zeus.AlarmEvent{
 			Flags:          a.Alarm.Flags(),
-			Reason:         a.Alarm.Reason(),
+			Identifier:     a.Alarm.Identifier(),
+			Description:    a.Alarm.Description(),
 			ZoneIdentifier: zeus.ZoneIdentifier(s.host, s.zone),
 			Time:           now,
 		}

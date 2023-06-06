@@ -223,7 +223,8 @@ func buildOlympusAlarmUpdate(event zeus.AlarmEvent) *olympuspb.AlarmUpdate {
 		level = olympuspb.AlarmLevel_EMERGENCY
 	}
 	return &olympuspb.AlarmUpdate{
-		Identification: event.Reason,
+		Identification: event.Identifier,
+		Description:    event.Description,
 		Status:         status,
 		Time:           timestamppb.New(event.Time),
 		Level:          level,

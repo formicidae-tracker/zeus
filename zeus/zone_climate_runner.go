@@ -11,7 +11,6 @@ import (
 	"github.com/formicidae-tracker/libarke/src-go/arke"
 	"github.com/formicidae-tracker/zeus"
 	"github.com/formicidae-tracker/zeus/zeuspb"
-	"github.com/slack-go/slack"
 )
 
 type ZoneClimateRunner interface {
@@ -29,8 +28,6 @@ type ZoneClimateRunnerOptions struct {
 	Dispatcher  ArkeDispatcher
 	Climate     zeus.ZoneClimate
 	OlympusHost string
-	SlackClient *slack.Client
-	SlackUserID string
 }
 
 type zoneClimateRunner struct {
@@ -326,19 +323,6 @@ func (r *zoneClimateRunner) setUpDevices(o ZoneClimateRunnerOptions) error {
 	return nil
 }
 
-func (r *zoneClimateRunner) setUpSlackReporter(o ZoneClimateRunnerOptions) error {
-	if o.SlackClient == nil || len(o.SlackUserID) == 0 {
-		return nil
-	}
-	aReporter, err := NewSlackReporter(o.SlackClient, o.SlackUserID, o.Name)
-	if err != nil {
-		return err
-	}
-	r.reporters = append(r.reporters, aReporter)
-	r.alarmReporters = append(r.alarmReporters, aReporter)
-	return nil
-}
-
 func (r *zoneClimateRunner) setUpLastReporter(o ZoneClimateRunnerOptions) error {
 	r.last = NewLastStateReporter()
 	r.reporters = append(r.reporters, r.last)
@@ -428,7 +412,6 @@ func NewZoneClimateRunner(o ZoneClimateRunnerOptions) (r ZoneClimateRunner, err 
 	}
 
 	setups := []func(ZoneClimateRunnerOptions) error{
-		func(o ZoneClimateRunnerOptions) error { return res.setUpSlackReporter(o) },
 		func(o ZoneClimateRunnerOptions) error { return res.setUpInterpoler(o) },
 		func(o ZoneClimateRunnerOptions) error { return res.setUpAlarmMonitor(o) },
 		func(o ZoneClimateRunnerOptions) error { return res.setUpRPC(o) },

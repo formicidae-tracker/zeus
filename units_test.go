@@ -14,7 +14,7 @@ func (s *UnitsSuite) TestBoundaries(c *C) {
 	var w Wind
 	var l Light
 	c.Check(t.MaxValue(), Equals, 40.0)
-	c.Check(t.MinValue(), Equals, 15.0)
+	c.Check(t.MinValue(), Equals, 5.0)
 	c.Check(IsUndefined(t), Equals, true)
 
 	c.Check(h.MaxValue(), Equals, 85.0)

@@ -136,10 +136,11 @@ func (m *alarmMonitor) Monitor() {
 				close(quit)
 				return
 			}
-			if _, ok := alarms[a.Reason()]; ok == false {
+			if _, ok := alarms[a.Identifier()]; ok == false {
 				go func() {
 					m.outbound <- zeus.AlarmEvent{
-						Reason:         a.Reason(),
+						Identifier:     a.Identifier(),
+						Description:    a.Description(),
 						Flags:          a.Flags(),
 						Status:         zeus.AlarmOn,
 						Time:           time.Now(),
@@ -148,8 +149,8 @@ func (m *alarmMonitor) Monitor() {
 				}()
 
 			}
-			alarms[a.Reason()] = a
-			wakeUpChan = meeter.pushDeadline(a.Reason(), a.DeadLine())
+			alarms[a.Identifier()] = a
+			wakeUpChan = meeter.pushDeadline(a.Identifier(), a.DeadLine())
 		case now := <-wakeUpChan:
 			var expired []string = nil
 			expired, wakeUpChan = meeter.pop(now)
@@ -166,7 +167,8 @@ func (m *alarmMonitor) Monitor() {
 				}
 				go func() {
 					m.outbound <- zeus.AlarmEvent{
-						Reason:         a.Reason(),
+						Identifier:     a.Identifier(),
+						Description:    a.Description(),
 						Flags:          a.Flags(),
 						Status:         zeus.AlarmOff,
 						Time:           now,

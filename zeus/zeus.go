@@ -177,8 +177,6 @@ func (z *Zeus) setupZoneClimate(name, suffix string, definition ZoneDefinition, 
 		Climate:     climate,
 		OlympusHost: z.olympusHost,
 		Definition:  definition,
-		SlackClient: z.slackClient,
-		SlackUserID: userID,
 	})
 	if err != nil {
 		return err
@@ -206,15 +204,6 @@ func (z *Zeus) startClimate(season zeus.SeasonFile) (rerr error) {
 	z.since = time.Now()
 	suffix := z.since.Format("2006-01-02T150405")
 	userID := ""
-
-	if z.slackClient != nil && len(season.SlackUser) > 0 {
-		var err error
-		userID, err = FindSlackUser(z.slackClient, season.SlackUser)
-		if err != nil {
-			return err
-		}
-		z.logger.Printf("Will report to %s:%s", season.SlackUser, userID)
-	}
 
 	for name, climate := range season.Zones {
 		err := z.setupZoneClimate(name, suffix, z.definitions[name], climate, userID)
