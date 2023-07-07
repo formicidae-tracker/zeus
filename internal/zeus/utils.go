@@ -10,7 +10,7 @@ import (
 	"github.com/blang/semver"
 )
 
-//go:generate go run generate_version.go
+//go:generate go run generate_version.go $VERSION
 
 func filenameWithSuffix(fpath string, iter uint) string {
 	res := strings.TrimSuffix(fpath, filepath.Ext(fpath))
