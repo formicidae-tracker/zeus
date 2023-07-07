@@ -2,13 +2,15 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/formicidae-tracker/zeus/internal/zeus"
 	"github.com/formicidae-tracker/zeus/pkg/zeuspb"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/status"
 )
 
 // Node holds connection information for an available zeus server. It
@@ -22,7 +24,7 @@ type Node struct {
 func closeAndLogError(closer io.Closer) {
 	err := closer.Close()
 	if err != nil {
-		log.Printf("gRPC close() failure: %s", err)
+		logrus.WithError(err).Error("gRPC Close() failure")
 	}
 }
 
@@ -47,35 +49,43 @@ func (n Node) Connect() (conn *grpc.ClientConn, client zeuspb.ZeusClient, err er
 
 }
 
-func (n Node) Status() (*zeuspb.Status, error) {
+func mapError(err error) error {
+	if err == nil {
+		return nil
+	}
+	st := status.Convert(err)
+	return errors.New(st.Message())
+}
+func (n Node) Status(ctx context.Context) (*zeuspb.Status, error) {
 	conn, client, err := n.Connect()
 	if err != nil {
 		return nil, err
 	}
 	defer closeAndLogError(conn)
-	return client.GetStatus(context.Background(), &zeuspb.Empty{})
+	st, err := client.GetStatus(ctx, &zeuspb.Empty{})
+	return st, mapError(err)
 }
 
-func (n Node) StartClimate(seasonFileContent []byte) error {
+func (n Node) StartClimate(ctx context.Context, seasonFileContent []byte) error {
 	conn, client, err := n.Connect()
 	if err != nil {
 		return err
 	}
 	defer closeAndLogError(conn)
-	_, err = client.StartClimate(context.Background(),
+	_, err = client.StartClimate(ctx,
 		&zeuspb.StartRequest{
 			SeasonFile: string(seasonFileContent),
 			Version:    zeus.ZEUS_VERSION,
 		})
-	return err
+	return mapError(err)
 }
 
-func (n Node) StopClimate() error {
+func (n Node) StopClimate(ctx context.Context) error {
 	conn, client, err := n.Connect()
 	if err != nil {
 		return err
 	}
 	defer closeAndLogError(conn)
-	_, err = client.StopClimate(context.Background(), &zeuspb.Empty{})
-	return err
+	_, err = client.StopClimate(ctx, &zeuspb.Empty{})
+	return mapError(err)
 }

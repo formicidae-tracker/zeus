@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/adrg/xdg v0.3.0
+	github.com/atuleu/go-humanize v0.0.0-20230602193851-3c422bf7e236
 	github.com/atuleu/go-tablifier v0.1.0
 	github.com/atuleu/golang-socketcan v0.2.0
 	github.com/barkimedes/go-deepcopy v0.0.0-20220514131651-17c30cfc62df
@@ -16,6 +17,7 @@ require (
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/sirupsen/logrus v1.9.3
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.42.0
+	go.opentelemetry.io/otel v1.16.0
 	google.golang.org/grpc v1.56.1
 	google.golang.org/protobuf v1.31.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
@@ -36,7 +38,6 @@ require (
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
-	go.opentelemetry.io/otel v1.16.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.16.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.39.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.39.0 // indirect

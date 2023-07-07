@@ -1,14 +1,18 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"log"
 	"math"
 	"sort"
 	"time"
 
+	"github.com/atuleu/go-humanize"
 	"github.com/atuleu/go-tablifier"
 	"github.com/formicidae-tracker/zeus/internal/zeus"
+	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type ScanCommand struct {
@@ -22,7 +26,19 @@ type resultTableLine struct {
 	Compatible string
 }
 
-func (c *ScanCommand) Execute(args []string) error {
+var intrumentationName = "github.com/formicidae-tracker/zeus/cmd/zeus-cli"
+
+func (c *ScanCommand) Execute(args []string) (err error) {
+	ctx, span := otel.Tracer(intrumentationName).Start(context.Background(),
+		"leto-cli/Scan")
+	defer func() {
+		if err != nil {
+			span.SetStatus(codes.Error, "leto-cli error")
+			span.RecordError(err)
+		}
+		span.End()
+	}()
+
 	now := time.Now()
 	nodes, err := Nodes()
 	if err != nil {
@@ -31,7 +47,7 @@ func (c *ScanCommand) Execute(args []string) error {
 	lines := make([]resultTableLine, 0, len(nodes))
 
 	for _, node := range nodes {
-		status, err := node.Status()
+		status, err := node.Status(ctx)
 		line := resultTableLine{
 			Zone:       node.Name,
 			Status:     "n.a.",
@@ -40,7 +56,8 @@ func (c *ScanCommand) Execute(args []string) error {
 			Compatible: "✗",
 		}
 		if err != nil {
-			log.Printf("Could not fetch %s status: %s", node.Name, err)
+			logrus.WithError(err).WithField("node", node.Name).
+				Error("could not fetch status")
 			lines = append(lines, line)
 			continue
 		}
@@ -55,7 +72,7 @@ func (c *ScanCommand) Execute(args []string) error {
 			continue
 		}
 		ellapsed := now.Sub(status.Since.AsTime()).Truncate(time.Second)
-		line.Since = ellapsed.String()
+		line.Since = humanize.Duration(ellapsed).String()
 		if len(status.Zones) == 0 {
 			line.Status = "Running"
 			lines = append(lines, line)
