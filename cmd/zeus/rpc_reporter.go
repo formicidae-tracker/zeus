@@ -261,15 +261,27 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 	}()
 
 	pushAndLogError := func(m *olympuspb.ClimateUpStream) {
+
 		var res olympuspb.RequestResult[*olympuspb.ClimateDownStream]
-		if len(m.Alarms) > 0 && m.Backlog == false {
+
+		mandatory := len(m.Alarms) > 0 && m.Backlog == false
+
+		if mandatory == true {
 			res = <-task.Request(m)
 		} else {
 			res = <-task.MayRequest(m)
 		}
-		if res.Error != nil {
-			r.log.WithError(res.Error).Warn("stream error")
+
+		if res.Error == nil {
+			return
 		}
+
+		if mandatory == true {
+			r.log.WithError(res.Error).Error("stream error")
+		} else {
+			r.log.WithError(res.Error).Debug("stream error")
+		}
+
 	}
 
 	close(ready)
