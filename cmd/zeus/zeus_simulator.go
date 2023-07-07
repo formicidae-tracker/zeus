@@ -75,20 +75,22 @@ func NewZeusSimulator(a ZeusSimulatorArgs) (s *ZeusSimulator, err error) {
 }
 
 func (s *ZeusSimulator) shutdown() (err error) {
+	var errs []error
 	s.mx.Lock()
 	defer func() {
 		s.mx.Unlock()
 		if recover() != nil {
-			err = errors.New("already closed")
+			errs = append(errs, errors.New("already closed"))
 		}
 		<-s.idle
+		err = errors.Join(errs...)
 	}()
 	for _, r := range s.zones {
-		r.Close()
+		errs = append(errs, r.Close())
 	}
 	s.zones = make(map[string]ZoneClimateRunner)
-	close(s.stop)
 
+	close(s.stop)
 	return nil
 }
 

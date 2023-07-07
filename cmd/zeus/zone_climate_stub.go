@@ -3,11 +3,14 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"path"
 	"sync"
 	"time"
 
+	"github.com/formicidae-tracker/olympus/pkg/tm"
 	"github.com/formicidae-tracker/zeus/internal/zeus"
 	"github.com/formicidae-tracker/zeus/pkg/zeuspb"
+	"github.com/sirupsen/logrus"
 )
 
 type stubAlarm struct {
@@ -31,6 +34,8 @@ type zoneClimateStub struct {
 
 	done, stop chan struct{}
 	mx         sync.Mutex
+
+	logger *logrus.Entry
 }
 
 type ZoneClimateStubArgs struct {
@@ -47,6 +52,7 @@ func NewZoneClimateStub(args ZoneClimateStubArgs) (ZoneClimateRunner, error) {
 		host:      args.hostname,
 		zone:      args.zoneName,
 		timeRatio: args.timeRatio,
+		logger:    tm.NewLogger(path.Join("zone", args.zoneName, "climate-stub")),
 	}
 	var err error
 	res.interpoler, err = zeus.NewClimateInterpoler(args.climate.States, args.climate.Transitions, time.Now().UTC())
@@ -77,6 +83,7 @@ func (s *zoneClimateStub) Run() {
 		close(s.rpcReporter.ReportChannel())
 		close(s.rpcReporter.TargetChannel())
 		close(s.rpcReporter.AlarmChannel())
+		s.logger.Debug("all channels closed")
 	}()
 
 	now := time.Now()
@@ -85,13 +92,13 @@ func (s *zoneClimateStub) Run() {
 	ticker := time.NewTicker(period)
 
 	s.stubAlarms = []*stubAlarm{
-		&stubAlarm{
+		{
 			Alarm:  zeus.WaterLevelCritical,
 			Period: 20 * time.Minute,
 			Next:   now.Add(3 * time.Minute),
 			On:     false,
 		},
-		&stubAlarm{
+		{
 			Alarm:  zeus.HumidityUnreachable,
 			Period: 30 * time.Minute,
 			Next:   now.Add(1 * time.Minute),

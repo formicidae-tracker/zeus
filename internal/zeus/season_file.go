@@ -1,11 +1,12 @@
 package zeus
 
 import (
-	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 
+	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
@@ -70,27 +71,27 @@ func checkDeprecatedLines(data []byte) ([]deprecatedLine, error) {
 }
 
 func formatDeprecatedLines(lines []deprecatedLine, writer io.Writer) error {
-	good := true
+
+	var errs []error
 	for _, l := range lines {
 		if l.isError == true {
-			good = false
+			errs = append(errs, fmt.Errorf("%s is deprecated: %s", l.name, l.comment))
 		}
 	}
-	if good == false {
-		writer = bytes.NewBuffer(nil)
+	if len(errs) > 0 {
+		return fmt.Errorf("invalid season file: %w", errors.Join(errs...))
 	}
+
+	log := logrus.New()
+	log.SetOutput(writer)
+
 	for _, l := range lines {
-		prefix := "WARNING"
-		suffix := " (will raise an error in a future release)"
-		if l.isError == true {
-			prefix = "ERROR"
-			suffix = ""
-		}
-		fmt.Fprintf(writer, "%s: '%s' is deprecated%s: %s\n", prefix, l.name, suffix, l.comment)
+		log.WithFields(logrus.Fields{
+			"field":   l.name,
+			"comment": l.comment,
+		}).Warn("deprecated field")
 	}
-	if good == false {
-		return fmt.Errorf("invalid season file:\n%s", writer.(*bytes.Buffer).Bytes())
-	}
+
 	return nil
 }
 

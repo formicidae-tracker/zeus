@@ -54,15 +54,13 @@ func (s *SeasonFileSuite) TestDeprecatedFormating(c *C) {
 	}
 	buffer := bytes.NewBuffer(nil)
 	err := formatDeprecatedLines(lines, buffer)
-	c.Check(err.Error(), Equals, `invalid season file:
-WARNING: 'foo' is deprecated (will raise an error in a future release): comment
-ERROR: 'bar' is deprecated: another comment
-`)
+	c.Check(err.Error(), Equals, `invalid season file: bar is deprecated: another comment`)
+
 	c.Check(len(buffer.Bytes()), Equals, 0)
 	lines[1].isError = false
 	c.Check(formatDeprecatedLines(lines, buffer), IsNil)
-	c.Check(string(buffer.Bytes()), Equals, `WARNING: 'foo' is deprecated (will raise an error in a future release): comment
-WARNING: 'bar' is deprecated (will raise an error in a future release): another comment
+	c.Check(string(buffer.Bytes()), Matches, `time=".*" level=warning msg="deprecated field" comment=comment field=foo
+time=".*" level=warning msg="deprecated field" comment="another comment" field=bar
 `)
 }
 
