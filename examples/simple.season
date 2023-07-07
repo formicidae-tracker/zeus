@@ -1,10 +1,6 @@
 # -*- mode: yaml -*-
 # We define here the zone we can control. zeus should be able to
 # control different zone if you plug enough hardware
-
-# you can enable slack notification by providing your slack Display
-# Name prefixed by @, if empty slack notification will be disabled
-slack-user: "@John Doe Jr."
 zones:
   # The name of the zone
   box:

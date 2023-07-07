@@ -114,14 +114,5 @@ zones:
 
 ## Slack notification
 
-Any FORT installation may be linked wit a slack workspace, and if this
-is the case you can get direct alert notification via the
-'FortMonitor' bot. To enable this, simply set you slack display name
-with an '@' before (like if you would mention someone on slack).
-
-For example if you slack display name is "John Doe Jr.", simply add
-this line in the file:
-
-``` yaml
-slack-user: "@John Doe Jr."
-```
+Slack notification is not supported anymore. If you receive a warning,
+simply remove the `slack-user` entry.

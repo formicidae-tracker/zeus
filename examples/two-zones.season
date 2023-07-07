@@ -1,5 +1,4 @@
 # -*- mode: yaml -*-
-slack-user:
 zones:
   box:
     can-interface: slcan0
