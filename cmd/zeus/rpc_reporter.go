@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path"
+	"sync"
 	"time"
 
 	olympuspb "github.com/formicidae-tracker/olympus/pkg/api"
@@ -173,12 +174,12 @@ func (r *RPCReporter) paginateBacklogs(c context.Context,
 
 	climateLog, err := r.runner.ClimateLog(0, 0)
 	if err != nil {
-		r.log.Printf("could not get climate log: %s", err)
+		r.log.WithError(err).Warn("could not get climate log")
 	}
 
 	eventLog, err := r.runner.AlarmLog(0, 0)
 	if err != nil {
-		r.log.Printf("could not get alarm log")
+		r.log.WithError(err).Warn("could not get alarm log")
 	}
 	if eventLog == nil && climateLog == nil {
 		return nil
@@ -238,7 +239,11 @@ func (r *RPCReporter) buidUpStreamFromInputChannels() <-chan *olympuspb.ClimateU
 
 func (r *RPCReporter) Report(ready chan<- struct{}) {
 	ctx, cancelTask := context.WithCancel(context.Background())
-	defer cancelTask()
+	wg := sync.WaitGroup{}
+	defer func() {
+		cancelTask()
+		wg.Wait()
+	}()
 
 	var cancelBacklog context.CancelFunc = func() {}
 
@@ -247,7 +252,9 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 	var backlogs <-chan *olympuspb.ClimateUpStream
 	task := olympuspb.NewClimateTask(ctx, r.addr, r.declaration)
 
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		if err := task.Run(); err != nil {
 			r.log.WithError(err).Error("gRPC task error")
 		}
@@ -261,16 +268,18 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 			res = <-task.MayRequest(m)
 		}
 		if res.Error != nil {
-			r.log.WithError(res.Error).Error("fort.olympus.Olympus/ClimateUpStream error")
+			r.log.WithError(res.Error).Warn("stream error")
 		}
 	}
 
 	close(ready)
 
+	r.log.Debug("started")
 	for {
 		select {
 		case up, ok := <-upstream:
 			if ok == false {
+				r.log.Debug("stopping")
 				cancelBacklog()
 				return
 			}
@@ -278,8 +287,9 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 		case up, ok := <-backlogs:
 			if ok == false {
 				backlogs = nil
+			} else {
+				go pushAndLogError(up)
 			}
-			go pushAndLogError(up)
 		case down, ok := <-task.Confirmations():
 			if ok == false {
 				cancelBacklog()
