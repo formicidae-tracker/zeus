@@ -309,7 +309,7 @@ func (z *Zeus) StartClimate(ctx context.Context, request *zeuspb.StartRequest) (
 	ctx, span := z.tracer.Start(ctx, "zeus/StartClimate")
 	defer func() { endWithError(span, err) }()
 
-	defer z.mx.Lock()
+	z.mx.Lock()
 	defer z.mx.Unlock()
 
 	compatible, err := zeus.VersionAreCompatible(zeus.ZEUS_VERSION, request.Version)
