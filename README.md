@@ -25,31 +25,58 @@ configuration](https://github.com/formicidae-tracker/fort-configuration)
 
 ## Getting started
 
-### zeus-cli
+### Removes legacy snap installation
 
-`zeus-cli` is installed by using snap.
-
-``` bash
-sudo snap install fort-zeus-cli
-sudo snap alias fort-zeus-cli zeus-cli
-```
-
-You should be able to scan node over the network with
+As ov v0.4.0, snap should not be used anymore and communication will
+be incompatible with older versions.
 
 ``` bash
-zeus-cli scan
+sudo snap remove fort-zeus-cli
 ```
 
-you may run into a `tcp lookup error`. This is due to a limitation of
-snap regarding `.local` network addresses. It can be solved using the
-following commands once.
+#### Install `zeus-cli` with go tool
 
-``` bash
-sudo apt install nscd
-sudo service snapd restart
+```bash
+go install github.com/formicidae-tracker/zeus/cmd/zeus-cli@latest
 ```
 
-In some cases you will also need to restart your system to clear the errors.
+If your tracking environment requires a specifig version, replace
+`@latest` with the correct version name, for example `@v0.4.0` for
+version `v0.4.0`.
+
+Note: if you do not have go installed on your system, simply install
+it from https://golang.org.
+
+### Add local completion handler (optional)
+
+If you use bash:
+
+```bash
+mkdir -p ~/.local/share/bash-completion/completions
+cat <<EOF > ~/.local/share/bash-completion/completions/zeus-cli.bash
+_zeus_cli_completion() {
+    # All arguments except the first one
+    args=("${COMP_WORDS[@]:1:$COMP_CWORD}")
+
+    # Only split on newlines
+    local IFS=$'\n'
+
+    # Call completion (note that the first element of COMP_WORDS is
+    # the executable itself)
+    COMPREPLY=($(GO_FLAGS_COMPLETION=1 zeus-cli "${args[@]}"))
+    return 0
+}
+
+complete -F _zeus_cli_completion zeus-cli
+EOF
+```
+
+If you use fish:
+
+```fish
+mkdir -p ~/.config/fish/completions
+echo complete -c zeus-cli -f -a \""(GO_FLAGS_COMPLETION=1 zeus-cli (string split ' ' (commandline -cp)))"\" > ~/.config/fish/completions/zeus-cli.fish
+```
 
 ## Testing a season file
 
