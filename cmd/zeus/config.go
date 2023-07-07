@@ -24,6 +24,7 @@ type Config struct {
 	Interfaces   map[string]string         `yaml:"interfaces"`
 	Zones        map[string]ZoneDefinition `yaml:"zones"`
 	OTELEndpoint string                    `yaml:"otel_collector_endpoint"`
+	Verbosity    int                       `yaml:"verbosity"`
 }
 
 const DEFAULT_CONFIG_PATH = "/etc/default/zeus.yml"

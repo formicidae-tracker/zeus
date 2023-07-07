@@ -43,11 +43,13 @@ func OpenZeus(c Config) (*Zeus, error) {
 	if err := c.Check(); err != nil {
 		return nil, fmt.Errorf("Invalid config: %s", err)
 	}
+
 	if c.OTELEndpoint != "" {
 		tm.SetUpTelemetry(tm.OtelProviderArgs{
 			CollectorURL:   c.OTELEndpoint,
 			ServiceName:    "zeus",
 			ServiceVersion: zeus.ZEUS_VERSION,
+			Level:          tm.VerboseLevel(c.Verbosity),
 		})
 	}
 
