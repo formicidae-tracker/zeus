@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path"
 	"time"
 
+	"github.com/formicidae-tracker/olympus/pkg/tm"
 	"github.com/formicidae-tracker/zeus/internal/zeus"
+	"github.com/sirupsen/logrus"
 )
 
 type AlarmMonitor interface {
@@ -20,7 +21,7 @@ type AlarmMonitor interface {
 type alarmMonitor struct {
 	inbound    chan zeus.Alarm
 	outbound   chan zeus.AlarmEvent
-	logger     *log.Logger
+	logger     *logrus.Entry
 	concatened chan string
 	name       string
 }
@@ -102,7 +103,11 @@ func (m *alarmMonitor) logConcatened() {
 		select {
 		case <-ticker.C:
 			for l, count := range logs {
-				m.logger.Printf("(%d times in %s) %s", count, period, l)
+				m.logger.WithFields(logrus.Fields{
+					"count":  count,
+					"period": period,
+					"log":    l,
+				}).Info("aggregated log")
 			}
 			logs = make(map[string]int)
 		case l, ok := <-m.concatened:
@@ -199,7 +204,7 @@ func NewAlarmMonitor(zoneName string) (AlarmMonitor, error) {
 		inbound:    make(chan zeus.Alarm, 30),
 		outbound:   make(chan zeus.AlarmEvent, 60),
 		name:       path.Join(hostname, "zone", zoneName),
-		logger:     log.New(os.Stderr, "[zone/"+zoneName+"/alarm] ", 0),
+		logger:     tm.NewLogger(path.Join("zone", zoneName, "alarm")),
 		concatened: make(chan string),
 	}, nil
 }

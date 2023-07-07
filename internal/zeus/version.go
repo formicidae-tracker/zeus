@@ -3,4 +3,4 @@
 package zeus
 
 // Current package version
-var ZEUS_VERSION = "development"
+var ZEUS_VERSION = "v0.3.2-25-g11ee6c7"

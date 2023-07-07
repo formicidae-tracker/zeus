@@ -2,15 +2,16 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"os"
+	"path"
 	"path/filepath"
 	"sync"
 
 	"github.com/adrg/xdg"
 	"github.com/formicidae-tracker/libarke/src-go/arke"
+	"github.com/formicidae-tracker/olympus/pkg/tm"
 	"github.com/formicidae-tracker/zeus/internal/zeus"
 	"github.com/formicidae-tracker/zeus/pkg/zeuspb"
+	"github.com/sirupsen/logrus"
 )
 
 type ZoneClimateRunner interface {
@@ -31,7 +32,7 @@ type ZoneClimateRunnerOptions struct {
 }
 
 type zoneClimateRunner struct {
-	logger     *log.Logger
+	logger     *logrus.Entry
 	dispatcher ArkeDispatcher
 
 	quit, done chan struct{}
@@ -150,11 +151,11 @@ func (r *zoneClimateRunner) spawnTasks(wg *sync.WaitGroup) {
 func (r *zoneClimateRunner) stopTasks() {
 	err := r.interpoler.Close()
 	if err != nil {
-		r.logger.Printf("interpoler did not close gracefully: %s", err)
+		r.logger.WithError(err).Error("interpoler did not close gracefully")
 	}
 	err = r.presenceMonitor.Close()
 	if err != nil {
-		r.logger.Printf("presenceMonitorer did not close gracefully: %s", err)
+		r.logger.WithError(err).Error("presenceMonitorer did not close gracefully")
 	}
 
 	for _, capability := range r.capabilities {
@@ -181,7 +182,9 @@ func (r *zoneClimateRunner) handleMessage(m *StampedMessage, wg *sync.WaitGroup)
 			for _, callback := range callbacks {
 				err := callback(alarms, m)
 				if err != nil {
-					r.logger.Printf("callback error on %s: %s", m.M, err)
+					r.logger.WithError(err).
+						WithField("message", m.M.String()).
+						Error("callback error")
 				}
 			}
 			wg.Done()
@@ -203,7 +206,7 @@ func (r *zoneClimateRunner) Run() {
 	}()
 
 	r.spawnTasks(&wg)
-	r.logger.Printf("started")
+	r.logger.Info("started")
 	for {
 		select {
 		case <-r.quit:
@@ -221,10 +224,10 @@ func (r *zoneClimateRunner) Close() error {
 	if r.quit == nil {
 		return fmt.Errorf("already closed")
 	}
-	r.logger.Printf("closing")
+	r.logger.Debug("closing")
 	close(r.quit)
 	<-r.done
-	r.logger.Printf("closed")
+	r.logger.Debug("closed")
 	return nil
 }
 
@@ -395,7 +398,7 @@ func (r *zoneClimateRunner) Last() *zeuspb.ZoneStatus {
 
 func NewZoneClimateRunner(o ZoneClimateRunnerOptions) (r ZoneClimateRunner, err error) {
 	res := &zoneClimateRunner{
-		logger:          log.New(os.Stderr, "[zone/"+o.Name+"] ", 0),
+		logger:          tm.NewLogger(path.Join("zone", o.Name)),
 		dispatcher:      o.Dispatcher,
 		messages:        o.Dispatcher.Register(arke.NodeID(o.Definition.DevicesID)),
 		presenceMonitor: NewPresenceMonitorer(o.Dispatcher.Name(), o.Dispatcher.Interface()),

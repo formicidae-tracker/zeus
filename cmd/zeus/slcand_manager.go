@@ -4,17 +4,19 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
-	"os"
 	"os/exec"
+	"path"
 	"syscall"
 	"time"
+
+	"github.com/formicidae-tracker/olympus/pkg/tm"
+	"github.com/sirupsen/logrus"
 )
 
 type SlcandManager struct {
 	ifname   string
 	devname  string
-	logger   *log.Logger
+	logger   *logrus.Entry
 	cmd      *exec.Cmd
 	cmdError chan error
 }
@@ -47,7 +49,7 @@ func (m *SlcandManager) open() (err error) {
 		}
 
 		for scanner.Scan() {
-			m.logger.Printf("[slcand] %s", scanner.Text())
+			m.logger.WithField("output", scanner.Text()).Info("slcand output")
 		}
 
 		m.cmdError <- m.cmd.Wait()
@@ -59,7 +61,7 @@ func (m *SlcandManager) open() (err error) {
 		return fmt.Errorf("Could not open slcand: %s", err)
 	case <-time.After(500 * time.Millisecond):
 	}
-	m.logger.Printf("set interface %s link up", m.ifname)
+	m.logger.WithField("interface", m.ifname).Info("set interface link up")
 	ipCmd := exec.Command("ip", "link", "set", m.ifname, "up")
 	out, err := ipCmd.CombinedOutput()
 	if err != nil {
@@ -73,7 +75,7 @@ func OpenSlcand(ifname, devname string) (*SlcandManager, error) {
 	m := &SlcandManager{
 		ifname:   ifname,
 		devname:  devname,
-		logger:   (log.New(os.Stderr, fmt.Sprintf("[slcand/%s] ", ifname), 0)),
+		logger:   tm.NewLogger(path.Join("slcand", ifname)),
 		cmdError: make(chan error),
 	}
 	if err := m.open(); err != nil {
@@ -83,7 +85,7 @@ func OpenSlcand(ifname, devname string) (*SlcandManager, error) {
 }
 
 func (m *SlcandManager) Close() error {
-	m.logger.Printf("set interface %s link down", m.ifname)
+	m.logger.WithField("interface", m.ifname).Info("set interface link down")
 	ipCmd := exec.Command("ip", "link", "set", m.ifname, "down")
 	out, err := ipCmd.CombinedOutput()
 	if err != nil {

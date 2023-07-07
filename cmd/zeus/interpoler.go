@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path"
 	"time"
 
+	"github.com/formicidae-tracker/olympus/pkg/tm"
 	"github.com/formicidae-tracker/zeus/internal/zeus"
+	"github.com/sirupsen/logrus"
 )
 
 type Interpoler interface {
@@ -22,7 +23,7 @@ type Interpoler interface {
 type interpoler struct {
 	Period time.Duration
 
-	logger     *log.Logger
+	logger     *logrus.Entry
 	name       string
 	interpoler zeus.ClimateInterpoler
 	quit       chan struct{}
@@ -70,10 +71,9 @@ func (i *interpoler) Interpolate(ready chan<- struct{}) {
 		close(i.reports)
 	}()
 
-	i.logger.Printf("Starting interpolation loop")
 	now := time.Now()
 	cur, nextTime, next := i.interpoler.CurrentInterpolation(now)
-	i.logger.Printf("Starting interpolation is %s", cur)
+	i.logger.WithField("interpolation", cur.String()).Info("starting interpolation loop")
 
 	i.sendState(cur.State(now))
 
@@ -88,14 +88,14 @@ func (i *interpoler) Interpolate(ready chan<- struct{}) {
 	for {
 		select {
 		case <-i.quit:
-			i.logger.Printf("Closing climate interpolation")
+			i.logger.Info("stopping interpolation loop")
 			return
 		case now := <-timer.C:
 			new, nextTime, next := i.interpoler.CurrentInterpolation(now)
 			newIsTransition := new.End() != nil
 
 			if isTransition != newIsTransition {
-				i.logger.Printf("New interpolation %s", new)
+				i.logger.WithField("interpolation", new.String()).Info("new interpolation")
 				cur = new
 				isTransition = newIsTransition
 			} else if isTransition == false {
@@ -115,7 +115,7 @@ func NewInterpoler(name string, states []zeus.State, transitions []zeus.Transiti
 	if err != nil {
 		return nil, err
 	}
-	logger := log.New(os.Stderr, "[zone/"+name+"/climate]: ", 0)
+	logger := tm.NewLogger(path.Join("zone", name, "climate"))
 	i, err := zeus.NewClimateInterpoler(states, transitions, time.Now().UTC())
 	if err != nil {
 		return nil, err

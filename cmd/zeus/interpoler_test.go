@@ -1,12 +1,13 @@
 package main
 
 import (
-	"bytes"
 	"math"
 	"sync"
 	"time"
 
 	"github.com/formicidae-tracker/zeus/internal/zeus"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	. "gopkg.in/check.v1"
 )
 
@@ -29,7 +30,9 @@ func (s *InterpolationManagerSuite) TestInterpolationReportsUndefined(c *C) {
 	i, err := NewInterpoler("test-zone", states, []zeus.Transition{})
 	c.Assert(err, IsNil)
 
-	i.(*interpoler).logger.SetOutput(bytes.NewBuffer(nil))
+	_, hook := test.NewNullLogger()
+
+	i.(*interpoler).logger.Logger.AddHook(hook)
 	i.(*interpoler).Period = 1 * time.Millisecond
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -57,4 +60,17 @@ func (s *InterpolationManagerSuite) TestInterpolationReportsUndefined(c *C) {
 	c.Check(ok, Equals, false)
 	wg.Wait()
 
+	c.Check(len(hook.Entries), Equals, 2)
+
+	for _, e := range hook.Entries {
+		c.Check(e.Level, Equals, logrus.InfoLevel)
+		c.Check(e.Data["domain"], Equals, "zone/test-zone/climate")
+	}
+
+	c.Check(len(hook.Entries[0].Data), Equals, 2)
+	c.Check(hook.Entries[0].Message, Equals, "starting interpolation loop")
+	c.Check(hook.Entries[0].Data["interpolation"], Matches, "static state: {Name:single and only one .*}")
+
+	c.Check(len(hook.Entries[1].Data), Equals, 1)
+	c.Check(hook.Entries[1].Message, Equals, "stopping interpolation loop")
 }

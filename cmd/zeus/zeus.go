@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"path/filepath"
@@ -13,9 +12,11 @@ import (
 
 	"github.com/adrg/xdg"
 	socketcan "github.com/atuleu/golang-socketcan"
+	"github.com/formicidae-tracker/olympus/pkg/tm"
 	"github.com/formicidae-tracker/zeus/internal/zeus"
 	"github.com/formicidae-tracker/zeus/pkg/zeuspb"
 	"github.com/grandcat/zeroconf"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -24,7 +25,7 @@ type Zeus struct {
 	zeuspb.UnimplementedZeusServer
 	intfFactory func(ifname string) (socketcan.RawInterface, error)
 
-	logger *log.Logger
+	logger *logrus.Entry
 
 	olympusHost string
 	definitions map[string]ZoneDefinition
@@ -47,7 +48,7 @@ func OpenZeus(c Config) (*Zeus, error) {
 	}
 	z := &Zeus{
 		intfFactory: socketcan.NewRawInterface,
-		logger:      log.New(os.Stderr, "[zeus] ", 0),
+		logger:      tm.NewLogger("zeus"),
 		olympusHost: c.Olympus,
 		definitions: c.Zones,
 		runners:     make(map[string]ZoneClimateRunner),
@@ -63,12 +64,12 @@ func (z *Zeus) spawnZeroconf() {
 	go func() {
 		host, err := os.Hostname()
 		if err != nil {
-			z.logger.Printf("zeroconf error: could not get hostname: %s", err)
+			z.logger.WithError(err).Error("zeroconf error: could not get hostname")
 			return
 		}
 		server, err := zeroconf.Register("zeus."+host, "_zeus._tcp", "local.", zeus.ZEUS_PORT, nil, nil)
 		if err != nil {
-			z.logger.Printf("zeroconf error: %s", err)
+			z.logger.WithError(err).Error("zeroconf error")
 			return
 		}
 		<-z.idle
@@ -107,7 +108,11 @@ func (z *Zeus) run() error {
 	z.idle = make(chan struct{})
 	defer close(z.done)
 	for name, def := range z.definitions {
-		z.logger.Printf("will manage zone '%s' on %s:%d", name, def.CANInterface, def.DevicesID)
+		z.logger.WithFields(logrus.Fields{
+			"zone":      name,
+			"interface": def.CANInterface,
+			"devicesID": def.DevicesID,
+		}).Info("managing zone")
 	}
 
 	z.spawnZeroconf()
@@ -140,7 +145,7 @@ func (z *Zeus) dispatcherForInterface(ifname string) (ArkeDispatcher, error) {
 	if ok == true {
 		return d, nil
 	}
-	z.logger.Printf("Opening interface '%s'", ifname)
+	z.logger.WithField("interface", ifname).Info("opening interface")
 	intf, err := z.intfFactory(ifname)
 	if err != nil {
 		return nil, err
@@ -206,7 +211,7 @@ func (z *Zeus) startClimate(season zeus.SeasonFile) (rerr error) {
 		}
 	}
 
-	z.logger.Printf("Starting climate")
+	z.logger.Info("starting climate")
 
 	for _, d := range z.dispatchers {
 		ready := make(chan struct{})
@@ -227,7 +232,8 @@ func (z *Zeus) closeRunners() {
 	for name, r := range z.runners {
 		err := r.Close()
 		if err != nil {
-			z.logger.Printf("runner for zone %s did not close gracefully: %s", name, err)
+			z.logger.WithError(err).WithField("zone", name).
+				Error("runner  did not close gracefully")
 		}
 	}
 }
@@ -236,7 +242,8 @@ func (z *Zeus) closeDispatchers() {
 	for name, d := range z.dispatchers {
 		err := d.Close()
 		if err != nil {
-			z.logger.Printf("dispatcher for interface %s did not close gracefully: %s", name, err)
+			z.logger.WithError(err).WithField("interface", name).
+				Error("dispatcher did not close gracefully")
 		}
 	}
 }
@@ -253,13 +260,13 @@ func (z *Zeus) stopClimate() error {
 
 	z.clearStaticState()
 
-	z.logger.Printf("Stopping climate")
+	z.logger.Debug("stopping climate")
 
 	z.closeRunners()
 	z.closeDispatchers()
 	z.reset()
 
-	z.logger.Printf("Climate stopped")
+	z.logger.Debug("climate stopped")
 	return nil
 }
 
@@ -338,7 +345,7 @@ func (z *Zeus) saveStaticStateUnsafe(season zeus.SeasonFile) error {
 
 func (z *Zeus) saveStaticState(season zeus.SeasonFile) {
 	if err := z.saveStaticStateUnsafe(season); err != nil {
-		z.logger.Printf("could not save state: %s", err)
+		z.logger.WithError(err).Error("could not save state")
 	}
 }
 
@@ -352,7 +359,7 @@ func (z *Zeus) clearStaticStateUnsafe() error {
 
 func (z *Zeus) clearStaticState() {
 	if err := z.clearStaticStateUnsafe(); err != nil {
-		z.logger.Printf("could not clear state: %s", err)
+		z.logger.WithError(err).Error("could not clear state")
 	}
 }
 
@@ -365,7 +372,7 @@ func (z *Zeus) restoreStaticStateUnsafe() error {
 		if err == nil {
 			return
 		}
-		z.logger.Printf("clearing invalid state")
+		z.logger.Info("clearing invalid state")
 		z.clearStaticState()
 	}()
 	var season *zeus.SeasonFile = nil
@@ -383,6 +390,6 @@ func (z *Zeus) restoreStaticStateUnsafe() error {
 
 func (z *Zeus) restoreStaticState() {
 	if err := z.restoreStaticStateUnsafe(); err != nil {
-		z.logger.Printf("could not restore state: %s", err)
+		z.logger.WithError(err).Warn("could not restore state")
 	}
 }

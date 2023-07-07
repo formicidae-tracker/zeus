@@ -1,15 +1,16 @@
 package main
 
 import (
-	"log"
-	"os"
 	"os/exec"
+	"path"
 	"sync"
 	"syscall"
 	"time"
 
 	socketcan "github.com/atuleu/golang-socketcan"
 	"github.com/formicidae-tracker/libarke/src-go/arke"
+	"github.com/formicidae-tracker/olympus/pkg/tm"
+	"github.com/sirupsen/logrus"
 )
 
 type StampedMessage struct {
@@ -32,7 +33,7 @@ type arkeDispatcher struct {
 
 	name   string
 	intf   socketcan.RawInterface
-	logger *log.Logger
+	logger *logrus.Entry
 	done   chan struct{}
 }
 
@@ -53,7 +54,10 @@ func (d *arkeDispatcher) nonBlockingSend(m *StampedMessage, c chan<- *StampedMes
 	case c <- m:
 		return
 	default:
-		d.logger.Printf("One receiver ready for ID %d isn't ready, dropping message", m.ID)
+		d.logger.WithFields(logrus.Fields{
+			"ID":      m.ID,
+			"message": m.M.String(),
+		}).Warn("receiver not ready, dropping message")
 	}
 }
 
@@ -74,7 +78,7 @@ func (d *arkeDispatcher) Dispatch(ready chan<- struct{}) {
 	d.done = make(chan struct{})
 
 	defer close(d.done)
-	d.logger.Printf("started")
+	d.logger.Info("started")
 	close(ready)
 	for {
 		f, err := d.intf.Receive()
@@ -84,12 +88,12 @@ func (d *arkeDispatcher) Dispatch(ready chan<- struct{}) {
 					return
 				}
 			}
-			d.logger.Printf("Could not receive CAN frame on: %s", err)
+			d.logger.WithError(err).Error("could not receive CAN frame")
 		} else {
 			t := time.Now()
 			m, ID, err := arke.ParseMessage(&f)
 			if err != nil {
-				d.logger.Printf("Could not parse CAN Frame on: %s", err)
+				d.logger.WithError(err).Error("could not parse CAN frame")
 				continue
 			}
 			d.dispatchMessage(&StampedMessage{
@@ -123,10 +127,10 @@ func (d *arkeDispatcher) Send(id arke.NodeID, m arke.SendableMessage) error {
 func (d *arkeDispatcher) Close() error {
 	defer func() {
 		d.closeChannels()
-		d.logger.Printf("closed")
+		d.logger.Info("closed")
 	}()
 
-	d.logger.Printf("closing")
+	d.logger.Debug("closing")
 	err := d.intf.Close()
 	if d.done == nil {
 		return err
@@ -136,7 +140,7 @@ func (d *arkeDispatcher) Close() error {
 		d.done = nil
 		return err
 	case <-time.After(3 * time.Second):
-		d.logger.Printf("dispatcher apparently hang up, sending request over bus")
+		d.logger.Warn("dispatcher apparently hang up, sending request over bus")
 		cmd := exec.Command("cansend", d.name, "007#")
 		cmd.Run()
 	}
@@ -145,7 +149,8 @@ func (d *arkeDispatcher) Close() error {
 		d.done = nil
 		return err
 	case <-time.After(3 * time.Second):
-		panic("[dispatch/" + d.name + "] closing hangup")
+		d.logger.Panic("closing hangup") // will panic
+		return nil
 	}
 }
 
@@ -170,6 +175,6 @@ func NewArkeDispatcher(ifname string, intf socketcan.RawInterface) ArkeDispatche
 		channels: make(map[int][]chan *StampedMessage),
 		name:     ifname,
 		intf:     intf,
-		logger:   log.New(os.Stderr, "[dispatch/"+ifname+"] ", 0),
+		logger:   tm.NewLogger(path.Join("dispatch", ifname)),
 	}
 }

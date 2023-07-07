@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"os"
+	"path"
 	"time"
 
 	socketcan "github.com/atuleu/golang-socketcan"
 	"github.com/formicidae-tracker/libarke/src-go/arke"
+	"github.com/formicidae-tracker/olympus/pkg/tm"
 	"github.com/formicidae-tracker/zeus/internal/zeus"
+	"github.com/sirupsen/logrus"
 )
 
 type DeviceDefinition struct {
@@ -27,7 +28,7 @@ type presenceMonitorer struct {
 
 	quit, done chan struct{}
 	pings      chan DeviceDefinition
-	logger     *log.Logger
+	logger     *logrus.Entry
 
 	ifname string
 	intf   socketcan.RawInterface
@@ -70,7 +71,7 @@ func (m *presenceMonitorer) Monitor(devices []DeviceDefinition, alarms chan<- ze
 			return
 		case def := <-m.pings:
 			if _, ok := received[def]; ok == false {
-				m.logger.Printf("unmonitored device %+v", def)
+				m.logger.WithField("device", def).Warn("unmonitored device")
 				continue
 			}
 			received[def] = true
@@ -99,7 +100,7 @@ func NewPresenceMonitorer(ifname string, intf socketcan.RawInterface) PresenceMo
 	return &presenceMonitorer{
 		HeartBeatPeriod: zeus.HeartBeatPeriod,
 		pings:           make(chan DeviceDefinition, 5),
-		logger:          log.New(os.Stderr, "[monitor/"+ifname+"] ", 0),
+		logger:          tm.NewLogger(path.Join("monitor", ifname)),
 		ifname:          ifname,
 		intf:            intf,
 	}
