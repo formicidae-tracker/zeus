@@ -7,8 +7,10 @@ import (
 	"net"
 	"sync"
 
+	"github.com/formicidae-tracker/olympus/pkg/tm"
 	"github.com/formicidae-tracker/zeus/internal/zeus"
 	"github.com/formicidae-tracker/zeus/pkg/zeuspb"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 )
 
@@ -96,7 +98,15 @@ func (s *ZeusSimulator) setUpServer(address string) (net.Listener, error) {
 		return nil, err
 	}
 
-	s.server = grpc.NewServer()
+	options := []grpc.ServerOption{}
+	if tm.Enabled() {
+		options = append(options,
+			grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
+			grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()),
+		)
+	}
+
+	s.server = grpc.NewServer(options...)
 	zeuspb.RegisterZeusServer(s.server, s)
 
 	return l, nil

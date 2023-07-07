@@ -17,6 +17,7 @@ import (
 	"github.com/formicidae-tracker/zeus/pkg/zeuspb"
 	"github.com/grandcat/zeroconf"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -42,6 +43,14 @@ func OpenZeus(c Config) (*Zeus, error) {
 	if err := c.Check(); err != nil {
 		return nil, fmt.Errorf("Invalid config: %s", err)
 	}
+	if c.OTELEndpoint != "" {
+		tm.SetUpTelemetry(tm.OtelProviderArgs{
+			CollectorURL:   c.OTELEndpoint,
+			ServiceName:    "zeus",
+			ServiceVersion: zeus.ZEUS_VERSION,
+		})
+	}
+
 	err := os.MkdirAll(filepath.Join(xdg.DataHome, "fort-experiments/climate"), 0755)
 	if err != nil {
 		return nil, err
@@ -82,8 +91,16 @@ func (z *Zeus) runRPC() error {
 	if err != nil {
 		return err
 	}
+	options := []grpc.ServerOption{}
 
-	server := grpc.NewServer()
+	if tm.Enabled() {
+		options = append(options,
+			grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
+			grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()),
+		)
+	}
+
+	server := grpc.NewServer(options...)
 	zeuspb.RegisterZeusServer(server, z)
 
 	go func() {

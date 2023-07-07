@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"regexp"
 
 	flags "github.com/jessevdk/go-flags"
@@ -21,10 +20,10 @@ func (d ZoneDefinition) ID() string {
 }
 
 type Config struct {
-	Olympus    string                    `yaml:"olympus"`
-	SlackToken string                    `yaml:"slack"`
-	Interfaces map[string]string         `yaml:"interfaces"`
-	Zones      map[string]ZoneDefinition `yaml:"zones"`
+	Olympus      string                    `yaml:"olympus"`
+	Interfaces   map[string]string         `yaml:"interfaces"`
+	Zones        map[string]ZoneDefinition `yaml:"zones"`
+	OTELEndpoint string                    `yaml:"otel_collector_endpoint"`
 }
 
 const DEFAULT_CONFIG_PATH = "/etc/default/zeus.yml"
@@ -46,11 +45,6 @@ func OpenConfig(filename string) (*Config, error) {
 	err = yaml.Unmarshal(buf, c)
 	if err != nil {
 		return nil, err
-	}
-
-	slackToken := os.Getenv("ZEUS_SLACK_API_TOKEN")
-	if len(slackToken) > 0 {
-		c.SlackToken = slackToken
 	}
 
 	return c, nil
