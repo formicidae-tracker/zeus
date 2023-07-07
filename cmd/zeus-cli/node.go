@@ -10,6 +10,7 @@ import (
 	"github.com/formicidae-tracker/zeus/pkg/zeuspb"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 )
 
@@ -40,7 +41,10 @@ func (n Node) Connect() (conn *grpc.ClientConn, client zeuspb.ZeusClient, err er
 		closeAndLogError(conn)
 		conn = nil
 	}()
-	conn, err = grpc.Dial(n.DialAddress())
+	conn, err = grpc.Dial(
+		n.DialAddress(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if err != nil {
 		return nil, nil, err
 	}

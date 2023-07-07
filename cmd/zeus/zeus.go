@@ -18,6 +18,9 @@ import (
 	"github.com/grandcat/zeroconf"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -34,10 +37,13 @@ type Zeus struct {
 	dispatchers map[string]ArkeDispatcher
 	runners     map[string]ZoneClimateRunner
 	since       time.Time
+	tracer      trace.Tracer
 
 	mx               sync.RWMutex
 	quit, done, idle chan struct{}
 }
+
+var instrumentationName = "github.com/formicidae-tracker/zeus/cmd/zeus"
 
 func OpenZeus(c Config) (*Zeus, error) {
 	if err := c.Check(); err != nil {
@@ -64,6 +70,7 @@ func OpenZeus(c Config) (*Zeus, error) {
 		definitions: c.Zones,
 		runners:     make(map[string]ZoneClimateRunner),
 		dispatchers: make(map[string]ArkeDispatcher),
+		tracer:      otel.Tracer(instrumentationName),
 	}
 
 	z.restoreStaticState()
@@ -289,8 +296,20 @@ func (z *Zeus) stopClimate() error {
 	return nil
 }
 
-func (z *Zeus) StartClimate(c context.Context, request *zeuspb.StartRequest) (*zeuspb.Empty, error) {
-	z.mx.Lock()
+func endWithError(span trace.Span, err error) {
+	if err != nil {
+		span.SetStatus(codes.Error, "zeus error")
+		span.RecordError(err)
+	}
+	span.End()
+}
+
+func (z *Zeus) StartClimate(ctx context.Context, request *zeuspb.StartRequest) (*zeuspb.Empty, error) {
+	var err error
+	ctx, span := z.tracer.Start(ctx, "zeus/StartClimate")
+	defer func() { endWithError(span, err) }()
+
+	defer z.mx.Lock()
 	defer z.mx.Unlock()
 
 	compatible, err := zeus.VersionAreCompatible(zeus.ZEUS_VERSION, request.Version)
@@ -313,7 +332,11 @@ func (z *Zeus) StartClimate(c context.Context, request *zeuspb.StartRequest) (*z
 	return &zeuspb.Empty{}, nil
 }
 
-func (z *Zeus) StopClimate(c context.Context, e *zeuspb.Empty) (*zeuspb.Empty, error) {
+func (z *Zeus) StopClimate(ctx context.Context, e *zeuspb.Empty) (*zeuspb.Empty, error) {
+	var err error
+	ctx, span := z.tracer.Start(ctx, "zeus/StopClimate")
+	defer func() { endWithError(span, err) }()
+
 	z.mx.Lock()
 	defer z.mx.Unlock()
 
@@ -327,7 +350,11 @@ func (z *Zeus) isRunning() bool {
 	return len(z.runners) != 0
 }
 
-func (z *Zeus) GetStatus(c context.Context, e *zeuspb.Empty) (*zeuspb.Status, error) {
+func (z *Zeus) GetStatus(ctx context.Context, e *zeuspb.Empty) (*zeuspb.Status, error) {
+	var err error
+	ctx, span := z.tracer.Start(ctx, "zeus/Status")
+	defer func() { endWithError(span, err) }()
+
 	z.mx.Lock()
 	defer z.mx.Unlock()
 
