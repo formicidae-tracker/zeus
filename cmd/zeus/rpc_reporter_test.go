@@ -5,7 +5,7 @@ import (
 	"log"
 	"net"
 
-	olympuspb "github.com/formicidae-tracker/olympus/api"
+	olympuspb "github.com/formicidae-tracker/olympus/pkg/api"
 	"github.com/formicidae-tracker/zeus/internal/zeus"
 	"google.golang.org/grpc"
 	. "gopkg.in/check.v1"
