@@ -17,13 +17,13 @@ func (s *AlarmSuite) TestRepeatPeriod(c *C) {
 		Expected time.Duration
 	}{
 		{AlarmString{}, 0},
-		{NewFanAlarm("foo", arke.FanAging), 10 * time.Minute},
+		{NewFanAlarm("foo", arke.FanAging, Warning), 10 * time.Minute},
 		{NewMissingDeviceAlarm("foo", arke.ZeusClass, 1), 5 * HeartBeatPeriod},
 		{NewDeviceInternalError("foo", arke.ZeusClass, 1, 43), 2 * time.Second},
 	}
 
 	for _, d := range testdata {
-		c.Check(d.Alarm.DeadLine(), Equals, d.Expected)
+		c.Check(d.Alarm.MinDownTime(), Equals, d.Expected)
 	}
 
 }
@@ -39,19 +39,19 @@ func (s *AlarmSuite) TestData(c *C) {
 			Alarm:               WaterLevelWarning,
 			ExpectedIdentifier:  "climate.water_level",
 			ExpectedDescription: "Water tank level is low",
-			ExpectedFlags:       Warning,
+			ExpectedFlags:       Emergency,
 		},
 		{
 			Alarm:               WaterLevelCritical,
 			ExpectedIdentifier:  "climate.water_level",
 			ExpectedDescription: "Water tank is empty",
-			ExpectedFlags:       Emergency,
+			ExpectedFlags:       Failure,
 		},
 		{
 			Alarm:               WaterLevelUnreadable,
 			ExpectedIdentifier:  "climate.water_sensor",
 			ExpectedDescription: "Celaeno cannot determine water tank level",
-			ExpectedFlags:       Emergency,
+			ExpectedFlags:       Failure,
 		},
 		{
 			Alarm:               HumidityUnreachable,
@@ -81,22 +81,22 @@ func (s *AlarmSuite) TestData(c *C) {
 			Alarm:               SensorReadoutIssue,
 			ExpectedIdentifier:  "climate.sensor.readout",
 			ExpectedDescription: "Cannot read sensors",
-			ExpectedFlags:       Emergency,
+			ExpectedFlags:       Failure,
 		},
 		{
-			Alarm:               NewFanAlarm("foo", arke.FanStalled),
+			Alarm:               NewFanAlarm("foo", arke.FanStalled, Emergency),
 			ExpectedIdentifier:  "climate.fan.foo",
 			ExpectedDescription: "Fan foo is stalled",
 			ExpectedFlags:       Emergency,
 		},
 		{
-			Alarm:               NewFanAlarm("bar", arke.FanAging),
+			Alarm:               NewFanAlarm("bar", arke.FanAging, Warning),
 			ExpectedIdentifier:  "climate.fan.bar",
 			ExpectedDescription: "Fan bar is aging",
 			ExpectedFlags:       Warning,
 		},
 		{
-			Alarm:               NewFanAlarm("baz", arke.FanOK),
+			Alarm:               NewFanAlarm("baz", arke.FanOK, Warning),
 			ExpectedIdentifier:  "climate.fan.baz",
 			ExpectedDescription: "Fan baz is aging",
 			ExpectedFlags:       Warning,
@@ -105,19 +105,19 @@ func (s *AlarmSuite) TestData(c *C) {
 			Alarm:               NewMissingDeviceAlarm("vcan0", arke.ZeusClass, 1),
 			ExpectedIdentifier:  "climate.device_missing.vcan0.Zeus.1",
 			ExpectedDescription: "Device vcan0.Zeus.1 is missing",
-			ExpectedFlags:       Emergency,
+			ExpectedFlags:       Warning | AdminOnly,
 		},
 		{
 			Alarm:               NewMissingDeviceAlarm("vcan0", arke.CelaenoClass, 1),
 			ExpectedIdentifier:  "climate.device_missing.vcan0.Celaeno.1",
 			ExpectedDescription: "Device vcan0.Celaeno.1 is missing",
-			ExpectedFlags:       Emergency,
+			ExpectedFlags:       Warning | AdminOnly,
 		},
 		{
 			Alarm:               NewDeviceInternalError("vcan0", arke.ZeusClass, 1, 0x42),
 			ExpectedIdentifier:  "climate.device_error.vcan0.Zeus.1.66",
 			ExpectedDescription: "Device vcan0.Zeus.1 internal error 0x0042",
-			ExpectedFlags:       Warning,
+			ExpectedFlags:       Warning | AdminOnly,
 		},
 	}
 
@@ -136,9 +136,9 @@ func (s *AlarmSuite) TestFanAlarm(c *C) {
 		ExpectedStatus arke.FanStatus
 		ExpectedFan    string
 	}{
-		{NewFanAlarm("foo", arke.FanAging), arke.FanAging, "foo"},
-		{NewFanAlarm("bar", arke.FanStalled), arke.FanStalled, "bar"},
-		{NewFanAlarm("baz", arke.FanOK), arke.FanAging, "baz"},
+		{NewFanAlarm("foo", arke.FanAging, Warning), arke.FanAging, "foo"},
+		{NewFanAlarm("bar", arke.FanStalled, Warning), arke.FanStalled, "bar"},
+		{NewFanAlarm("baz", arke.FanOK, Warning), arke.FanAging, "baz"},
 	}
 
 	for _, d := range testdata {

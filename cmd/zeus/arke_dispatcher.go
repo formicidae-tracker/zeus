@@ -107,7 +107,7 @@ func (d *arkeDispatcher) Dispatch(ready chan<- struct{}) {
 
 func (d *arkeDispatcher) Register(devicesID arke.NodeID) <-chan *StampedMessage {
 	if d.channels == nil {
-		panic("register on closed dispatcher")
+		d.logger.Panic("register on closed dispatcher")
 	}
 
 	d.mx.Lock()

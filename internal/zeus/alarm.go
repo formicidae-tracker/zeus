@@ -12,20 +12,23 @@ type AlarmFlags int
 const (
 	Warning   AlarmFlags = 0x00
 	Emergency            = 0x01
+	Failure              = 0x02
+	AdminOnly            = 0x04
 )
 
 type Alarm interface {
 	Flags() AlarmFlags
 	Identifier() string
 	Description() string
-	DeadLine() time.Duration
+	MinUpTime() time.Duration
+	MinDownTime() time.Duration
 }
 
 type AlarmString struct {
-	f           AlarmFlags
-	identifier  string
-	description string
-	deadline    time.Duration
+	f                      AlarmFlags
+	identifier             string
+	description            string
+	minUpTime, minDownTime time.Duration
 }
 
 func (a AlarmString) Flags() AlarmFlags {
@@ -40,15 +43,19 @@ func (a AlarmString) Description() string {
 	return a.description
 }
 
-func (a AlarmString) DeadLine() time.Duration {
-	return a.deadline
+func (a AlarmString) MinUpTime() time.Duration {
+	return a.minUpTime
 }
 
-var WaterLevelWarning = AlarmString{Warning, "climate.water_level", "Water tank level is low", 2 * time.Second}
-var WaterLevelCritical = AlarmString{Emergency, "climate.water_level", "Water tank is empty", 2 * time.Second}
-var WaterLevelUnreadable = AlarmString{Emergency, "climate.water_sensor", "Celaeno cannot determine water tank level", 2 * time.Second}
-var HumidityUnreachable = AlarmString{Warning, "climate.humidity.unreachable", "Cannot reach desired humidity", 10 * time.Minute}
-var TemperatureUnreachable = AlarmString{Warning, "climate.temperature.unreachable", "Cannot reach desired temperature", 10 * time.Minute}
+func (a AlarmString) MinDownTime() time.Duration {
+	return a.minDownTime
+}
+
+var WaterLevelWarning = AlarmString{Emergency, "climate.water_level", "Water tank level is low", 2 * time.Minute, 1 * time.Minute}
+var WaterLevelCritical = AlarmString{Failure, "climate.water_level", "Water tank is empty", 2 * time.Minute, 1 * time.Minute}
+var WaterLevelUnreadable = AlarmString{Failure, "climate.water_sensor", "Celaeno cannot determine water tank level", 2 * time.Minute, 1 * time.Minute}
+var HumidityUnreachable = AlarmString{Warning, "climate.humidity.unreachable", "Cannot reach desired humidity", 20 * time.Minute, 10 * time.Minute}
+var TemperatureUnreachable = AlarmString{Warning, "climate.temperature.unreachable", "Cannot reach desired temperature", 20 * time.Minute, 10 * time.Minute}
 
 func OutOfBound[T Temperature | Humidity](min, max T) Alarm {
 	identifier := ""
@@ -71,12 +78,13 @@ func OutOfBound[T Temperature | Humidity](min, max T) Alarm {
 		identifier: identifier,
 		description: fmt.Sprintf("%s is outside of boundaries ( [%.1f ; %.1f] %s )",
 			name, min, max, unit),
-		deadline: 1 * time.Minute,
+		minUpTime:   2 * time.Minute,
+		minDownTime: 1 * time.Minute,
 	}
 }
 
-var SensorReadoutIssue = AlarmString{Emergency, "climate.sensor.readout", "Cannot read sensors", 2 * time.Second}
-var ClimateStateUndefined = AlarmString{Emergency, "climate.undefined", "Climate State Undefined", 2 * time.Second}
+var SensorReadoutIssue = AlarmString{Failure, "climate.sensor.readout", "Cannot read sensors", 1 * time.Minute, 2 * time.Second}
+var ClimateStateUndefined = AlarmString{Warning, "climate.undefined", "Climate State Undefined", 10 * time.Second, 2 * time.Second}
 
 type MissingDeviceAlarm struct {
 	canInterface string
@@ -85,7 +93,7 @@ type MissingDeviceAlarm struct {
 }
 
 func (a MissingDeviceAlarm) Flags() AlarmFlags {
-	return Emergency
+	return Warning | AdminOnly
 }
 
 func (a MissingDeviceAlarm) Identifier() string {
@@ -96,7 +104,11 @@ func (a MissingDeviceAlarm) Description() string {
 	return fmt.Sprintf("Device %s.%s.%d is missing", a.canInterface, arke.ClassName(a.class), a.id)
 }
 
-func (a MissingDeviceAlarm) DeadLine() time.Duration {
+func (a MissingDeviceAlarm) MinUpTime() time.Duration {
+	return 1 * time.Minute
+}
+
+func (a MissingDeviceAlarm) MinDownTime() time.Duration {
 	return 5 * HeartBeatPeriod
 }
 
@@ -116,6 +128,7 @@ func NewMissingDeviceAlarm(intf string, c arke.NodeClass, id arke.NodeID) Missin
 type FanAlarm struct {
 	fan    string
 	status arke.FanStatus
+	level  AlarmFlags
 }
 
 func (a FanAlarm) Identifier() string {
@@ -123,10 +136,7 @@ func (a FanAlarm) Identifier() string {
 }
 
 func (a FanAlarm) Flags() AlarmFlags {
-	if a.status == arke.FanStalled {
-		return Emergency
-	}
-	return Warning
+	return a.level
 }
 
 func (a FanAlarm) Description() string {
@@ -138,8 +148,12 @@ func (a FanAlarm) Description() string {
 	return fmt.Sprintf("Fan %s is %s", a.fan, status)
 }
 
-func (a FanAlarm) DeadLine() time.Duration {
-	return 10 * time.Minute
+func (a FanAlarm) MinUpTime() time.Duration {
+	return 2 * time.Minute
+}
+
+func (a FanAlarm) MinDownTime() time.Duration {
+	return 1 * time.Minute
 }
 
 func (a FanAlarm) Fan() string {
@@ -150,11 +164,11 @@ func (a FanAlarm) Status() arke.FanStatus {
 	return a.status
 }
 
-func NewFanAlarm(fan string, s arke.FanStatus) FanAlarm {
+func NewFanAlarm(fan string, s arke.FanStatus, level AlarmFlags) FanAlarm {
 	if s == arke.FanOK {
 		s = arke.FanAging
 	}
-	return FanAlarm{fan, s}
+	return FanAlarm{fan, s, level & 0x03}
 }
 
 type DeviceInternalError struct {
@@ -169,11 +183,15 @@ func NewDeviceInternalError(intfName string, c arke.NodeClass, id arke.NodeID, e
 }
 
 func (e DeviceInternalError) Flags() AlarmFlags {
-	return Warning
+	return Warning | AdminOnly
 }
 
-func (e DeviceInternalError) DeadLine() time.Duration {
+func (e DeviceInternalError) MinDownTime() time.Duration {
 	return 2 * time.Second
+}
+
+func (e DeviceInternalError) MinUpTime() time.Duration {
+	return 10 * time.Millisecond
 }
 
 func (e DeviceInternalError) Identifier() string {

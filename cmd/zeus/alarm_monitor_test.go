@@ -44,8 +44,12 @@ func (a testAlarm) Flags() zeus.AlarmFlags {
 	return zeus.Warning
 }
 
-func (a testAlarm) DeadLine() time.Duration {
+func (a testAlarm) MinDownTime() time.Duration {
 	return 5 * time.Millisecond
+}
+
+func (a testAlarm) MinUpTime() time.Duration {
+	return 10 * time.Millisecond
 }
 
 func (s *AlarmMonitorSuite) TestName(c *C) {
@@ -81,7 +85,7 @@ func (s *AlarmMonitorSuite) TestMonitor(c *C) {
 		}()
 
 		for {
-			waiter(alarms[1].DeadLine()/3, jitterAmount)
+			waiter(alarms[1].MinDownTime()/3, jitterAmount)
 			select {
 			case <-quit:
 				return
@@ -113,7 +117,7 @@ func (s *AlarmMonitorSuite) TestMonitor(c *C) {
 			default:
 			}
 			m.Inbound() <- alarms[0]
-			time.Sleep(alarms[0].DeadLine() / 3)
+			time.Sleep(alarms[0].MinDownTime() / 3)
 		}
 	}()
 	e, ok = <-m.Outbound()
@@ -130,7 +134,7 @@ func (s *AlarmMonitorSuite) TestMonitor(c *C) {
 	c.Check(e.Status, Equals, zeus.AlarmOff)
 
 	lasted := end.Sub(start)
-	expected := time.Duration(3+repeat-1) * alarms[0].DeadLine() / 3
+	expected := time.Duration(3+repeat-1) * alarms[0].MinDownTime() / 3
 
 	c.Check(lasted > expected, Equals, true, Commentf("Lasted %s, expected at least %s", lasted, expected))
 

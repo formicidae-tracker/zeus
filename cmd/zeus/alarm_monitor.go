@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"container/heap"
 	"os"
 	"path"
 	"time"
@@ -24,164 +24,188 @@ type alarmMonitor struct {
 	logger     *logrus.Entry
 	concatened chan string
 	name       string
+
+	stagged, fired            map[string]zeus.Alarm
+	toDismiss, toFire, toKill alarmQueue
+}
+
+type alarmItem struct {
+	name     string
+	deadline time.Time
+}
+
+type alarmQueue []*alarmItem
+
+func (q alarmQueue) Len() int {
+	return len(q)
+}
+
+func (q alarmQueue) Swap(i, j int) {
+	q[i], q[j] = q[j], q[i]
+}
+
+func (q alarmQueue) Less(i, j int) bool {
+	return q[i].deadline.Before(q[j].deadline)
+}
+
+func (q *alarmQueue) Push(x any) {
+	item := x.(*alarmItem)
+	*q = append(*q, item)
+}
+
+func (q *alarmQueue) Pop() any {
+	old := *q
+	n := len(old)
+	item := old[n-1]
+	old[n-1] = nil
+	*q = old[:n-1]
+	return item
+}
+
+var infinity = time.Unix(1<<63-62135596802, 0)
+
+func (q alarmQueue) Next() time.Time {
+	if len(q) == 0 {
+		return infinity
+	}
+	return q[0].deadline
+}
+
+func (q *alarmQueue) Update(a string, deadline time.Time) {
+	i := 0
+	var item *alarmItem
+	for i, item = range *q {
+		if item.name == a {
+			break
+		}
+	}
+	if i >= len(*q) {
+		return
+	}
+	item.deadline = deadline
+	heap.Fix(q, i)
 }
 
 func (m *alarmMonitor) Name() string {
 	return m.name
 }
 
-type deadlineMeeter struct {
-	deadlines map[string]time.Time
-	timer     *time.Timer
-}
-
-func newDeadLineMeeter() *deadlineMeeter {
-	return &deadlineMeeter{
-		deadlines: make(map[string]time.Time),
-		timer:     time.NewTimer(0),
-	}
-}
-
-func (d *deadlineMeeter) next(now time.Time) <-chan time.Time {
-	if len(d.deadlines) == 0 {
-		return nil
-	}
-	set := false
-	var minTime time.Time
-	for _, when := range d.deadlines {
-		if set == false || when.Before(minTime) == true {
-			minTime = when
-			set = true
-		}
-	}
-	wait := minTime.Sub(now)
-	if !d.timer.Stop() {
-		//since we are waiting concurrently for popping, it may block
-		//forever. So we must poll to drain the channel without
-		//blocking, which may make a spurious fire. However pop will
-		//just return an empty list.
-		select {
-		case <-d.timer.C:
-		default:
-		}
-	}
-	d.timer.Reset(wait)
-
-	return d.timer.C
-}
-
-func (d *deadlineMeeter) pushDeadline(reason string, after time.Duration) <-chan time.Time {
-	now := time.Now()
-	d.deadlines[reason] = now.Add(after)
-	return d.next(now)
-}
-
-func (d *deadlineMeeter) pop(now time.Time) ([]string, <-chan time.Time) {
-	res := make([]string, 0, len(d.deadlines))
-	for reason, when := range d.deadlines {
-		if when.After(now) == true {
-			continue
-		}
-		res = append(res, reason)
-	}
-	for _, reason := range res {
-		delete(d.deadlines, reason)
-	}
-	return res, d.next(now)
-}
-
-func (m *alarmMonitor) concatenedPrintf(format string, args ...interface{}) {
-	m.concatened <- fmt.Sprintf(format, args...)
-}
-
-func (m *alarmMonitor) logConcatened() {
-	period := 10 * time.Minute
-	ticker := time.NewTicker(period)
-	defer ticker.Stop()
-	logs := make(map[string]int)
-	for {
-		select {
-		case <-ticker.C:
-			for l, count := range logs {
-				m.logger.WithFields(logrus.Fields{
-					"count":  count,
-					"period": period,
-					"log":    l,
-				}).Info("aggregated log")
-			}
-			logs = make(map[string]int)
-		case l, ok := <-m.concatened:
-			if ok == false {
-				return
-			}
-			logs[l] = logs[l] + 1
-		}
-	}
-
-}
-
 func (m *alarmMonitor) Monitor() {
-	alarms := make(map[string]zeus.Alarm)
-
 	defer func() {
 		close(m.concatened)
 		close(m.outbound)
 	}()
-	go m.logConcatened()
-	quit := make(chan struct{})
 
-	meeter := newDeadLineMeeter()
-
-	var wakeUpChan <-chan time.Time = nil
+	var timer <-chan time.Time
 
 	for {
 		select {
 		case a, ok := <-m.inbound:
 			if ok == false {
-				close(quit)
 				return
 			}
-			if _, ok := alarms[a.Identifier()]; ok == false {
-				go func() {
-					m.outbound <- zeus.AlarmEvent{
-						Identifier:     a.Identifier(),
-						Description:    a.Description(),
-						Flags:          a.Flags(),
-						Status:         zeus.AlarmOn,
-						Time:           time.Now(),
-						ZoneIdentifier: m.name,
-					}
-				}()
-
+			now := time.Now()
+			if _, ok := m.stagged[a.Identifier()]; ok == true {
+				m.updateStagged(a, now)
+			} else if _, ok := m.fired[a.Identifier()]; ok == true {
+				m.updateFired(a, now)
+			} else {
+				m.stage(a, now)
 			}
-			alarms[a.Identifier()] = a
-			wakeUpChan = meeter.pushDeadline(a.Identifier(), a.DeadLine())
-		case now := <-wakeUpChan:
-			var expired []string = nil
-			expired, wakeUpChan = meeter.pop(now)
+			timer = m.getNextDeadline(now)
+		case now := <-timer:
+			m.dismissAny(now)
+			m.fireAny(now)
+			m.killAny(now)
+			timer = m.getNextDeadline(now)
+		}
+	}
+}
 
-			if len(expired) == 0 {
-				m.concatenedPrintf("spurious pop")
-			}
+func (m *alarmMonitor) getNextDeadline(now time.Time) <-chan time.Time {
+	deadline := m.toDismiss.Next()
+	if m.toFire.Next().Before(deadline) {
+		deadline = m.toFire.Next()
+	}
+	if m.toKill.Next().Before(deadline) {
+		deadline = m.toKill.Next()
+	}
 
-			for _, r := range expired {
-				a, ok := alarms[r]
-				if ok == false {
-					// should not happen but lets says it does
-					continue
-				}
-				go func() {
-					m.outbound <- zeus.AlarmEvent{
-						Identifier:     a.Identifier(),
-						Description:    a.Description(),
-						Flags:          a.Flags(),
-						Status:         zeus.AlarmOff,
-						Time:           now,
-						ZoneIdentifier: m.name,
-					}
-				}()
-				delete(alarms, r)
-			}
+	if deadline.Equal(infinity) {
+		return nil
+	}
+
+	return time.After(deadline.Sub(now))
+}
+
+func (m *alarmMonitor) updateStagged(alarm zeus.Alarm, now time.Time) {
+	m.toDismiss.Update(alarm.Identifier(), now.Add(alarm.MinDownTime()))
+}
+
+func (m *alarmMonitor) updateFired(alarm zeus.Alarm, now time.Time) {
+	m.toKill.Update(alarm.Identifier(), now.Add(alarm.MinDownTime()))
+}
+
+func (m *alarmMonitor) stage(a zeus.Alarm, now time.Time) {
+	m.stagged[a.Identifier()] = a
+	heap.Push(&m.toDismiss, &alarmItem{
+		name:     a.Identifier(),
+		deadline: now.Add(a.MinDownTime()),
+	})
+	heap.Push(&m.toFire, &alarmItem{
+		name:     a.Identifier(),
+		deadline: now.Add(a.MinUpTime()),
+	})
+}
+
+func (m *alarmMonitor) dismissAny(now time.Time) {
+	for m.toDismiss.Next().Before(now) {
+		item := heap.Pop(&m.toDismiss).(*alarmItem)
+		// will do nothing if already fired
+		delete(m.stagged, item.name)
+	}
+}
+
+func (m *alarmMonitor) fireAny(now time.Time) {
+	for m.toFire.Next().Before(now) {
+		item := heap.Pop(&m.toFire).(*alarmItem)
+		alarm, ok := m.stagged[item.name]
+		if ok == false {
+			//likely dismissed before, simply continue
+			continue
+		}
+		delete(m.stagged, alarm.Identifier())
+		m.outbound <- zeus.AlarmEvent{
+			ZoneIdentifier: m.name,
+			Identifier:     alarm.Identifier(),
+			Description:    alarm.Description(),
+			Flags:          alarm.Flags(),
+			Status:         zeus.AlarmOn,
+			Time:           item.deadline.Add(-1 * alarm.MinUpTime()),
+		}
+		heap.Push(&m.toKill, &alarmItem{
+			name:     alarm.Identifier(),
+			deadline: now.Add(alarm.MinDownTime())})
+		m.fired[alarm.Identifier()] = alarm
+	}
+}
+
+func (m *alarmMonitor) killAny(now time.Time) {
+	for m.toKill.Next().Before(now) {
+		item := heap.Pop(&m.toKill).(*alarmItem)
+		alarm, ok := m.fired[item.name]
+		if ok == false {
+			// should never be reached, bu who knows
+			continue
+		}
+		delete(m.fired, item.name)
+		m.outbound <- zeus.AlarmEvent{
+			ZoneIdentifier: m.name,
+			Identifier:     alarm.Identifier(),
+			Description:    alarm.Description(),
+			Flags:          alarm.Flags(),
+			Status:         zeus.AlarmOff,
+			Time:           item.deadline.Add(-1 * alarm.MinUpTime()),
 		}
 	}
 }
@@ -206,5 +230,7 @@ func NewAlarmMonitor(zoneName string) (AlarmMonitor, error) {
 		name:       path.Join(hostname, "zone", zoneName),
 		logger:     tm.NewLogger(path.Join("zone", zoneName, "alarm")),
 		concatened: make(chan string),
+		fired:      make(map[string]zeus.Alarm),
+		stagged:    make(map[string]zeus.Alarm),
 	}, nil
 }

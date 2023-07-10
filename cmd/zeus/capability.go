@@ -106,7 +106,7 @@ func (c *ClimateControllable) Callbacks() map[arke.MessageClass]callback {
 
 					return c.celaeno.SendHeartbeatRequest()
 				} else {
-					alarms <- zeus.NewFanAlarm("Celaeno Fan", m.Fan.Status())
+					alarms <- zeus.NewFanAlarm("Celaeno Fan", m.Fan.Status(), zeus.Failure)
 				}
 			}
 			return nil
@@ -150,7 +150,7 @@ func (c *ClimateControllable) Callbacks() map[arke.MessageClass]callback {
 
 		for i, f := range m.Fans {
 			if f.Status() != arke.FanOK {
-				alarms <- zeus.NewFanAlarm(zeusFanNames[i], f.Status())
+				alarms <- zeus.NewFanAlarm(zeusFanNames[i], f.Status(), zeus.Warning)
 			}
 		}
 
