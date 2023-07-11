@@ -31,6 +31,16 @@ type AlarmString struct {
 	minUpTime, minDownTime time.Duration
 }
 
+func NewAlarmString(flags AlarmFlags, identifier, description string, minUp, minDown time.Duration) Alarm {
+	return AlarmString{
+		f:           flags,
+		identifier:  identifier,
+		description: description,
+		minUpTime:   minUp,
+		minDownTime: minDown,
+	}
+}
+
 func (a AlarmString) Flags() AlarmFlags {
 	return a.f
 }
@@ -105,7 +115,7 @@ func (a MissingDeviceAlarm) Description() string {
 }
 
 func (a MissingDeviceAlarm) MinUpTime() time.Duration {
-	return 1 * time.Minute
+	return 10 * HeartBeatPeriod
 }
 
 func (a MissingDeviceAlarm) MinDownTime() time.Duration {

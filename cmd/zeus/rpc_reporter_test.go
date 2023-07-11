@@ -2,11 +2,12 @@ package main
 
 import (
 	"io"
-	"log"
 	"net"
+	"time"
 
 	olympuspb "github.com/formicidae-tracker/olympus/pkg/api"
 	"github.com/formicidae-tracker/zeus/internal/zeus"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	. "gopkg.in/check.v1"
 )
@@ -88,25 +89,35 @@ func (s *RPCClimateReporterSuite) TestEnd2End(c *C) {
 
 	<-r.connected
 
-	log.Printf("sending climate report")
+	logrus.Info("sending climate report")
 	r.ReportChannel() <- zeus.ClimateReport{}
 	m, ok = <-s.olympus.received
 	c.Check(m.Reports, Not(IsNil))
 	c.Assert(ok, Equals, true)
 
-	log.Printf("sending alarm event")
+	logrus.Info("sending alarm event")
 	r.AlarmChannel() <- zeus.AlarmEvent{}
 	m, ok = <-s.olympus.received
 	c.Check(m.Alarms, Not(IsNil))
 	c.Assert(ok, Equals, true)
 
-	log.Printf("sending climate target")
+	logrus.Info("sending admin alarm event")
+	r.AlarmChannel() <- zeus.AlarmEvent{Flags: zeus.AdminOnly}
+	select {
+	case m, ok = <-s.olympus.received:
+		c.Assert(ok, Equals, true)
+		c.Errorf("unexpected upstream message received: %s", m)
+	case <-time.After(100 * time.Millisecond):
+		logrus.Info("no upstream message generated")
+	}
+
+	logrus.Info("sending climate target")
 	r.TargetChannel() <- zeus.ClimateTarget{}
 	m, ok = <-s.olympus.received
 	c.Check(m.Target, Not(IsNil))
 	c.Assert(ok, Equals, true)
 
-	log.Printf("closing")
+	logrus.Info("closing")
 	close(r.ReportChannel())
 	close(r.AlarmChannel())
 	close(r.TargetChannel())

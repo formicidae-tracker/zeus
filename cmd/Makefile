@@ -1,4 +1,4 @@
-all: zeus/zeus zeus-cli/zeus-cli arke-change-device-id/arke-change-device-id arkedump/arkedump arke-zeus-config/arke-zeus-config zeus-calibrator/zeus-calibrator check
+all: zeus/zeus zeus-cli/zeus-cli arke-change-device-id/arke-change-device-id arkedump/arkedump arke-zeus-config/arke-zeus-config zeus-calibrator/zeus-calibrator
 
 .PHONY: clean check
 

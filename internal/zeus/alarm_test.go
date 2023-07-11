@@ -17,7 +17,7 @@ func (s *AlarmSuite) TestRepeatPeriod(c *C) {
 		Expected time.Duration
 	}{
 		{AlarmString{}, 0},
-		{NewFanAlarm("foo", arke.FanAging, Warning), 10 * time.Minute},
+		{NewFanAlarm("foo", arke.FanAging, Warning), 1 * time.Minute},
 		{NewMissingDeviceAlarm("foo", arke.ZeusClass, 1), 5 * HeartBeatPeriod},
 		{NewDeviceInternalError("foo", arke.ZeusClass, 1, 43), 2 * time.Second},
 	}

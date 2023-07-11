@@ -1,17 +1,19 @@
 package main
 
 import (
+	"io"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/formicidae-tracker/zeus/internal/zeus"
+	"github.com/sirupsen/logrus"
 	. "gopkg.in/check.v1"
 )
 
@@ -168,6 +170,7 @@ func (s *AlarmMonitorSuite) TestReadAlarmLogFile(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(tmpdir)
 	filename := filepath.Join(tmpdir, "log.txt")
+	contents := make([]string, 0, len(testdata))
 	for _, alarms := range testdata {
 		am, err := NewFileAlarmReporter(filename)
 		if c.Check(err, IsNil) == false {
@@ -189,11 +192,24 @@ func (s *AlarmMonitorSuite) TestReadAlarmLogFile(c *C) {
 
 		cnt, err := ioutil.ReadFile(filename)
 		if err == nil {
-			log.Printf("file content:\n%s", cnt)
+			contents = append(contents, string(cnt))
 		}
 
 		result, err := ReadAlarmLogFile(filename)
 		c.Check(err, IsNil)
 		c.Check(result, DeepEquals, alarms)
 	}
+
+	c.Assert(len(contents), Equals, 2)
+	c.Check(contents[0], Equals, "")
+	lines := strings.Split(contents[1], "\n")
+	c.Assert(len(lines), Equals, 3)
+	c.Check(lines[0], Matches, `\{("[a-zA-Z]+":[^,]+,?)+\}`)
+	c.Check(lines[1], Matches, `\{("[a-zA-Z]+":[^,]+,?)+\}`)
+	c.Check(lines[2], Equals, "")
+
+}
+
+func init() {
+	logrus.SetOutput(io.Discard)
 }

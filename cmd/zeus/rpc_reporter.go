@@ -76,7 +76,7 @@ func buildOlympusAlarmUpdate(event zeus.AlarmEvent) *olympuspb.AlarmUpdate {
 		status = olympuspb.AlarmStatus_OFF
 	}
 	level := olympuspb.AlarmLevel_WARNING
-	if event.Flags&zeus.Emergency != 0x00 {
+	if event.Flags&(zeus.Emergency|zeus.Failure) != 0x00 {
 		level = olympuspb.AlarmLevel_EMERGENCY
 	}
 	return &olympuspb.AlarmUpdate{
@@ -177,15 +177,28 @@ func (r *RPCReporter) paginateBacklogs(c context.Context,
 		r.log.WithError(err).Warn("could not get climate log")
 	}
 
-	eventLog, err := r.runner.AlarmLog(0, 0)
+	allEventsLog, err := r.runner.AlarmLog(0, 0)
 	if err != nil {
 		r.log.WithError(err).Warn("could not get alarm log")
 	}
+
+	//filters only non-admin log
+	eventLog := make([]zeus.AlarmEvent, 0, len(allEventsLog))
+	for _, e := range allEventsLog {
+		if e.Flags&zeus.AdminOnly != 0 {
+			continue
+		}
+		eventLog = append(eventLog, e)
+	}
+
 	if eventLog == nil && climateLog == nil {
 		return nil
 	}
+
 	res := make(chan *olympuspb.ClimateUpStream)
+
 	go paginateAsync(c, res, int(confirmation.PageSize), climateLog, eventLog)
+
 	return res
 }
 
@@ -226,6 +239,9 @@ func (r *RPCReporter) buidUpStreamFromInputChannels() <-chan *olympuspb.ClimateU
 			case event, ok := <-r.alarmReports:
 				if ok == false {
 					r.alarmReports = nil
+				} else if event.Flags&zeus.AdminOnly != 0 {
+					//we discard admin events.
+					continue
 				} else {
 					mayPush(&olympuspb.ClimateUpStream{
 						Alarms: []*olympuspb.AlarmUpdate{buildOlympusAlarmUpdate(event)},

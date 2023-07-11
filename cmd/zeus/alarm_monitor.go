@@ -156,6 +156,20 @@ func (m *alarmMonitor) stage(a zeus.Alarm, now time.Time) {
 		name:     a.Identifier(),
 		deadline: now.Add(a.MinUpTime()),
 	})
+
+	if a.Flags()&zeus.AdminOnly != 0 {
+		return
+	}
+
+	adminAlarm := zeus.NewAlarmString(
+		a.Flags()|zeus.AdminOnly,
+		path.Join("admin", a.Identifier()),
+		a.Description(),
+		2*time.Second,
+		2*time.Second,
+	)
+
+	m.stage(adminAlarm, now)
 }
 
 func (m *alarmMonitor) dismissAny(now time.Time) {
