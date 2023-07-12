@@ -58,7 +58,6 @@ func OpenZeus(c Config) (*Zeus, error) {
 			Level:          tm.VerboseLevel(c.Verbosity),
 		})
 	}
-
 	err := os.MkdirAll(filepath.Join(xdg.DataHome, "fort-experiments/climate"), 0755)
 	if err != nil {
 		return nil, err

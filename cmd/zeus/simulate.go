@@ -7,6 +7,7 @@ import (
 	"github.com/formicidae-tracker/olympus/pkg/tm"
 	"github.com/formicidae-tracker/zeus/internal/zeus"
 	flags "github.com/jessevdk/go-flags"
+	"github.com/sirupsen/logrus"
 )
 
 type SimulateCommand struct {
@@ -36,6 +37,8 @@ func (c *SimulateCommand) Execute(args []string) error {
 			Level:                tm.VerboseLevel(2),
 			ForceFlushOnShutdown: true,
 		})
+	} else {
+		logrus.SetLevel(logrus.TraceLevel)
 	}
 
 	s, err := NewZeusSimulator(ZeusSimulatorArgs{

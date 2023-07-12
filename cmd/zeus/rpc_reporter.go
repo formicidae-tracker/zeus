@@ -10,6 +10,7 @@ import (
 	olympuspb "github.com/formicidae-tracker/olympus/pkg/api"
 	"github.com/formicidae-tracker/olympus/pkg/tm"
 	"github.com/formicidae-tracker/zeus/internal/zeus"
+	"github.com/mitchellh/copystructure"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -229,6 +230,7 @@ func (r *RPCReporter) buidUpStreamFromInputChannels() <-chan *olympuspb.ClimateU
 				if ok == false {
 					r.climateTargets = nil
 				} else {
+					r.log.WithField("target", target).Debug("sending target")
 					mayPush(&olympuspb.ClimateUpStream{
 						Target: buildOlympusClimateTarget(target),
 					})
@@ -237,19 +239,25 @@ func (r *RPCReporter) buidUpStreamFromInputChannels() <-chan *olympuspb.ClimateU
 				if ok == false {
 					r.climateReports = nil
 				} else {
+					r.log.WithField("report", report).Debug("sending report")
 					mayPush(&olympuspb.ClimateUpStream{
-						Reports: []*olympuspb.ClimateReport{buildOlympusClimateReport(report)}})
+						Reports: []*olympuspb.ClimateReport{
+							buildOlympusClimateReport(report),
+						}})
 				}
 			case event, ok := <-r.alarmReports:
 				if ok == false {
 					r.alarmReports = nil
 				} else if event.Flags&zeus.AdminOnly != 0 {
+					r.log.WithField("event", event).Debug("discarding event")
 					//we discard admin events.
 					continue
 				} else {
+					r.log.WithField("event", event).Debug("sending event")
 					mayPush(&olympuspb.ClimateUpStream{
-						Alarms: []*olympuspb.AlarmUpdate{buildOlympusAlarmUpdate(event)},
-					})
+						Alarms: []*olympuspb.AlarmUpdate{
+							buildOlympusAlarmUpdate(event),
+						}})
 				}
 			}
 		}
@@ -315,6 +323,12 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 				cancelBacklog()
 				return
 			}
+			if up.Target != nil {
+				r.lastTarget = up.Target
+			}
+			if len(up.Reports) != 0 {
+				r.lastReport = up.Reports[len(up.Reports)-1]
+			}
 			go pushAndLogError(up)
 		case up, ok := <-backlogs:
 			if ok == false {
@@ -334,6 +348,10 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 				backlogContext, cancelBacklog = context.WithCancel(ctx)
 				backlogs = r.paginateBacklogs(backlogContext,
 					down.Confirmation.RegistrationConfirmation)
+				if lastState := r.lastState(); lastState != nil {
+					r.log.WithField("upstream", lastState).Debug("sending last state")
+					go pushAndLogError(lastState)
+				}
 			} else {
 				r.log.WithError(down.Error).Warn("connection failure")
 			}
@@ -345,6 +363,26 @@ func (r *RPCReporter) Report(ready chan<- struct{}) {
 		}
 	}
 
+}
+
+func (r *RPCReporter) lastState() *olympuspb.ClimateUpStream {
+	if r.lastReport == nil && r.lastTarget == nil {
+		return nil
+	}
+	var lastReport *olympuspb.ClimateReport
+	var lastTarget *olympuspb.ClimateTarget
+	if r.lastReport != nil {
+		cpy, _ := copystructure.Copy(r.lastReport)
+		lastReport = cpy.(*olympuspb.ClimateReport)
+	}
+	if r.lastTarget != nil {
+		cpy, _ := copystructure.Copy(r.lastTarget)
+		lastTarget = cpy.(*olympuspb.ClimateTarget)
+	}
+	return &olympuspb.ClimateUpStream{
+		Reports: []*olympuspb.ClimateReport{lastReport},
+		Target:  lastTarget,
+	}
 }
 
 type RPCReporterOptions struct {
