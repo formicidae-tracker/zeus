@@ -10,7 +10,7 @@ require (
 	github.com/barkimedes/go-deepcopy v0.0.0-20220514131651-17c30cfc62df
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/formicidae-tracker/libarke/src-go/arke v1.0.0
-	github.com/formicidae-tracker/olympus v0.5.4
+	github.com/formicidae-tracker/olympus v0.5.5
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.3
 	github.com/grandcat/zeroconf v0.0.0-20190118114326-c2d1b4121200

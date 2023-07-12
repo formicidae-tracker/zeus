@@ -76,9 +76,13 @@ func buildOlympusAlarmUpdate(event zeus.AlarmEvent) *olympuspb.AlarmUpdate {
 		status = olympuspb.AlarmStatus_OFF
 	}
 	level := olympuspb.AlarmLevel_WARNING
-	if event.Flags&(zeus.Emergency|zeus.Failure) != 0x00 {
+	if event.Flags&(zeus.Emergency) != 0x00 {
 		level = olympuspb.AlarmLevel_EMERGENCY
 	}
+	if event.Flags&(zeus.Failure) != 0x00 {
+		level = olympuspb.AlarmLevel_FAILURE
+	}
+
 	return &olympuspb.AlarmUpdate{
 		Identification: event.Identifier,
 		Description:    event.Description,
