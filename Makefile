@@ -27,7 +27,6 @@ install: all
 	mkdir -p $(DESTDIR)$(INSTALL_PREFIX)/bin
 	install cmd/zeus/zeus $(DESTDIR)$(INSTALL_PREFIX)/bin
 	install cmd/arke-change-device-id/arke-change-device-id $(DESTDIR)$(INSTALL_PREFIX)/bin
-	install cmd/arkedump/arkedump $(DESTDIR)$(INSTALL_PREFIX)/bin
 	install cmd/arke-zeus-config/arke-zeus-config $(DESTDIR)$(INSTALL_PREFIX)/bin
 	install cmd/zeus-calibrator/zeus-calibrator $(DESTDIR)$(INSTALL_PREFIX)/bin
 	install cmd/zeus-cli/zeus-cli $(DESTDIR)$(INSTALL_PREFIX)/bin
