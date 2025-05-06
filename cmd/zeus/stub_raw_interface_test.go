@@ -49,7 +49,7 @@ func (i *StubRawInterface) enqueue(m arke.SendableMessage, id arke.NodeID) {
 		RTR:      false,
 		Data:     make([]byte, 8),
 	}
-	dlc, err := m.Marshall(f.Data)
+	dlc, err := m.Marshal(f.Data)
 	if err != nil {
 		panic(err.Error())
 	}

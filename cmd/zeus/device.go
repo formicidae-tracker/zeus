@@ -20,11 +20,11 @@ func (d *Device) SendMessage(m arke.SendableMessage) error {
 }
 
 func (d *Device) SendResetRequest() error {
-	return arke.SendResetRequest(d.intf, d.Class, d.ID)
+	return d.intf.Send(arke.MakeResetRequest(d.Class, d.ID))
 }
 
 func (d *Device) SendHeartbeatRequest() error {
-	return arke.SendHeartBeatRequest(d.intf, d.Class, zeus.HeartBeatPeriod)
+	return d.intf.Send(arke.MakeHeartBeatRequest(d.Class, zeus.HeartBeatPeriod))
 }
 
 var nameToNodeClass = map[string]arke.NodeClass{

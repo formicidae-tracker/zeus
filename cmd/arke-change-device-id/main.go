@@ -63,7 +63,7 @@ func Execute() error {
 		}
 	}()
 
-	if err := arke.Ping(intf, c); err != nil {
+	if err := intf.Send(arke.MakePing(c)); err != nil {
 		return err
 	}
 
@@ -75,7 +75,7 @@ func Execute() error {
 	case <-rx:
 	}
 
-	return arke.SendIDChangeRequest(intf, c, arke.NodeID(opts.Original), arke.NodeID(opts.Target))
+	return intf.Send(arke.MakeIDChangeRequest(c, arke.NodeID(opts.Original), arke.NodeID(opts.Target)))
 }
 
 func main() {

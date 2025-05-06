@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/formicidae-tracker/libarke/src-go/arke"
 	socketcan "github.com/atuleu/golang-socketcan"
+	"github.com/formicidae-tracker/libarke/src-go/arke"
 	"github.com/jessevdk/go-flags"
 )
 
@@ -137,7 +137,7 @@ func Execute() error {
 			}
 		}
 	}()
-	if err := arke.Ping(intf, arke.ZeusClass); err != nil {
+	if err := intf.Send(arke.MakePing(arke.ZeusClass)); err != nil {
 		return err
 	}
 
@@ -185,8 +185,8 @@ func Execute() error {
 	}
 	log.Printf("Sent %+v", sp)
 	defer func() {
-		arke.SendResetRequest(intf, arke.ZeusClass, arke.NodeID(opts.ID))
-		arke.SendResetRequest(intf, arke.CelaenoClass, arke.NodeID(opts.ID))
+		intf.Send(arke.MakeResetRequest(arke.ZeusClass, arke.NodeID(opts.ID)))
+		intf.Send(arke.MakeResetRequest(arke.CelaenoClass, arke.NodeID(opts.ID)))
 	}()
 
 	time.Sleep(opts.Duration)

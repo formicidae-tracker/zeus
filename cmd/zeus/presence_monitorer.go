@@ -58,7 +58,7 @@ func (m *presenceMonitorer) Monitor(devices []DeviceDefinition, alarms chan<- ze
 	received := make(map[DeviceDefinition]bool)
 	for _, d := range devices {
 		received[d] = false
-		arke.SendHeartBeatRequest(m.intf, d.Class, m.HeartBeatPeriod)
+		m.intf.Send(arke.MakeHeartBeatRequest(d.Class, m.HeartBeatPeriod))
 	}
 
 	timeout := time.NewTicker(3 * m.HeartBeatPeriod)
@@ -86,7 +86,7 @@ func (m *presenceMonitorer) Monitor(devices []DeviceDefinition, alarms chan<- ze
 				deviceRequest[d.Class] = true
 			}
 			for c, _ := range deviceRequest {
-				arke.SendHeartBeatRequest(m.intf, c, m.HeartBeatPeriod)
+				m.intf.Send(arke.MakeHeartBeatRequest(c, m.HeartBeatPeriod))
 			}
 		}
 	}

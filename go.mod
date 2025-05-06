@@ -1,20 +1,22 @@
 module github.com/formicidae-tracker/zeus
 
-go 1.20
+go 1.23.0
+
+toolchain go1.23.3
 
 require (
 	github.com/adrg/xdg v0.3.0
 	github.com/atuleu/go-humanize v0.0.0-20230602193851-3c422bf7e236
 	github.com/atuleu/go-tablifier v0.1.0
-	github.com/atuleu/golang-socketcan v0.2.0
+	github.com/atuleu/golang-socketcan v0.2.2
 	github.com/barkimedes/go-deepcopy v0.0.0-20220514131651-17c30cfc62df
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/formicidae-tracker/libarke/src-go/arke v1.0.0
+	github.com/formicidae-tracker/libarke/src-go/arke v1.2.0
 	github.com/formicidae-tracker/olympus v0.5.5
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.3
 	github.com/grandcat/zeroconf v0.0.0-20190118114326-c2d1b4121200
-	github.com/jessevdk/go-flags v1.5.0
+	github.com/jessevdk/go-flags v1.6.1
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/sirupsen/logrus v1.9.3
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.42.0
@@ -52,7 +54,7 @@ require (
 	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df // indirect
 	golang.org/x/net v0.11.0 // indirect
 	golang.org/x/sync v0.0.0-20220929204114-8fcdb60fdcc0 // indirect
-	golang.org/x/sys v0.10.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.11.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230629202037-9506855d4529 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230629202037-9506855d4529 // indirect
