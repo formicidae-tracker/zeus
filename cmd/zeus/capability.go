@@ -18,42 +18,85 @@ type capability interface {
 	Close() error
 }
 
-type ClimateControllable struct {
-	withCelaeno       bool
-	lastSetPoint      *arke.ZeusSetPoint
-	celaeno           *Device
-	zeus              *Device
-	celaenoResetGuard time.Time
-	zeusResetGuard    time.Time
+type resetableDevice struct {
+	device     *Device
+	resetGuard time.Time
 }
 
-func NewClimateControllable(forceHumidity bool) *ClimateControllable {
+func wrapDevice(d *Device) *resetableDevice {
+	return &resetableDevice{device: d, resetGuard: time.Now()}
+}
+
+func (d *resetableDevice) SendMessage(m arke.SendableMessage) error {
+	return d.device.SendMessage(m)
+}
+
+func (d *resetableDevice) MayReset(window time.Duration) error {
+	now := time.Now()
+	if now.Before(d.resetGuard) {
+		return nil
+	}
+	d.resetGuard = now.Add(window)
+	if err := d.device.SendResetRequest(); err != nil {
+		return err
+	}
+	time.Sleep(100 * time.Millisecond)
+	return d.device.SendHeartbeatRequest()
+}
+
+type ClimateControllable struct {
+	withNotus    bool
+	withCelaeno  bool
+	lastSetPoint *arke.ZeusSetPoint
+	celaeno      *resetableDevice
+	zeus         *resetableDevice
+	notus        *resetableDevice
+}
+
+func NewClimateControllable(forceHumidity, useNotus bool) *ClimateControllable {
 	return &ClimateControllable{
-		celaenoResetGuard: time.Now(),
-		zeusResetGuard:    time.Now(),
-		withCelaeno:       forceHumidity,
+		withCelaeno: forceHumidity,
+		withNotus:   useNotus,
 	}
 }
 
 func (c *ClimateControllable) Requirements() []arke.NodeClass {
+	res := make([]arke.NodeClass, 0, 3)
+	res = append(res, arke.ZeusClass)
 	if c.withCelaeno == true {
-		return []arke.NodeClass{arke.ZeusClass, arke.CelaenoClass}
+		res = append(res, arke.CelaenoClass)
 	}
-	return []arke.NodeClass{arke.ZeusClass}
+
+	if c.withNotus == true {
+		res = append(res, arke.NotusClass)
+	}
+	return res
 }
 
 func (c *ClimateControllable) SetDevices(devices map[arke.NodeClass]*Device) {
-	c.zeus = devices[arke.ZeusClass]
+	if z, ok := devices[arke.ZeusClass]; ok == true {
+		c.zeus = wrapDevice(z)
+	} else {
+		panic("Zeus device is missing")
+	}
+
 	if c.withCelaeno {
-		c.celaeno = devices[arke.CelaenoClass]
-		if c.celaeno == nil {
+
+		if d, ok := devices[arke.CelaenoClass]; ok == true {
+			c.celaeno = wrapDevice(d)
+		} else {
 			panic("Celaeno is missing")
 		}
+	}
 
+	if c.withNotus {
+		if d, ok := devices[arke.NotusClass]; ok == true {
+			c.notus = wrapDevice(d)
+		} else {
+			panic("Notus is missing")
+		}
 	}
-	if c.zeus == nil {
-		panic("Zeus is missing")
-	}
+
 }
 
 func (c *ClimateControllable) Close() error {
@@ -97,17 +140,9 @@ func (c *ClimateControllable) Callbacks() map[arke.MessageClass]callback {
 				}
 			}
 			if m.Fan.Status() != arke.FanOK {
-				if time.Now().After(c.celaenoResetGuard) {
-					c.celaenoResetGuard = time.Now().Add(FanResetWindow)
-					if err := c.celaeno.SendResetRequest(); err != nil {
-						return err
-					}
-					time.Sleep(100 * time.Millisecond)
-
-					return c.celaeno.SendHeartbeatRequest()
-				} else {
-					alarms <- zeus.NewFanAlarm("Celaeno Fan", m.Fan.Status(), zeus.Failure)
-				}
+				return c.celaeno.MayReset(FanResetWindow)
+			} else {
+				alarms <- zeus.NewFanAlarm("Celaeno Fan", m.Fan.Status(), zeus.Failure)
 			}
 			return nil
 		}
@@ -121,10 +156,7 @@ func (c *ClimateControllable) Callbacks() map[arke.MessageClass]callback {
 		if m.Status&arke.ZeusClimateNotControlledWatchDog != 0 {
 			if m.Status&arke.ZeusActive != 0 {
 				alarms <- zeus.SensorReadoutIssue
-				if time.Now().After(c.zeusResetGuard) {
-					c.zeusResetGuard = time.Now().Add(FanResetWindow)
-					c.zeus.SendResetRequest()
-				}
+				c.zeus.MayReset(FanResetWindow)
 			} else if c.lastSetPoint != nil {
 				if err := c.zeus.SendMessage(c.lastSetPoint); err != nil {
 					return err
@@ -135,17 +167,9 @@ func (c *ClimateControllable) Callbacks() map[arke.MessageClass]callback {
 		}
 
 		if m.Status&arke.ZeusHumidityUnreachable != 0 {
-			if time.Now().After(c.celaenoResetGuard) {
-				c.celaenoResetGuard = time.Now().Add(FanResetWindow)
-				if err := c.celaeno.SendResetRequest(); err != nil {
-					return err
-				}
-				time.Sleep(100 * time.Millisecond)
-
-				return c.celaeno.SendHeartbeatRequest()
-			} else {
-				alarms <- zeus.HumidityUnreachable
-			}
+			return c.celaeno.MayReset(FanResetWindow)
+		} else {
+			alarms <- zeus.HumidityUnreachable
 		}
 
 		for i, f := range m.Fans {
@@ -330,7 +354,7 @@ func ComputeClimateRequirements(climate zeus.ZoneClimate, definition ZoneDefinit
 	}
 
 	if controlTemperature == true || controlWind == true {
-		res = append(res, NewClimateControllable(controlHumidity))
+		res = append(res, NewClimateControllable(controlHumidity, definition.HasNotusDevice))
 	}
 
 	if controlLight == true {

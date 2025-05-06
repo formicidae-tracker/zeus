@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"regexp"
 
 	flags "github.com/jessevdk/go-flags"
@@ -13,6 +13,7 @@ type ZoneDefinition struct {
 	CANInterface   string `yaml:"can-interface"`
 	DevicesID      uint   `yaml:"devices-id"`
 	TemperatureAux int    `yaml:"temperature-aux"`
+	HasNotusDevice bool   `yaml:"has-notus-device"`
 }
 
 func (d ZoneDefinition) ID() string {
@@ -39,7 +40,7 @@ func OpenConfigFromArg(option flags.Filename) (*Config, error) {
 
 func OpenConfig(filename string) (*Config, error) {
 	c := &Config{}
-	buf, err := ioutil.ReadFile(filename)
+	buf, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
