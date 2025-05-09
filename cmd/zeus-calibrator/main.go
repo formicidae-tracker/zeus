@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"math"
+	"log/slog"
 	"os"
-	"sync"
+	"strconv"
+	"strings"
 	"time"
 
 	socketcan "github.com/atuleu/golang-socketcan"
@@ -13,60 +13,132 @@ import (
 	"github.com/jessevdk/go-flags"
 )
 
+type Range struct {
+	Low  float32
+	High float32
+}
+
+func (r *Range) MarshalFlag() (string, error) {
+	return fmt.Sprintf("%.2f-%.2f", r.Low, r.High), nil
+}
+
+func (r *Range) UnmarhsalFlag(value string) error {
+	parts := strings.Split(value, "-")
+	if len(parts) > 2 {
+		return fmt.Errorf("invalid range '%s': only one '-' is allowed", value)
+	}
+	v, err := strconv.ParseFloat(parts[0], 32)
+	if err != nil {
+		return fmt.Errorf("invalid range '%s': parsing '%s': %w", value, parts[0], err)
+	}
+	if len(parts) == 1 {
+		r.Low = float32(v) - 5.0
+		r.High = float32(v) + 5.0
+	}
+	r.Low = float32(v)
+	v, err = strconv.ParseFloat(parts[1], 32)
+	if err != nil {
+		return fmt.Errorf("invalid range '%s': parsing '%s': %w", value, parts[1], err)
+	}
+	r.High = float32(v)
+	if r.High <= r.Low {
+		r.High, r.Low = r.Low, r.High
+	}
+	return nil
+}
+
 type Options struct {
-	Interface       string        `long:"interface" short:"i" description:"Interface to use" default:"slcan0"`
-	ID              uint8         `long:"id" description:"ID to calibrate" default:"1"`
-	Temperature     float64       `long:"temperature" short:"t" description:"calibration temperature" default:"26.0"`
-	Humidity        float64       `long:"humidity" short:"u" description:"calibration humidity" default:"50.0"`
-	Wind            float64       `long:"wind" short:"n" description:"calibration wind" default:"100.0"`
-	Duration        time.Duration `long:"duration" short:"d" description:"time to wait to reach desired temperature" default:"2h"`
-	ReferenceSensor uint8         `long:"reference-sensor" short:"r" description:"Select a sensor as reference, if 0 mean of tmp1075 is used" default:"0"`
-	DryRun          bool          `long:"dry-run" short:"y" description:"dry run do no set the value at the end"`
-	Window          int           `long:"window" short:"w" description:"Size of the averaging window" default:"100"`
-	ResetDelta      bool          `long:"reset-delta"  description:"Resets the delta before doing anything"`
+	Interface   string `long:"interface" short:"i" description:"Interface to use" default:"slcan0"`
+	ID          uint8  `long:"id" description:"ID to calibrate" default:"1"`
+	Temperature Range  `long:"temperature"  description:"calibration temperature min" default:"28.0-32.0"`
+	Humidity    Range  `long:"humidity"  description:"calibration humidity" default:"45.0-65.0"`
+	Cycles      uint   `long:"cycles" description:"Number of cycle to determine system characteristics" default:"5"`
 }
 
-type TemperatureWindowAverager struct {
-	points []float32
-	idx    int
-	size   int
-	mx     *sync.Mutex
+type timedMessage struct {
+	T  time.Time
+	ID arke.NodeID
+	M  arke.ReceivableMessage
 }
 
-func NewTemperatureWindowAverager(size int) *TemperatureWindowAverager {
-	return &TemperatureWindowAverager{
-		points: make([]float32, 0, size),
-		idx:    0,
-		size:   size,
-		mx:     &sync.Mutex{},
+type canInterface struct {
+	Messages chan timedMessage
+	intf     socketcan.RawInterface
+	logger   *slog.Logger
+}
+
+func (c *canInterface) listen() {
+	defer close(c.Messages)
+	for {
+		f, err := c.intf.Receive()
+		now := time.Now()
+		if err != nil {
+			c.logger.Error("could not read frame", "error", err)
+			return
+		}
+		m, id, err := arke.ParseMessage(&f)
+		if err != nil {
+			c.logger.Error("could not parse frame", "error", err)
+			continue
+		}
+
+		c.Messages <- timedMessage{T: now, M: m, ID: id}
 	}
 }
 
-func (a *TemperatureWindowAverager) Push(value float32) {
-	if math.IsNaN(float64(value)) {
-		return
+func OpenCanInterface(name string) (*canInterface, error) {
+	intf, err := socketcan.NewRawInterface(name)
+	if err != nil {
+		return nil, err
 	}
 
-	a.mx.Lock()
-	defer a.mx.Unlock()
-
-	if len(a.points) < a.size {
-		a.points = append(a.points, value)
-		return
+	res := &canInterface{
+		Messages: make(chan timedMessage, 10),
+		intf:     intf,
+		logger:   slog.With("canInterface", name),
 	}
 
-	a.points[a.idx] = value
-	a.idx = (a.idx + 1) % a.size
+	go res.listen()
+	return res, nil
 }
 
-func (a *TemperatureWindowAverager) Average() float32 {
-	res := float32(0.0)
-	a.mx.Lock()
-	defer a.mx.Unlock()
-	for _, v := range a.points {
-		res += v / float32(len(a.points))
+func (intf *canInterface) Close() error {
+	intf.logger.Info("closing")
+	return intf.Close()
+}
+
+func (intf *canInterface) Send(c socketcan.CanFrame) error {
+	intf.logger.Debug("sending frame", c)
+	return intf.intf.Send(c)
+}
+
+func pingZeus(intf *canInterface, ID arke.NodeID) error {
+	if err := intf.Send(arke.MakePing(arke.ZeusClass)); err != nil {
+		return fmt.Errorf("could not send ping: %w", err)
 	}
-	return res
+
+	deadline := time.After(500 * time.Millisecond)
+	for {
+		select {
+		case <-deadline:
+			return fmt.Errorf("ping timeouted")
+		case tm, ok := <-intf.Messages:
+			if ok == false {
+				return fmt.Errorf("ping on closed interface")
+			}
+
+			if tm.M.MessageClassID() != arke.HeartBeatMessage {
+				break
+			}
+
+			hd := tm.M.(*arke.HeartBeatData)
+			if hd.Class != arke.ZeusClass || tm.ID != ID {
+				break
+			}
+			return nil
+		}
+	}
+
 }
 
 func Execute() error {
@@ -76,152 +148,24 @@ func Execute() error {
 		return err
 	}
 
-	intf, err := socketcan.NewRawInterface(opts.Interface)
+	intf, err := OpenCanInterface(opts.Interface)
 	if err != nil {
 		return err
 	}
+	defer intf.Close()
 
-	heartbeats := make(chan *arke.HeartBeatData)
-	delta := make(chan *arke.ZeusDeltaTemperature)
-	averagers := []*TemperatureWindowAverager{
-		NewTemperatureWindowAverager(opts.Window),
-		NewTemperatureWindowAverager(opts.Window),
-		NewTemperatureWindowAverager(opts.Window),
-		NewTemperatureWindowAverager(opts.Window),
-	}
-	go func() {
-		defer func() {
-			close(heartbeats)
-			close(delta)
-		}()
-		i := 0
-		once := false
-		messageWhiteList := map[arke.MessageClass]func(m arke.ReceivableMessage){
-			arke.ZeusDeltaTemperatureMessage: func(m arke.ReceivableMessage) {
-				delta <- m.(*arke.ZeusDeltaTemperature)
-			},
-			arke.HeartBeatMessage: func(m arke.ReceivableMessage) {
-				heartbeats <- m.(*arke.HeartBeatData)
-			},
-			arke.ZeusReportMessage: func(m arke.ReceivableMessage) {
-				c := m.(*arke.ZeusReport)
-				for idx, a := range averagers {
-					a.Push(c.Temperature[idx])
-				}
-				if i%5 == 0 {
-					if once == true {
-						fmt.Fprintf(os.Stderr, "\033[F\033[K")
-					} else {
-						once = true
-					}
-					fmt.Fprintf(os.Stdout, "%s : %+v\n", time.Now().Format("Mon Jan 2 15:04:05"), c)
-				}
-				i++
-			},
-		}
-		for {
-			f, err := intf.Receive()
-			if err != nil {
-				log.Printf("CAN Receive error: %s", err)
-			}
+	ID := arke.NodeID(opts.ID)
 
-			m, id, err := arke.ParseMessage(&f)
-			if err != nil {
-				log.Printf("Arke Parsing error: %s", err)
-			}
-			if id != arke.NodeID(opts.ID) {
-				continue
-			}
-			if treat, ok := messageWhiteList[m.MessageClassID()]; ok == true {
-				treat(m)
-			}
-		}
-	}()
-	if err := intf.Send(arke.MakePing(arke.ZeusClass)); err != nil {
-		return err
+	if err := pingZeus(intf, ID); err != nil {
+		return fmt.Errorf("could not ping zeus %d: %w", opts.ID, err)
 	}
 
-	tick := time.NewTicker(10 * time.Second)
-	select {
-	case h := <-heartbeats:
-		log.Printf("Found Zeus Node %d version %d.%d", opts.ID, h.MajorVersion, h.MinorVersion)
-	case <-tick.C:
-		tick.Stop()
-		return fmt.Errorf("Ping of Zeus %d timouted", opts.ID)
-	}
-	tick.Stop()
-
-	actualDelta := &arke.ZeusDeltaTemperature{
-		Delta: [4]float32{0, 0, 0, 0},
-	}
-	if opts.ResetDelta {
-		if err := arke.SendMessage(intf, actualDelta, false, arke.NodeID(opts.ID)); err != nil {
-			return err
-		}
-	}
-
-	if err := arke.RequestMessage(intf, actualDelta, arke.NodeID(opts.ID)); err != nil {
-		return err
-	}
-	tick = time.NewTicker(10 * time.Second)
-
-	select {
-	case actualDelta = <-delta:
-		log.Printf("Current delta are: %+v", actualDelta)
-	case <-tick.C:
-		tick.Stop()
-		return fmt.Errorf("Fetching of zeus delta timouted")
-	}
-	tick.Stop()
-
-	sp := arke.ZeusSetPoint{
-		Temperature: float32(opts.Temperature),
-		Humidity:    float32(opts.Humidity),
-		Wind:        uint8(math.Min(math.Max(opts.Wind/100.0, 0), 1.0) * 255),
-	}
-
-	if err := arke.SendMessage(intf, &sp, false, arke.NodeID(opts.ID)); err != nil {
-		return err
-	}
-	log.Printf("Sent %+v", sp)
-	defer func() {
-		intf.Send(arke.MakeResetRequest(arke.ZeusClass, arke.NodeID(opts.ID)))
-		intf.Send(arke.MakeResetRequest(arke.CelaenoClass, arke.NodeID(opts.ID)))
-	}()
-
-	time.Sleep(opts.Duration)
-
-	deltas := []float32{
-		0.0, 0.0, 0.0, 0.0,
-	}
-
-	ref := float32(0.0)
-	if opts.ReferenceSensor > 0 && opts.ReferenceSensor < 5 {
-		ref = averagers[opts.ReferenceSensor-1].Average()
-	} else {
-		for i := 1; i < 4; i++ {
-			ref += averagers[i].Average() / 3.0
-		}
-	}
-
-	for i, a := range averagers {
-		deltas[i] = ref - a.Average() + actualDelta.Delta[i]
-		log.Printf("Sensor %d: Mean %.3f actual delta: %.3f new delta: %.3f ", i, a.Average(), actualDelta.Delta[i], deltas[i])
-		actualDelta.Delta[i] = deltas[i]
-	}
-
-	if opts.DryRun == true {
-		log.Printf("Not sending any data")
-		return nil
-	}
-
-	return arke.SendMessage(intf, actualDelta, false, arke.NodeID(opts.ID))
 }
 
 func main() {
 
 	if err := Execute(); err != nil {
-		log.Printf("Unhandled error: %s", err)
+		slog.Error("unhandled error", "error", err)
 		os.Exit(1)
 	}
 }
