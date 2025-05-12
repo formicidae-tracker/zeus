@@ -7,7 +7,6 @@ package plot
 import (
 	"fmt"
 	"image"
-	"log/slog"
 	"math"
 
 	. "github.com/gizak/termui/v3"
@@ -81,7 +80,6 @@ func NewPlot() *Plot {
 }
 
 func (p *Plot) project(pt PointF, drawArea image.Rectangle) image.Point {
-	slog.Info("point", "pt", pt, "drawArea", drawArea, "lims", p.axisLimits)
 	return image.Pt(
 		int((pt.X-p.axisLimits.Min.X)/p.axisLimits.Dx()*float64(drawArea.Dx()-1))+drawArea.Min.X,
 		int((pt.Y-p.axisLimits.Min.Y)/p.axisLimits.Dy()*float64(drawArea.Dy()-1))+drawArea.Min.Y,
@@ -159,7 +157,6 @@ func (self *Plot) renderBraille(buf *Buffer, drawArea image.Rectangle) {
 		var previous *image.Point
 		self.foreachPoint(line, drawArea, func(pt image.Point) {
 			if previous != nil {
-				slog.Info("draw line", "A", *previous, "B", pt)
 				drawLine(
 					canvas,
 					image.Pt(previous.X*2, previous.Y*4),
@@ -169,7 +166,6 @@ func (self *Plot) renderBraille(buf *Buffer, drawArea image.Rectangle) {
 			}
 			previous = &image.Point{X: pt.X, Y: pt.Y}
 		})
-		slog.Info("drawing done", "i", i)
 	}
 
 	canvas.Draw(buf)
