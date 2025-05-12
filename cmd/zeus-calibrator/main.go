@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -24,7 +26,7 @@ func (r *Range) MarshalFlag() (string, error) {
 	return fmt.Sprintf("%.2f-%.2f", r.Low, r.High), nil
 }
 
-func (r *Range) UnmarhsalFlag(value string) error {
+func (r *Range) UnmarshalFlag(value string) error {
 	parts := strings.Split(value, "-")
 	if len(parts) > 2 {
 		return fmt.Errorf("invalid range '%s': only one '-' is allowed", value)
@@ -57,10 +59,29 @@ type Options struct {
 	Cycles      uint   `long:"cycles" description:"Number of cycle to determine system characteristics" default:"5"`
 }
 
+func (r Range) String() string {
+	return fmt.Sprintf("%.02f-%.02f", r.Low, r.High)
+}
+
+func (o Options) check() error {
+	if o.Temperature.High <= o.Temperature.Low {
+		return fmt.Errorf("Invalid temperature range %s", o.Temperature)
+	}
+
+	if o.Humidity.High <= o.Humidity.Low {
+		return fmt.Errorf("Invalid humidity range %s", o.Temperature)
+	}
+	return nil
+}
+
 func Execute() error {
 	opts := Options{}
 
 	if _, err := flags.Parse(&opts); err != nil {
+		return err
+	}
+
+	if err := opts.check(); err != nil {
 		return err
 	}
 
@@ -82,6 +103,11 @@ func Execute() error {
 	defer c.Close()
 
 	if err := c.calibrateTemperature(); err != nil {
+		slog.Error("could not calibrate temperature", "error", err)
+		return err
+	}
+
+	if err := c.calibrateHumidity(); err != nil {
 		return err
 	}
 
@@ -90,6 +116,7 @@ func Execute() error {
 		"humidity", c.humidityParameters)
 
 	slog.Info("press <q> to quit")
+
 	<-c.ctx.Done()
 
 	return nil
@@ -98,6 +125,10 @@ func Execute() error {
 func main() {
 
 	if err := Execute(); err != nil {
+		if errors.Is(err, context.Canceled) == true {
+			return
+		}
+
 		slog.Error("unhandled error", "error", err)
 		os.Exit(1)
 	}

@@ -58,7 +58,7 @@ func OpenCanInterface(name string) (*canInterface, error) {
 
 func (intf *canInterface) Close() error {
 	intf.logger.Info("closing")
-	return intf.Close()
+	return intf.intf.Close()
 }
 
 func (intf *canInterface) Send(c socketcan.CanFrame) error {

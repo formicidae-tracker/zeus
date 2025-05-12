@@ -137,6 +137,7 @@ func (c *zeusCalibrator) interceptReports() {
 }
 
 func (c *zeusCalibrator) Close() error {
+	slog.Info("closing calibrator: send reset control point")
 	c.intf.Send(MakeZeusControlPoint(c.ID, 1024, 1024))
 	return c.intf.Close()
 }
@@ -158,10 +159,7 @@ func (c *zeusCalibrator) waitZeusReport(timeout time.Duration,
 				return tr.T, tr.R, nil
 			}
 		case <-wctx.Done():
-			if wctx.Err() != context.Canceled {
-				return time.Time{}, nil, context.Cause(wctx)
-			}
-			return time.Time{}, nil, nil
+			return time.Time{}, nil, context.Cause(wctx)
 		}
 	}
 }
