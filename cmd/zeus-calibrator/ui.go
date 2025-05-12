@@ -102,6 +102,10 @@ func (ui *CalibratorUI) PushZeusReport(t time.Time, r *arke.ZeusReport) {
 	ui.times = ui.times[i:]
 	ui.reports = ui.reports[i:]
 
+	if len(ui.times) < 2 {
+		return
+	}
+
 	times := make([]float64, 0, len(ui.times))
 	temps := make([]float64, 0, len(ui.times))
 	hums := make([]float64, 0, len(ui.times))
@@ -112,9 +116,10 @@ func (ui *CalibratorUI) PushZeusReport(t time.Time, r *arke.ZeusReport) {
 		hums = append(hums, float64(r.Humidity))
 	}
 
-	ui.temperature.Data = [][]float64{times, temps}
-	ui.humidity.Data = [][]float64{times, hums}
+	ui.temperature.Data = [][]float64{temps}
+	ui.humidity.Data = [][]float64{hums}
 
+	ui.MarkUpdate()
 }
 
 func (ui *CalibratorUI) MarkUpdate() {
@@ -147,7 +152,7 @@ func (ui *CalibratorUI) Loop() {
 	ui.humidity = widgets.NewPlot()
 	ui.humidity.Title = "Humidity (%R.H.) / Time (min.)"
 	ui.humidity.LineColors[0] = tui.ColorCyan
-	ui.temperature.LineColors[1] = tui.ColorWhite
+	ui.humidity.LineColors[1] = tui.ColorWhite
 
 	grid := tui.NewGrid()
 	tw, th := tui.TerminalDimensions()
