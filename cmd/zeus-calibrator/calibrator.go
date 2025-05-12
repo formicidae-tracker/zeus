@@ -17,8 +17,8 @@ type PIDParameter struct {
 }
 
 const (
-	TEMP_RAMP_UP     = 15 * time.Minute
-	TEMP_CHANGE      = 10 * time.Minute
+	TEMP_RAMP_UP     = 25 * time.Minute
+	TEMP_CHANGE      = 20 * time.Minute
 	HUMIDITY_RAMP_UP = 8 * time.Minute
 	HUMIDITY_CHANGE  = 3 * time.Minute
 )
@@ -257,6 +257,7 @@ func (c *zeusCalibrator) calibrateTemperature() error {
 		log.Info("temperature reached", "T", r.Temperature[0], "ellapsed", ellapsedUp)
 
 		relativeDifference := c.updateBangBang(ellapsedUp, ellapsedDown)
+
 		log.Info("cycle result",
 			"duration", ellapsedUp+ellapsedDown,
 			"difference", relativeDifference,
@@ -287,7 +288,8 @@ func (c *zeusCalibrator) calibrateTemperature() error {
 func (c *zeusCalibrator) updateBangBang(ellapsedUp, ellapsedDown time.Duration) float64 {
 	relativeDifference := (ellapsedUp - ellapsedDown).Seconds() / (ellapsedUp + ellapsedDown).Seconds()
 
-	c.bias += clamp(int(float64(c.amplitude)*relativeDifference), -255, 255)
+	c.bias += int(float64(c.amplitude) * relativeDifference)
+	c.bias = clamp(c.bias, -240, 240)
 	if c.bias >= 0 {
 		c.amplitude = 511 - c.bias
 	} else {
