@@ -28,8 +28,12 @@ type CalibratorUI struct {
 	logs                  *logDisplay
 	temperature, humidity *widgets.Plot
 
+	plotTimeWindow time.Duration
+
 	times   []time.Time
 	reports []*arke.ZeusReport
+
+	start time.Time
 
 	needUpdate bool
 }
@@ -82,16 +86,43 @@ func newLogDisplay() (*logDisplay, error) {
 }
 
 func newCalibratorUI() *CalibratorUI {
-	res := &CalibratorUI{needUpdate: true}
+	res := &CalibratorUI{needUpdate: true, plotTimeWindow: 5 * time.Minute}
 	res.ctx, res.cancel = context.WithCancel(context.Background())
 	return res
 }
 
+func setTimeSeries(p *widgets.Plot, xAxis []time.Duration, yAxis []float64) {
+	xAxisMax := p.Inner.Dx() - 5
+
+	xStart := xAxis[0]
+
+	last := int64(xAxisMax) * (xAxis[len(xAxis)-1] - xStart).Nanoseconds() / ui.plotTimeWindow.Nanoseconds()
+	if last < 2 {
+		return
+	}
+
+	p.Data = [][]float64{make([]float64, last)}
+
+	j := 0
+	for i := range p.Data[0] {
+		target := xStart.Nanoseconds() + (int64(i)*ui.plotTimeWindow.Nanoseconds())/int64(xAxisMax)
+		for ; j < len(xAxis); j += 1 {
+			if xAxis[j].Nanoseconds() >= target {
+				break
+			}
+		}
+		p.Data[0][i] = yAxis[j]
+	}
+}
+
 func (ui *CalibratorUI) PushZeusReport(t time.Time, r *arke.ZeusReport) {
+	if len(ui.times) == 0 {
+		ui.start = t
+	}
+	minTime := t.Add(-1 * ui.plotTimeWindow)
+
 	ui.times = append(ui.times, t)
 	ui.reports = append(ui.reports, r)
-
-	minTime := t.Add(-10 * time.Minute)
 
 	i := 0
 	for ; i < len(ui.times); i += 1 {
@@ -102,22 +133,26 @@ func (ui *CalibratorUI) PushZeusReport(t time.Time, r *arke.ZeusReport) {
 	ui.times = ui.times[i:]
 	ui.reports = ui.reports[i:]
 
+	ui.updatePlots()
+}
+
+func (ui *CalibratorUI) updatePlots() {
 	if len(ui.times) < 2 {
 		return
 	}
 
-	times := make([]float64, 0, len(ui.times))
+	times := make([]time.Duration, 0, len(ui.times))
 	temps := make([]float64, 0, len(ui.times))
 	hums := make([]float64, 0, len(ui.times))
 
 	for i, r := range ui.reports {
-		times = append(times, ui.times[i].Sub(ui.times[len(ui.times)-1]).Minutes())
+		times = append(times, ui.times[i].Sub(ui.start))
 		temps = append(temps, float64(r.Temperature[0]))
 		hums = append(hums, float64(r.Humidity))
 	}
 
-	ui.temperature.Data = [][]float64{temps}
-	ui.humidity.Data = [][]float64{hums}
+	setTimeSeries(ui.temperature, times, temps)
+	setTimeSeries(ui.humidity, times, hums)
 
 	ui.MarkUpdate()
 }
@@ -147,12 +182,10 @@ func (ui *CalibratorUI) Loop() {
 
 	ui.temperature = widgets.NewPlot()
 	ui.temperature.Title = "Temperature (°C) / Time (min.)"
-	ui.temperature.LineColors[0] = tui.ColorYellow
-	ui.temperature.LineColors[1] = tui.ColorWhite
+	ui.temperature.LineColors[0] = tui.ColorRed
 	ui.humidity = widgets.NewPlot()
 	ui.humidity.Title = "Humidity (%R.H.) / Time (min.)"
 	ui.humidity.LineColors[0] = tui.ColorCyan
-	ui.humidity.LineColors[1] = tui.ColorWhite
 
 	grid := tui.NewGrid()
 	tw, th := tui.TerminalDimensions()
@@ -187,6 +220,7 @@ func (ui *CalibratorUI) Loop() {
 				grid.SetRect(0, 0, payload.Width, payload.Height)
 				ui.logs.resize()
 				tui.Clear()
+				ui.updatePlots()
 				ui.MarkUpdate()
 			}
 		}
