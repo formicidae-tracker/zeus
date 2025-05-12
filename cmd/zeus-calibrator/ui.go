@@ -28,7 +28,8 @@ type CalibratorUI struct {
 	logs                  *logDisplay
 	temperature, humidity *widgets.Plot
 
-	plotTimeWindow time.Duration
+	temperatureRange, humidityRange Range
+	plotTimeWindow                  time.Duration
 
 	times   []time.Time
 	reports []*arke.ZeusReport
@@ -183,9 +184,11 @@ func (ui *CalibratorUI) Loop() {
 	ui.temperature = widgets.NewPlot()
 	ui.temperature.Title = "Temperature (°C) / Time (min.)"
 	ui.temperature.LineColors[0] = tui.ColorRed
+	ui.temperature.MaxVal = float64(ui.temperatureRange.High) + 1.0
 	ui.humidity = widgets.NewPlot()
 	ui.humidity.Title = "Humidity (%R.H.) / Time (min.)"
 	ui.humidity.LineColors[0] = tui.ColorCyan
+	ui.humidity.MaxVal = float64(ui.humidityRange.High) + 5.0
 
 	grid := tui.NewGrid()
 	tw, th := tui.TerminalDimensions()

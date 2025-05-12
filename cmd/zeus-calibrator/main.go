@@ -101,6 +101,9 @@ func Execute() error {
 		wg.Wait()
 	}()
 
+	ui.temperatureRange = opts.Temperature
+	ui.humidityRange = opts.Humidity
+
 	if opts.DebugUI == true {
 		return debugUI(opts)
 	}
