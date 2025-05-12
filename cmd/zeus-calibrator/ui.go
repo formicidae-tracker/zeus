@@ -93,34 +93,11 @@ func newCalibratorUI() *CalibratorUI {
 	return res
 }
 
-func setTimeSeries(p *plot.Plot, xAxis []time.Duration, yAxis []float64) {
-	xAxisMax := p.Inner.Dx() - 5
-
-	xStart := xAxis[0]
-
-	last := int64(xAxisMax) * (xAxis[len(xAxis)-1] - xStart).Nanoseconds() / ui.plotTimeWindow.Nanoseconds()
-	if last < 2 {
-		return
-	}
-
-	p.YData = [][]float64{make([]float64, last)}
-
-	j := 0
-	for i := range p.YData[0] {
-		target := xStart.Nanoseconds() + (int64(i)*ui.plotTimeWindow.Nanoseconds())/int64(xAxisMax)
-		for ; j < len(xAxis); j += 1 {
-			if xAxis[j].Nanoseconds() >= target {
-				break
-			}
-		}
-		p.YData[0][i] = yAxis[j]
-	}
-}
-
 func (ui *CalibratorUI) PushZeusReport(t time.Time, r *arke.ZeusReport) {
 	if len(ui.times) == 0 {
 		ui.start = t
 	}
+
 	minTime := t.Add(-1 * ui.plotTimeWindow)
 
 	ui.times = append(ui.times, t)
@@ -153,10 +130,15 @@ func (ui *CalibratorUI) updatePlots() {
 		hums = append(hums, float64(r.Humidity))
 	}
 
+	minX, maxX := times[0], times[0]+ui.plotTimeWindow.Minutes()
+
 	ui.humidity.XData = times
 	ui.humidity.YData = [][]float64{hums}
+	ui.humidity.MinXVal, ui.humidity.MaxXVal = minX, maxX
+
 	ui.temperature.XData = times
 	ui.temperature.YData = [][]float64{temps}
+	ui.temperature.MinXVal, ui.temperature.MaxXVal = minX, maxX
 
 	ui.MarkUpdate()
 }
@@ -187,13 +169,13 @@ func (ui *CalibratorUI) Loop() {
 	ui.temperature = plot.NewPlot()
 	ui.temperature.Title = "Temperature (°C) / Time (min.)"
 	ui.temperature.LineColors[0] = tui.ColorRed
-	ui.temperature.MaxVal = float64(ui.temperatureRange.High) + 1.0
-	ui.temperature.MinVal = float64(ui.temperatureRange.Low) - 1.0
+	ui.temperature.MaxYVal = float64(ui.temperatureRange.High) + 1.0
+	ui.temperature.MinYVal = float64(ui.temperatureRange.Low) - 1.0
 	ui.humidity = plot.NewPlot()
 	ui.humidity.Title = "Humidity (%R.H.) / Time (min.)"
 	ui.humidity.LineColors[0] = tui.ColorCyan
-	ui.humidity.MaxVal = float64(ui.humidityRange.High) + 5.0
-	ui.humidity.MinVal = float64(ui.humidityRange.Low) - 5.0
+	ui.humidity.MaxYVal = float64(ui.humidityRange.High) + 5.0
+	ui.humidity.MinYVal = float64(ui.humidityRange.Low) - 5.0
 
 	grid := tui.NewGrid()
 	tw, th := tui.TerminalDimensions()

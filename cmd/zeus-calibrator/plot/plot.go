@@ -11,6 +11,7 @@ import (
 	"math"
 
 	. "github.com/gizak/termui/v3"
+	"github.com/gizak/termui/v3/drawille"
 )
 
 type PointF struct {
@@ -47,8 +48,10 @@ type Plot struct {
 	XData      []float64
 	YData      [][]float64
 	DataLabels []string
-	MaxVal     float64
-	MinVal     float64
+	MaxYVal    float64
+	MinYVal    float64
+	MaxXVal    float64
+	MinXVal    float64
 
 	LineColors []Color
 	AxesColor  Color // TODO
@@ -62,7 +65,7 @@ type Plot struct {
 const (
 	xAxisLabelsHeight = 1
 	yAxisLabelsWidth  = 4
-	xAxisLabelsGap    = 5
+	xAxisLabelsGap    = 8
 	yAxisLabelsGap    = 1
 )
 
@@ -103,6 +106,51 @@ func (p *Plot) foreachPoint(y []float64, drawArea image.Rectangle, do func(pt im
 	}
 }
 
+func abs[T ~int | ~float64 | ~float32](a T) T {
+	if a < 0 {
+		return -a
+	}
+	return a
+}
+
+func inperpolateLine(a, b image.Point) []image.Point {
+	points := []image.Point{}
+
+	leftPoint, rightPoint := a, b
+	if leftPoint.X > rightPoint.X {
+		leftPoint, rightPoint = rightPoint, leftPoint
+	}
+
+	xDistance := abs(leftPoint.X - rightPoint.X)
+	yDistance := abs(leftPoint.Y - rightPoint.Y)
+	slope := float64(yDistance) / float64(xDistance)
+	slopeSign := 1
+	if rightPoint.Y < leftPoint.Y {
+		slopeSign = -1
+	}
+
+	targetYCoordinate := float64(leftPoint.Y)
+	currentYCoordinate := leftPoint.Y
+	for i := leftPoint.X; i < rightPoint.X; i++ {
+		points = append(points, image.Pt(i, currentYCoordinate))
+		targetYCoordinate += (slope * float64(slopeSign))
+		for currentYCoordinate != int(targetYCoordinate) {
+			points = append(points, image.Pt(i, currentYCoordinate))
+			currentYCoordinate += slopeSign
+		}
+	}
+
+	return points
+}
+
+func drawLine(c *Canvas, a, b image.Point, color Color) {
+	for _, p := range inperpolateLine(a, b) {
+		if p.X >= 0 && p.Y >= 0 {
+			c.Canvas.SetPoint(p, drawille.Color(color))
+		}
+	}
+}
+
 func (self *Plot) renderBraille(buf *Buffer, drawArea image.Rectangle) {
 	canvas := NewCanvas()
 	canvas.Rectangle = drawArea
@@ -112,7 +160,8 @@ func (self *Plot) renderBraille(buf *Buffer, drawArea image.Rectangle) {
 		self.foreachPoint(line, drawArea, func(pt image.Point) {
 			if previous != nil {
 				slog.Info("draw line", "A", *previous, "B", pt)
-				canvas.SetLine(
+				drawLine(
+					canvas,
 					image.Pt(previous.X*2, previous.Y*4),
 					image.Pt(pt.X*2, pt.Y*4),
 					SelectColor(self.LineColors, i),
@@ -148,11 +197,10 @@ func (self *Plot) plotAxes(buf *Buffer) {
 	}
 	// draw x axis labels
 	// draw rest
-	maxXi := self.Inner.Dy() - yAxisLabelsWidth - 1
+	maxXi := self.Inner.Dx() - yAxisLabelsWidth - 1
 
-	minX, maxX := self.getXRange()
 	for i := 0; i < maxXi; i += xAxisLabelsGap {
-		x := float64(i)*(maxX-minX) + minX
+		x := float64(i)/float64(maxXi)*(self.axisLimits.Dx()) + self.axisLimits.Min.X
 		label := fmt.Sprintf(
 			"%.1f",
 			x,
@@ -160,7 +208,7 @@ func (self *Plot) plotAxes(buf *Buffer) {
 		buf.SetString(
 			label,
 			NewStyle(ColorWhite),
-			image.Pt(i+yAxisLabelsWidth, self.Inner.Max.Y-1),
+			image.Pt(i+yAxisLabelsWidth+self.Inner.Min.X, self.Inner.Max.Y-1),
 		)
 	}
 	// draw y axis labels
@@ -175,6 +223,10 @@ func (self *Plot) plotAxes(buf *Buffer) {
 }
 
 func (p *Plot) getXRange() (float64, float64) {
+	if p.MinXVal != 0.0 || p.MaxXVal != 0.0 {
+		return p.MinXVal, p.MaxXVal
+	}
+
 	if len(p.XData) == 0 {
 		maxX := 1.0
 		for _, yData := range p.YData {
@@ -194,8 +246,8 @@ func (p *Plot) getXRange() (float64, float64) {
 }
 
 func (p *Plot) getYRange() (float64, float64) {
-	if p.MinVal != 0.0 || p.MaxVal != 0.0 {
-		return p.MinVal, p.MaxVal
+	if p.MinYVal != 0.0 || p.MaxYVal != 0.0 {
+		return p.MinYVal, p.MaxYVal
 	}
 	if len(p.YData) == 0 || len(p.YData[0]) == 0 {
 		return 0.0, 1.0

@@ -157,9 +157,9 @@ func debugUI(opts Options) error {
 		case t := <-ticker.C:
 			ph := 2 * math.Pi * float64(t.Second()) / 10.0
 			ui.PushZeusReport(t, &arke.ZeusReport{
-				Humidity: float32(math.Sin(ph))*opts.Humidity.Diff() + meanHumidity,
+				Humidity: float32(0.5*math.Sin(ph))*opts.Humidity.Diff() + meanHumidity,
 				Temperature: [4]float32{
-					float32(math.Cos(ph))*opts.Temperature.Diff() + meanTemp,
+					float32(0.5*math.Cos(ph))*opts.Temperature.Diff() + meanTemp,
 					float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
 			})
 		}
