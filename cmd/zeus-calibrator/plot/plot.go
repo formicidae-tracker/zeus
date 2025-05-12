@@ -26,7 +26,17 @@ type RectangleF struct {
 }
 
 func RectF(x0, y0, x1, y1 float64) RectangleF {
-	return RectangleF{Min: PointF{x0, y0}, Max: PointF{x1, y1}}
+	res := RectangleF{Min: PointF{x0, y0}, Max: PointF{x1, y1}}
+	if res.Min.X > res.Max.X {
+		res.Min.X, res.Max.X = res.Max.X, res.Min.X
+	}
+
+	if res.Min.Y > res.Max.Y {
+		res.Min.Y, res.Max.Y = res.Max.Y, res.Min.Y
+	}
+
+	return res
+
 }
 
 func (r RectangleF) Dx() float64 {
@@ -82,7 +92,7 @@ func NewPlot() *Plot {
 func (p *Plot) project(pt PointF, drawArea image.Rectangle) image.Point {
 	return image.Pt(
 		int((pt.X-p.axisLimits.Min.X)/p.axisLimits.Dx()*float64(drawArea.Dx()-1))+drawArea.Min.X,
-		int((pt.Y-p.axisLimits.Min.Y)/p.axisLimits.Dy()*float64(drawArea.Dy()-1))+drawArea.Min.Y,
+		int(-1.0*(pt.Y-p.axisLimits.Min.Y)/p.axisLimits.Dy()*float64(drawArea.Dy()-1))+drawArea.Max.Y,
 	)
 }
 
