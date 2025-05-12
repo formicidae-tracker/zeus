@@ -16,6 +16,13 @@ type PIDParameter struct {
 	Kp, Kd, Ki float32
 }
 
+const (
+	TEMP_RAMP_UP     = 15 * time.Minute
+	TEMP_CHANGE      = 10 * time.Minute
+	HUMIDITY_RAMP_UP = 8 * time.Minute
+	HUMIDITY_CHANGE  = 3 * time.Minute
+)
+
 func pidParametersFromKuTu(Ku, Tu float32) PIDParameter {
 	kp := Ku / 3.0
 	ki := 2.0 * kp / Tu
@@ -198,7 +205,7 @@ func (c *zeusCalibrator) calibrateTemperature() error {
 	}
 
 	timeHigh, _, err := c.waitZeusReport(
-		10*time.Minute,
+		TEMP_RAMP_UP,
 		func(r *arke.ZeusReport) bool {
 			return r.Temperature[0] >= c.temperatureTargets.High
 		})
@@ -220,7 +227,8 @@ func (c *zeusCalibrator) calibrateTemperature() error {
 			return err
 		}
 
-		timeLow, r, err := c.waitZeusReport(5*time.Minute,
+		timeLow, r, err := c.waitZeusReport(
+			TEMP_CHANGE,
 			func(r *arke.ZeusReport) bool {
 				return r.Temperature[0] <= c.temperatureTargets.Low
 			})
@@ -235,7 +243,8 @@ func (c *zeusCalibrator) calibrateTemperature() error {
 			return err
 		}
 
-		timeHigh, r, err := c.waitZeusReport(5*time.Minute,
+		timeHigh, r, err := c.waitZeusReport(
+			TEMP_CHANGE,
 			func(r *arke.ZeusReport) bool {
 				return r.Temperature[0] >= c.temperatureTargets.High
 			})
@@ -333,7 +342,8 @@ func (c *zeusCalibrator) calibrateHumidity() error {
 		return err
 	}
 
-	timeHigh, _, err := c.waitZeusReport(2*time.Minute,
+	timeHigh, _, err := c.waitZeusReport(
+		HUMIDITY_RAMP_UP,
 		func(r *arke.ZeusReport) bool {
 			return r.Humidity >= c.humidityTargets.High
 		})
@@ -352,7 +362,8 @@ func (c *zeusCalibrator) calibrateHumidity() error {
 			return err
 		}
 
-		timeLow, r, err := c.waitZeusReport(1*time.Minute,
+		timeLow, r, err := c.waitZeusReport(
+			HUMIDITY_CHANGE,
 			func(r *arke.ZeusReport) bool {
 				return r.Humidity <= c.humidityTargets.Low
 			})
@@ -368,7 +379,8 @@ func (c *zeusCalibrator) calibrateHumidity() error {
 			return err
 		}
 
-		timeHigh, r, err := c.waitZeusReport(1*time.Minute,
+		timeHigh, r, err := c.waitZeusReport(
+			HUMIDITY_CHANGE,
 			func(r *arke.ZeusReport) bool {
 				return r.Humidity >= c.humidityTargets.High
 			})
