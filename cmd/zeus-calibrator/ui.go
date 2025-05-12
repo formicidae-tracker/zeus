@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/formicidae-tracker/libarke/src-go/arke"
 	tui "github.com/gizak/termui/v3"
 	"github.com/gizak/termui/v3/widgets"
 )
@@ -22,10 +23,13 @@ type logDisplay struct {
 }
 
 type CalibratorUI struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-	logs   *logDisplay
-	plot   *widgets.Plot
+	ctx                   context.Context
+	cancel                context.CancelFunc
+	logs                  *logDisplay
+	temperature, humidity *widgets.Plot
+
+	times   []time.Time
+	reports []*arke.ZeusReport
 
 	needUpdate bool
 }
@@ -83,6 +87,36 @@ func newCalibratorUI() *CalibratorUI {
 	return res
 }
 
+func (ui *CalibratorUI) PushZeusReport(t time.Time, r *arke.ZeusReport) {
+	ui.times = append(ui.times, t)
+	ui.reports = append(ui.reports, r)
+
+	minTime := t.Add(-10 * time.Minute)
+
+	i := 0
+	for ; i < len(ui.times); i += 1 {
+		if ui.times[i].After(minTime) {
+			break
+		}
+	}
+	ui.times = ui.times[i:]
+	ui.reports = ui.reports[i:]
+
+	times := make([]float64, 0, len(ui.times))
+	temps := make([]float64, 0, len(ui.times))
+	hums := make([]float64, 0, len(ui.times))
+
+	for i, r := range ui.reports {
+		times = append(times, ui.times[i].Sub(ui.times[len(ui.times)-1]).Minutes())
+		temps = append(temps, float64(r.Temperature[0]))
+		hums = append(hums, float64(r.Humidity))
+	}
+
+	ui.temperature.Data = [][]float64{times, temps}
+	ui.humidity.Data = [][]float64{times, hums}
+
+}
+
 func (ui *CalibratorUI) MarkUpdate() {
 	ui.needUpdate = true
 }
@@ -106,12 +140,25 @@ func (ui *CalibratorUI) Loop() {
 	}
 	log.SetOutput(ui.logs)
 
-	ui.plot = widgets.NewPlot()
+	ui.temperature = widgets.NewPlot()
+	ui.temperature.Title = "Temperature (°C) / Time (min.)"
+	ui.temperature.LineColors[0] = tui.ColorYellow
+	ui.temperature.LineColors[1] = tui.ColorWhite
+	ui.humidity = widgets.NewPlot()
+	ui.humidity.Title = "Humidity (%R.H.) / Time (min.)"
+	ui.humidity.LineColors[0] = tui.ColorCyan
+	ui.temperature.LineColors[1] = tui.ColorWhite
 
 	grid := tui.NewGrid()
 	tw, th := tui.TerminalDimensions()
 	grid.SetRect(0, 0, tw, th)
-	grid.Set(tui.NewRow(0.3, ui.plot), tui.NewRow(0.7, ui.logs.displayBox))
+	grid.Set(
+		tui.NewRow(0.4,
+			tui.NewCol(0.5, ui.temperature),
+			tui.NewCol(0.5, ui.humidity),
+		),
+		tui.NewRow(0.6, ui.logs.displayBox),
+	)
 
 	// ticker to limit refresh FPS
 	t := time.NewTicker(time.Second / 30)
