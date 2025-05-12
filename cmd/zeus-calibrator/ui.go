@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/formicidae-tracker/libarke/src-go/arke"
+	"github.com/formicidae-tracker/zeus/cmd/zeus-calibrator/plot"
 	tui "github.com/gizak/termui/v3"
 	"github.com/gizak/termui/v3/widgets"
 )
@@ -26,7 +27,7 @@ type CalibratorUI struct {
 	ctx                   context.Context
 	cancel                context.CancelFunc
 	logs                  *logDisplay
-	temperature, humidity *widgets.Plot
+	temperature, humidity *plot.Plot
 
 	temperatureRange, humidityRange Range
 	plotTimeWindow                  time.Duration
@@ -92,7 +93,7 @@ func newCalibratorUI() *CalibratorUI {
 	return res
 }
 
-func setTimeSeries(p *widgets.Plot, xAxis []time.Duration, yAxis []float64) {
+func setTimeSeries(p *plot.Plot, xAxis []time.Duration, yAxis []float64) {
 	xAxisMax := p.Inner.Dx() - 5
 
 	xStart := xAxis[0]
@@ -181,14 +182,16 @@ func (ui *CalibratorUI) Loop() {
 	}
 	log.SetOutput(ui.logs)
 
-	ui.temperature = widgets.NewPlot()
+	ui.temperature = plot.NewPlot()
 	ui.temperature.Title = "Temperature (°C) / Time (min.)"
 	ui.temperature.LineColors[0] = tui.ColorRed
 	ui.temperature.MaxVal = float64(ui.temperatureRange.High) + 1.0
-	ui.humidity = widgets.NewPlot()
+	ui.temperature.MinVal = float64(ui.temperatureRange.Low) - 1.0
+	ui.humidity = plot.NewPlot()
 	ui.humidity.Title = "Humidity (%R.H.) / Time (min.)"
 	ui.humidity.LineColors[0] = tui.ColorCyan
 	ui.humidity.MaxVal = float64(ui.humidityRange.High) + 5.0
+	ui.humidity.MinVal = float64(ui.humidityRange.Low) - 5.0
 
 	grid := tui.NewGrid()
 	tw, th := tui.TerminalDimensions()
