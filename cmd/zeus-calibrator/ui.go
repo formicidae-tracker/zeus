@@ -103,17 +103,17 @@ func setTimeSeries(p *plot.Plot, xAxis []time.Duration, yAxis []float64) {
 		return
 	}
 
-	p.Data = [][]float64{make([]float64, last)}
+	p.YData = [][]float64{make([]float64, last)}
 
 	j := 0
-	for i := range p.Data[0] {
+	for i := range p.YData[0] {
 		target := xStart.Nanoseconds() + (int64(i)*ui.plotTimeWindow.Nanoseconds())/int64(xAxisMax)
 		for ; j < len(xAxis); j += 1 {
 			if xAxis[j].Nanoseconds() >= target {
 				break
 			}
 		}
-		p.Data[0][i] = yAxis[j]
+		p.YData[0][i] = yAxis[j]
 	}
 }
 
@@ -143,18 +143,20 @@ func (ui *CalibratorUI) updatePlots() {
 		return
 	}
 
-	times := make([]time.Duration, 0, len(ui.times))
+	times := make([]float64, 0, len(ui.times))
 	temps := make([]float64, 0, len(ui.times))
 	hums := make([]float64, 0, len(ui.times))
 
 	for i, r := range ui.reports {
-		times = append(times, ui.times[i].Sub(ui.start))
+		times = append(times, ui.times[i].Sub(ui.start).Minutes())
 		temps = append(temps, float64(r.Temperature[0]))
 		hums = append(hums, float64(r.Humidity))
 	}
 
-	setTimeSeries(ui.temperature, times, temps)
-	setTimeSeries(ui.humidity, times, hums)
+	ui.humidity.XData = times
+	ui.humidity.YData = [][]float64{hums}
+	ui.temperature.XData = times
+	ui.temperature.YData = [][]float64{temps}
 
 	ui.MarkUpdate()
 }
