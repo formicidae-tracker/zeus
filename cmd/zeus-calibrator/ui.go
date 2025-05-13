@@ -38,6 +38,8 @@ type CalibratorUI struct {
 	times   []time.Time
 	reports []*arke.ZeusReport
 
+	temperatureCommand, humidityCommand int16
+
 	start time.Time
 
 	needUpdate bool
@@ -107,12 +109,25 @@ func newCalibratorUI() *CalibratorUI {
 	return res
 }
 
+func (ui *CalibratorUI) PushCommands(temperature, humidity int16) {
+	ui.temperatureCommand, ui.humidityCommand = temperature, humidity
+	ui.updateState()
+}
+
+func (ui *CalibratorUI) updateState() {
+	if len(ui.reports) == 0 {
+		return
+	}
+	r := ui.reports[len(ui.reports)-1]
+	ui.state.Text = fmt.Sprintf("Temperature: %.2f°C Humidity: %.2f%% R.H. Command: T=%d H=%d", r.Temperature[0], r.Humidity, ui.temperatureCommand, ui.humidityCommand)
+	ui.MarkUpdate()
+}
 func (ui *CalibratorUI) PushZeusReport(t time.Time, r *arke.ZeusReport) {
 	if len(ui.times) == 0 {
 		ui.start = t
 	}
 
-	ui.state.Text = fmt.Sprintf("Temperature: %.2f°C Humidity: %.2f %% R.H.", r.Temperature[0], r.Humidity)
+	ui.updateState()
 
 	minTime := t.Add(-1 * ui.plotTimeWindow)
 

@@ -59,6 +59,8 @@ type zeusCalibrator struct {
 }
 
 func (c *zeusCalibrator) sendCommands() error {
+	ui.PushCommands(c.temperatureCommand, c.humidityCommand)
+
 	return c.intf.Send(MakeZeusControlPoint(c.ID, c.temperatureCommand, c.humidityCommand))
 }
 
