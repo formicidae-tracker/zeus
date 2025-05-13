@@ -30,6 +30,7 @@ type CalibratorUI struct {
 	cancel                context.CancelFunc
 	logs                  *logDisplay
 	temperature, humidity *plot.Plot
+	state                 *widgets.Paragraph
 
 	temperatureRange, humidityRange Range
 	plotTimeWindow                  time.Duration
@@ -110,6 +111,8 @@ func (ui *CalibratorUI) PushZeusReport(t time.Time, r *arke.ZeusReport) {
 	if len(ui.times) == 0 {
 		ui.start = t
 	}
+
+	ui.state.Text = fmt.Sprintf("Temperature: %.2f°C Humidity: %.2f %% R.H.", r.Temperature[0], r.Humidity)
 
 	minTime := t.Add(-1 * ui.plotTimeWindow)
 
@@ -192,7 +195,7 @@ func (ui *CalibratorUI) Loop() {
 
 	grid := tui.NewGrid()
 	tw, th := tui.TerminalDimensions()
-	grid.SetRect(0, 0, tw, th)
+	grid.SetRect(0, 3, tw, th)
 	grid.Set(
 		tui.NewRow(0.4,
 			tui.NewCol(0.5, ui.temperature),
@@ -201,15 +204,19 @@ func (ui *CalibratorUI) Loop() {
 		tui.NewRow(0.6, ui.logs.displayBox),
 	)
 
+	ui.state = widgets.NewParagraph()
+	ui.state.SetRect(0, 0, tw, 3)
+	ui.state.Title = " Box State "
+
 	// ticker to limit refresh FPS
 	t := time.NewTicker(time.Second / 30)
 
-	tui.Render(grid)
+	tui.Render(ui.state, grid)
 	for {
 		select {
 		case <-t.C:
 			if ui.needUpdate == true {
-				tui.Render(grid)
+				tui.Render(ui.state, grid)
 				ui.needUpdate = false
 			}
 		case <-ui.ctx.Done():
@@ -220,7 +227,8 @@ func (ui *CalibratorUI) Loop() {
 				syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 			case "<Resize":
 				payload := e.Payload.(tui.Resize)
-				grid.SetRect(0, 0, payload.Width, payload.Height)
+				grid.SetRect(0, 3, payload.Width, payload.Height)
+				ui.state.SetRect(0, 0, payload.Width, 3)
 				ui.logs.Resize()
 				tui.Clear()
 				ui.updatePlots()
