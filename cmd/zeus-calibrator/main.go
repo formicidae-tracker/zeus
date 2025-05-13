@@ -103,7 +103,7 @@ func Execute() error {
 
 	ui.temperatureRange = opts.Temperature
 	ui.humidityRange = opts.Humidity
-
+	ui.plotTimeWindow = 10 * time.Minute
 	if opts.DebugUI == true {
 		return debugUI(opts)
 	}

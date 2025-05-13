@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 )
 
 type logDisplay struct {
+	mx         sync.Mutex
 	lines      []string
 	file       io.WriteCloser
 	displayBox *widgets.Paragraph
@@ -43,6 +45,8 @@ type CalibratorUI struct {
 var ui = newCalibratorUI()
 
 func (d *logDisplay) Write(buf []byte) (int, error) {
+	d.mx.Lock()
+	defer d.mx.Unlock()
 	newLines := strings.Split(string(buf), "\n")
 	for _, line := range newLines {
 		if len(line) == 0 {
@@ -63,9 +67,18 @@ func (d *logDisplay) resize() {
 		availablesLines -= 2
 	}
 
-	d.displayBox.Text = strings.Join(d.lines[max(0, len(d.lines)-availablesLines):], "\n")
-
+	if availablesLines > 0 {
+		d.displayBox.Text = strings.Join(d.lines[max(0, len(d.lines)-availablesLines):], "\n")
+	} else {
+		d.displayBox.Text = ""
+	}
 	ui.MarkUpdate()
+}
+
+func (d *logDisplay) Resize() {
+	d.mx.Lock()
+	defer d.mx.Unlock()
+	d.resize()
 }
 
 func newLogDisplay() (*logDisplay, error) {
@@ -208,7 +221,7 @@ func (ui *CalibratorUI) Loop() {
 			case "<Resize":
 				payload := e.Payload.(tui.Resize)
 				grid.SetRect(0, 0, payload.Width, payload.Height)
-				ui.logs.resize()
+				ui.logs.Resize()
 				tui.Clear()
 				ui.updatePlots()
 				ui.MarkUpdate()
