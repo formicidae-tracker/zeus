@@ -25,8 +25,8 @@ const (
 
 func pidParametersFromKuTu(Ku, Tu float32) PIDParameter {
 	kp := Ku / 3.0
-	ki := 2.0 * kp / Tu
-	kd := Tu / 3.0 * Ku
+	ki := 2.0 / 3.0 * Ku / Tu
+	kd := Tu / 9.0 * Ku
 	return PIDParameter{kp, kd, ki}
 }
 
@@ -49,9 +49,15 @@ type zeusCalibrator struct {
 	temperatureParameters PIDParameter
 	humidityParameters    PIDParameter
 
+	humidityCommand, temperatureCommand int16
+
 	onNewReport func(tr timedReport)
 
 	bias, amplitude int
+}
+
+func (c *zeusCalibrator) sendCommands() error {
+	return c.intf.Send(MakeZeusControlPoint(c.ID, c.temperatureCommand, c.humidityCommand))
 }
 
 func newZeusCalibrator(opts Options) (*zeusCalibrator, error) {
@@ -173,7 +179,7 @@ func (c *zeusCalibrator) waitZeusReport(timeout time.Duration,
 
 func (c *zeusCalibrator) Ku() float32 {
 	outAmp := c.temperatureTargets.Diff()
-	return 4.0 * float32(c.amplitude) * 2.0 / (math.Pi * outAmp * 0.5)
+	return 4.0 * float32(c.amplitude) / (math.Pi * outAmp)
 }
 
 func (c *zeusCalibrator) bangBangTarget(high bool) int16 {
@@ -187,6 +193,12 @@ func (c *zeusCalibrator) calibrateTemperature() error {
 
 	defer c.intf.Send(MakeZeusControlPoint(c.ID, 1024, 1024))
 
+	c.temperatureCommand, c.humidityCommand = 0, 0
+	c.onNewReport = func(timedReport) {
+		c.sendCommands()
+	}
+	defer func() { c.onNewReport = func(timedReport) {} }()
+
 	slog.Info("ramping up temperature", "T", c.temperatureTargets.High)
 
 	c.bias = 0
@@ -197,10 +209,9 @@ func (c *zeusCalibrator) calibrateTemperature() error {
 		return float32((ellapsedUp + ellapsedDown).Seconds())
 	}
 
+	c.temperatureCommand, c.humidityCommand = c.bangBangTarget(true), 0
 	timeLow := time.Now()
-	if err := c.intf.Send(MakeZeusControlPoint(c.ID,
-		c.bangBangTarget(true),
-		0)); err != nil {
+	if err := c.sendCommands(); err != nil {
 		return err
 	}
 
@@ -221,13 +232,13 @@ func (c *zeusCalibrator) calibrateTemperature() error {
 		log := slog.With("cycle", i)
 		log.Info("cooling down", "T", c.temperatureTargets.Low, "bias", c.bias, "amplitude", c.amplitude)
 
-		if err := c.intf.Send(MakeZeusControlPoint(c.ID,
-			c.bangBangTarget(false),
-			0)); err != nil {
+		c.temperatureCommand, c.humidityCommand = c.bangBangTarget(false), -c.bangBangTarget(false)/2
+		if err := c.sendCommands(); err != nil {
 			return err
 		}
 
-		timeLow, r, err := c.waitZeusReport(
+		var r *arke.ZeusReport
+		timeLow, r, err = c.waitZeusReport(
 			TEMP_CHANGE,
 			func(r *arke.ZeusReport) bool {
 				return r.Temperature[0] <= c.temperatureTargets.Low
@@ -239,11 +250,13 @@ func (c *zeusCalibrator) calibrateTemperature() error {
 
 		log.Info("temperature reached", "T", r.Temperature[0], "ellapsed", ellapsedDown)
 		log.Info("heating up", "T", c.temperatureTargets.High, "bias", c.bias, "amplitude", c.amplitude)
-		if err := c.intf.Send(MakeZeusControlPoint(c.ID, c.bangBangTarget(true), 0)); err != nil {
+
+		c.temperatureCommand, c.humidityCommand = c.bangBangTarget(true), 0
+		if err := c.sendCommands(); err != nil {
 			return err
 		}
 
-		timeHigh, r, err := c.waitZeusReport(
+		timeHigh, r, err = c.waitZeusReport(
 			TEMP_CHANGE,
 			func(r *arke.ZeusReport) bool {
 				return r.Temperature[0] >= c.temperatureTargets.High
@@ -288,8 +301,8 @@ func (c *zeusCalibrator) calibrateTemperature() error {
 func (c *zeusCalibrator) updateBangBang(ellapsedUp, ellapsedDown time.Duration) float64 {
 	relativeDifference := (ellapsedUp - ellapsedDown).Seconds() / (ellapsedUp + ellapsedDown).Seconds()
 
-	c.bias += int(float64(c.amplitude) * relativeDifference)
-	c.bias = clamp(c.bias, -240, 240)
+	c.bias += int(0.5 * float64(c.amplitude) * relativeDifference)
+	c.bias = clamp(c.bias, -245, 245)
 	if c.bias >= 0 {
 		c.amplitude = 511 - c.bias
 	} else {
@@ -305,10 +318,8 @@ func (c *zeusCalibrator) calibrateHumidity() error {
 	lastError := float32(math.NaN())
 	integralError := float32(0.0)
 
-	var temperatureCommand, humidityCommand int16 = 0, 0
-	sendCommands := func() error {
-		return c.intf.Send(MakeZeusControlPoint(c.ID, temperatureCommand, humidityCommand))
-	}
+	c.temperatureCommand, c.humidityCommand = 0, 0
+
 	c.onNewReport = func(tr timedReport) {
 		if last.Before(tr.T) == false {
 			return
@@ -324,15 +335,15 @@ func (c *zeusCalibrator) calibrateHumidity() error {
 		lastError = error
 		integralError += error * ellapsed
 		target := c.temperatureParameters.Kp*error + c.temperatureParameters.Kd*dError + c.temperatureParameters.Ki*integralError
-		temperatureCommand = int16(clamp(target, -511, 511))
+		c.temperatureCommand = int16(clamp(target, -511, 511))
 
-		c.intf.Send(MakeZeusControlPoint(c.ID, temperatureCommand, humidityCommand))
+		c.sendCommands()
 	}
 
 	slog.Info("ramping up humidity", "RH", c.humidityTargets.High, "T", targetTemperature)
 	c.bias = 0
 	c.amplitude = 511
-	humidityCommand = c.bangBangTarget(true)
+	c.humidityCommand = c.bangBangTarget(true)
 	var ellapsedUp, ellapsedDown time.Duration
 
 	Tu := func() float32 {
@@ -340,7 +351,7 @@ func (c *zeusCalibrator) calibrateHumidity() error {
 	}
 
 	timeLow := time.Now()
-	if err := sendCommands(); err != nil {
+	if err := c.sendCommands(); err != nil {
 		return err
 	}
 
@@ -359,12 +370,12 @@ func (c *zeusCalibrator) calibrateHumidity() error {
 	for i := 0; i < c.cycles; i += 1 {
 		log := slog.With("cycle", i)
 		log.Info("drying-down", "RH", c.humidityTargets.Low, "bias", c.bias, "amplitude", c.amplitude, "T", targetTemperature)
-		humidityCommand = c.bangBangTarget(false)
-		if err := sendCommands(); err != nil {
+		c.humidityCommand = c.bangBangTarget(false)
+		if err := c.sendCommands(); err != nil {
 			return err
 		}
-
-		timeLow, r, err := c.waitZeusReport(
+		var r *arke.ZeusReport
+		timeLow, r, err = c.waitZeusReport(
 			HUMIDITY_CHANGE,
 			func(r *arke.ZeusReport) bool {
 				return r.Humidity <= c.humidityTargets.Low
@@ -376,12 +387,12 @@ func (c *zeusCalibrator) calibrateHumidity() error {
 
 		log.Info("humidity reached", "RH", r.Humidity, "ellapsed", ellapsedDown)
 		log.Info("humidifiying up", "RH", c.humidityTargets.High, "bias", c.bias, "amplitude", c.amplitude, "T", targetTemperature)
-		humidityCommand = c.bangBangTarget(true)
-		if err := sendCommands(); err != nil {
+		c.humidityCommand = c.bangBangTarget(true)
+		if err := c.sendCommands(); err != nil {
 			return err
 		}
 
-		timeHigh, r, err := c.waitZeusReport(
+		timeHigh, r, err = c.waitZeusReport(
 			HUMIDITY_CHANGE,
 			func(r *arke.ZeusReport) bool {
 				return r.Humidity >= c.humidityTargets.High
