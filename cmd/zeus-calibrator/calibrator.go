@@ -51,6 +51,8 @@ type zeusCalibrator struct {
 
 	humidityCommand, temperatureCommand int16
 
+	temperatureMeasuredRange, humidityMeasuredRange Range
+
 	onNewReport func(tr timedReport)
 
 	bias, amplitude int
@@ -58,6 +60,20 @@ type zeusCalibrator struct {
 
 func (c *zeusCalibrator) sendCommands() error {
 	return c.intf.Send(MakeZeusControlPoint(c.ID, c.temperatureCommand, c.humidityCommand))
+}
+
+func (c *zeusCalibrator) resetMeasuredRange() {
+	c.temperatureMeasuredRange = Range{Low: 100.0, High: 0.0}
+	c.humidityMeasuredRange = Range{Low: 100.0, High: 0.0}
+}
+
+func (c *zeusCalibrator) updateMeasureRange(r *arke.ZeusReport) {
+	c.temperatureMeasuredRange.Low = min(c.temperatureMeasuredRange.Low, r.Temperature[0])
+	c.temperatureMeasuredRange.High = max(c.temperatureMeasuredRange.High, r.Temperature[0])
+
+	c.humidityMeasuredRange.Low = min(c.humidityMeasuredRange.Low, r.Humidity)
+	c.humidityMeasuredRange.High = max(c.humidityMeasuredRange.High, r.Humidity)
+
 }
 
 func newZeusCalibrator(opts Options) (*zeusCalibrator, error) {
@@ -141,6 +157,8 @@ func (c *zeusCalibrator) interceptReports() {
 				break
 			}
 			r := tm.M.(*arke.ZeusReport)
+			c.updateMeasureRange(r)
+
 			ui.PushZeusReport(tm.T, r)
 			c.reports <- timedReport{T: tm.T, R: r}
 		}
@@ -177,9 +195,16 @@ func (c *zeusCalibrator) waitZeusReport(timeout time.Duration,
 	}
 }
 
-func (c *zeusCalibrator) Ku() float32 {
-	outAmp := c.temperatureTargets.Diff()
-	return 4.0 * float32(c.amplitude) / (math.Pi * outAmp)
+func abs[T ~int | ~float32 | ~float64](v T) T {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
+func (c *zeusCalibrator) Ku(maxV, minV float32) float32 {
+
+	return 4.0 * float32(c.amplitude) / (math.Pi * abs(maxV-minV))
 }
 
 func (c *zeusCalibrator) bangBangTarget(high bool) int16 {
@@ -200,7 +225,6 @@ func (c *zeusCalibrator) calibrateTemperature() error {
 	defer func() { c.onNewReport = func(timedReport) {} }()
 
 	slog.Info("ramping up temperature", "T", c.temperatureTargets.High)
-
 	c.bias = 0
 	c.amplitude = 511
 	var ellapsedUp, ellapsedDown time.Duration
@@ -229,6 +253,7 @@ func (c *zeusCalibrator) calibrateTemperature() error {
 	onTarget := 0
 
 	for i := 0; i < c.cycles; i += 1 {
+		c.resetMeasuredRange()
 		log := slog.With("cycle", i)
 		log.Info("cooling down", "T", c.temperatureTargets.Low, "bias", c.bias, "amplitude", c.amplitude)
 
@@ -274,7 +299,7 @@ func (c *zeusCalibrator) calibrateTemperature() error {
 		log.Info("cycle result",
 			"duration", ellapsedUp+ellapsedDown,
 			"difference", relativeDifference,
-			"Ku", c.Ku(),
+			"Ku", c.Ku(c.temperatureMeasuredRange.Low, c.temperatureMeasuredRange.High),
 			"Tu", Tu())
 
 		if math.Abs(relativeDifference) < 0.05 {
@@ -288,9 +313,10 @@ func (c *zeusCalibrator) calibrateTemperature() error {
 		}
 
 	}
-	c.temperatureParameters = pidParametersFromKuTu(c.Ku(), Tu())
+	ku := c.Ku(c.temperatureTargets.Low, c.temperatureMeasuredRange.High)
+	c.temperatureParameters = pidParametersFromKuTu(ku, Tu())
 	slog.Info("got following Temperature PID parameters",
-		"Ku", c.Ku(),
+		"Ku", ku,
 		"Tu", Tu(),
 		"PID", c.temperatureParameters,
 	)
@@ -368,6 +394,7 @@ func (c *zeusCalibrator) calibrateHumidity() error {
 
 	onTarget := 0
 	for i := 0; i < c.cycles; i += 1 {
+		c.resetMeasuredRange()
 		log := slog.With("cycle", i)
 		log.Info("drying-down", "RH", c.humidityTargets.Low, "bias", c.bias, "amplitude", c.amplitude, "T", targetTemperature)
 		c.humidityCommand = c.bangBangTarget(false)
@@ -405,10 +432,11 @@ func (c *zeusCalibrator) calibrateHumidity() error {
 		log.Info("humidity reached", "RH", r.Humidity, "ellapsed", ellapsedUp)
 
 		relativeDifference := c.updateBangBang(ellapsedUp, ellapsedDown)
+		ku := c.Ku(c.humidityMeasuredRange.Low, c.humidityMeasuredRange.High)
 		log.Info("cycle result",
 			"duration", ellapsedDown+ellapsedUp,
 			"difference", relativeDifference,
-			"Ku", c.Ku(),
+			"Ku", ku,
 			"Tu", Tu())
 
 		if math.Abs(relativeDifference) < 0.05 {
@@ -423,10 +451,11 @@ func (c *zeusCalibrator) calibrateHumidity() error {
 
 	}
 
-	c.humidityParameters = pidParametersFromKuTu(c.Ku(), Tu())
+	ku := c.Ku(c.humidityMeasuredRange.Low, c.humidityMeasuredRange.High)
+	c.humidityParameters = pidParametersFromKuTu(ku, Tu())
 
 	slog.Info("got following Humidity PID parameters",
-		"Ku", c.Ku(),
+		"Ku", ku,
 		"Tu", Tu(),
 		"PID", c.humidityParameters,
 	)
