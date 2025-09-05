@@ -13,21 +13,44 @@ import (
 )
 
 type PIDParameter struct {
-	Kp, Kd, Ki float32
+	Kp float32 `long:"kp" description:"proportional gain"`
+	Kd float32 `long:"kd" description:"derivative gain"`
+	Ki float32 `long:"ki" description:"integral gain"`
 }
 
 const (
 	TEMP_RAMP_UP     = 25 * time.Minute
 	TEMP_CHANGE      = 20 * time.Minute
-	HUMIDITY_RAMP_UP = 8 * time.Minute
-	HUMIDITY_CHANGE  = 3 * time.Minute
+	HUMIDITY_RAMP_UP = 20 * time.Minute
+	HUMIDITY_CHANGE  = 10 * time.Minute
 )
 
 func pidParametersFromKuTu(Ku, Tu float32) PIDParameter {
 	kp := Ku / 3.0
 	ki := 2.0 / 3.0 * Ku / Tu
 	kd := Tu / 9.0 * Ku
-	return PIDParameter{kp, kd, ki}
+
+	return PIDParameter{Kp: kp, Kd: min(kp/2, kd), Ki: ki}
+}
+
+func (p PIDParameter) Check() (bool, error) {
+	if p.Kp == 0.0 && p.Kd == 0.0 && p.Ki == 0.0 {
+		return false, nil
+	}
+
+	if p.Kp < 0.0 {
+		return true, fmt.Errorf("Invalid proportional gain %.2f", p.Kp)
+	}
+
+	if p.Kd < 0.0 {
+		return true, fmt.Errorf("Invalid derivative gain %.2f", p.Kd)
+	}
+
+	if p.Ki < 0.0 {
+		return true, fmt.Errorf("Invalid integral gain %.2f", p.Ki)
+	}
+
+	return true, nil
 }
 
 type timedReport struct {
@@ -259,7 +282,7 @@ func (c *zeusCalibrator) calibrateTemperature() error {
 		log := slog.With("cycle", i)
 		log.Info("cooling down", "T", c.temperatureTargets.Low, "bias", c.bias, "amplitude", c.amplitude)
 
-		c.temperatureCommand, c.humidityCommand = c.bangBangTarget(false), -c.bangBangTarget(false)/2
+		c.temperatureCommand, c.humidityCommand = c.bangBangTarget(false), -c.bangBangTarget(false)
 		if err := c.sendCommands(); err != nil {
 			return err
 		}

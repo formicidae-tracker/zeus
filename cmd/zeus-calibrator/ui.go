@@ -28,6 +28,7 @@ type logDisplay struct {
 type CalibratorUI struct {
 	ctx                   context.Context
 	cancel                context.CancelFunc
+	ready                 chan struct{}
 	logs                  *logDisplay
 	temperature, humidity *plot.Plot
 	state                 *widgets.Paragraph
@@ -104,7 +105,11 @@ func newLogDisplay() (*logDisplay, error) {
 }
 
 func newCalibratorUI() *CalibratorUI {
-	res := &CalibratorUI{needUpdate: true, plotTimeWindow: 5 * time.Minute}
+	res := &CalibratorUI{
+		needUpdate:     true,
+		plotTimeWindow: 5 * time.Minute,
+		ready:          make(chan struct{}),
+	}
 	res.ctx, res.cancel = context.WithCancel(context.Background())
 	return res
 }
@@ -182,6 +187,10 @@ func (ui *CalibratorUI) Close() {
 	ui.cancel()
 }
 
+func (ui *CalibratorUI) WaitReady() {
+	<-ui.ready
+}
+
 func (ui *CalibratorUI) Loop() {
 	if err := tui.Init(); err != nil {
 		slog.Error("could not initialize termui", "error", err)
@@ -227,6 +236,7 @@ func (ui *CalibratorUI) Loop() {
 	t := time.NewTicker(time.Second / 30)
 
 	tui.Render(ui.state, grid)
+	close(ui.ready)
 	for {
 		select {
 		case <-t.C:

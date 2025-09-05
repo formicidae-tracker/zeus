@@ -66,18 +66,21 @@ func (intf *canInterface) Send(c socketcan.CanFrame) error {
 	return intf.intf.Send(c)
 }
 
-func MakeZeusControlPoint(ID arke.NodeID, temperature, humidity int16) socketcan.CanFrame {
+func buildSendableMessage(ID arke.NodeID, m arke.SendableMessage) socketcan.CanFrame {
 	res := socketcan.CanFrame{
-		ID:       arke.MakeCANIDT(arke.StandardMessage, arke.ZeusControlPointMessage, ID),
+		ID:       arke.MakeCANIDT(arke.StandardMessage, m.MessageClassID(), ID),
 		Extended: false,
 		Data:     make([]byte, 8),
-	}
-	m := arke.ZeusControlPoint{
-		Humidity:    humidity,
-		Temperature: temperature,
 	}
 
 	dlc, _ := m.Marshal(res.Data)
 	res.Dlc = byte(dlc)
 	return res
+}
+
+func MakeZeusControlPoint(ID arke.NodeID, temperature, humidity int16) socketcan.CanFrame {
+	return buildSendableMessage(ID, &arke.ZeusControlPoint{
+		Humidity:    humidity,
+		Temperature: temperature,
+	})
 }
